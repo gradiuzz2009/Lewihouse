@@ -1,0 +1,6 @@
+{
+  "name": "Lewi House",
+  "description": "Property management platform engineered for professional efficiency and a premium tenant experience.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
