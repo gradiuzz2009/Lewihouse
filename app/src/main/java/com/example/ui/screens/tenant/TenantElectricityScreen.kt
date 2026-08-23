@@ -32,6 +32,7 @@ import com.example.data.language.AppLanguage
 import com.example.data.language.LanguageManager
 import com.example.data.language.StringsDict
 import com.example.data.model.*
+import com.example.ui.components.EmptyStateCard
 import com.example.ui.screens.admin.TokenHistoryCard
 import com.example.ui.theme.*
 import com.example.ui.viewmodels.AppViewModel
@@ -75,7 +76,7 @@ fun TenantElectricityScreen(
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Navy800),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -88,7 +89,7 @@ fun TenantElectricityScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("PLN Meter ID", style = MaterialTheme.typography.labelSmall, color = Navy100)
+                            Text(strings.meterId, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
                             Text(
                                 text = tenantMeter?.meterNumber ?: "PLN-${tenant?.roomNumber ?: "204"}-94015",
                                 style = MaterialTheme.typography.titleMedium.copy(
@@ -100,7 +101,7 @@ fun TenantElectricityScreen(
                         }
                         Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
                             Text(
-                                text = "Tariff R1 / 1300VA",
+                                text = "Tarif R1 / 1300VA",
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -108,14 +109,14 @@ fun TenantElectricityScreen(
                         }
                     }
 
-                    Divider(color = Navy700)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("Latest Reading", style = MaterialTheme.typography.labelSmall, color = Navy100)
+                            Text(strings.currentReading, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
                             Text(
                                 text = "${tenantMeter?.currentReadingKwh ?: 420.5} kWh",
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
@@ -123,11 +124,11 @@ fun TenantElectricityScreen(
                             )
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Govt. Tariff", style = MaterialTheme.typography.labelSmall, color = Navy100)
+                            Text("Tarif PLN", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f))
                             Text(
-                                text = "Rp 1,699.53 / kWh",
+                                text = "Rp 1.699,53 / kWh",
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Gold400
+                                color = MaterialTheme.colorScheme.secondary
                             )
                         }
                     }
@@ -158,24 +159,24 @@ fun TenantElectricityScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Gold100),
+                                .background(MaterialTheme.colorScheme.secondaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Bolt, contentDescription = null, tint = Gold600)
+                            Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
                         Column {
-                            Text("Need Electricity Token?", fontWeight = FontWeight.Bold)
-                            Text("Instant 20-digit token generation", style = MaterialTheme.typography.bodySmall, color = Slate600)
+                            Text(strings.buyToken, fontWeight = FontWeight.Bold)
+                            Text("Beli token listrik PLN 20 angka", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
                     Button(
                         onClick = { showRequestTokenDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = Gold500),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.testTag("btn_request_token")
                     ) {
-                        Text(strings.buyToken, fontWeight = FontWeight.Bold)
+                        Text(strings.buyToken, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondary)
                     }
                 }
             }
@@ -185,7 +186,7 @@ fun TenantElectricityScreen(
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate50),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -193,14 +194,14 @@ fun TenantElectricityScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "How to Enter Token to PLN Keypad",
+                        text = "Cara Memasukkan Token Listrik ke Meteran",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Navy800
+                        color = MaterialTheme.colorScheme.primary
                     )
-                    GuideStepItem(number = "1", text = "Locate your room's PLN prepaid meter box inside or beside your door.")
-                    GuideStepItem(number = "2", text = "Type the 20-digit token code using the physical numeric keypad.")
-                    GuideStepItem(number = "3", text = "Press the red or blue ENTER button (usually on the bottom right).")
-                    GuideStepItem(number = "4", text = "The screen will display 'BENAR' or 'ACCEPT' and kWh will be credited immediately.")
+                    GuideStepItem(number = "1", text = "Cari kotak meteran PLN prabayar di luar atau samping pintu kamar.")
+                    GuideStepItem(number = "2", text = "Ketik 20 angka kode token menggunakan tombol angka pada meteran.")
+                    GuideStepItem(number = "3", text = "Tekan tombol ENTER (berwarna merah atau biru di pojok kanan bawah).")
+                    GuideStepItem(number = "4", text = "Layar meteran akan menampilkan tulisan 'BENAR' dan kWh langsung bertambah.")
                 }
             }
         }
@@ -208,30 +209,18 @@ fun TenantElectricityScreen(
         // Token History List
         item {
             Text(
-                text = "Your Token Wallet & History",
+                text = "Dompet & Riwayat Token Saya",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
         }
 
         if (tokens.isEmpty()) {
             item {
-                ElevatedCard(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(28.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Default.ElectricBolt, contentDescription = null, tint = Slate400, modifier = Modifier.size(40.dp))
-                        Text("No tokens generated yet for your unit", style = MaterialTheme.typography.bodyMedium, color = Slate600)
-                    }
-                }
+                EmptyStateCard(
+                    icon = Icons.Default.ElectricBolt,
+                    title = "Belum Ada Token",
+                    description = "Riwayat pembelian token listrik Anda akan muncul di sini."
+                )
             }
         } else {
             items(tokens) { token ->
@@ -259,7 +248,7 @@ fun TenantElectricityScreen(
             title = { Text(strings.buyToken, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Select Token Nominal for Unit ${tenant?.roomNumber ?: "204"}:")
+                    Text("Pilih Nominal Token untuk Unit ${tenant?.roomNumber ?: "204"}:")
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         items(listOf(50000.0, 100000.0, 200000.0, 500000.0)) { nominal ->
                             FilterChip(
@@ -272,12 +261,12 @@ fun TenantElectricityScreen(
 
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Slate100,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Estimated Energy Added: ${LanguageManager.formatKwh(kwh)}", fontWeight = FontWeight.Bold, color = Emerald700)
-                            Text("Tariff: Rp 1,699.53 / kWh", style = MaterialTheme.typography.bodySmall, color = Slate600)
+                            Text("${strings.kwhReceived}: ${LanguageManager.formatKwh(kwh)}", fontWeight = FontWeight.Bold, color = Emerald600)
+                            Text("Tarif: Rp 1.699,53 / kWh", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -290,10 +279,10 @@ fun TenantElectricityScreen(
                         viewModel.issueElectricityToken(roomNo, selectedNominal, name)
                         showRequestTokenDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Navy800),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier.testTag("btn_confirm_buy_token")
                 ) {
-                    Text("Generate & Pay")
+                    Text("Beli & Terbitkan")
                 }
             },
             dismissButton = {
@@ -315,11 +304,11 @@ fun GuideStepItem(number: String, text: String) {
             modifier = Modifier
                 .size(20.dp)
                 .clip(CircleShape)
-                .background(Navy800),
+                .background(MaterialTheme.colorScheme.primary),
             contentAlignment = Alignment.Center
         ) {
-            Text(text = number, color = Color.White, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
+            Text(text = number, color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
         }
-        Text(text = text, style = MaterialTheme.typography.bodySmall, color = Slate700)
+        Text(text = text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

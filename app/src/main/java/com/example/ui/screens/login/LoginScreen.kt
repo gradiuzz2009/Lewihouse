@@ -315,11 +315,11 @@ fun LoginScreen(
                                 errorMessage = "Please enter your ${if (selectedRole == AppRole.TENANT) "room number" else "admin email"}"
                             } else {
                                 scope.launch {
-                                    val success = viewModel.loginWithCredentials(identifier, selectedRole)
+                                    val success = viewModel.loginWithCredentials(identifier, selectedRole, password)
                                     if (success) {
                                         onLoginSuccess()
                                     } else {
-                                        errorMessage = "No resident account found for Room/ID '$identifier'"
+                                        errorMessage = "Authentication failed for ID '$identifier'"
                                     }
                                 }
                             }

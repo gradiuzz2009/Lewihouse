@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -18,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.language.AppLanguage
@@ -43,11 +45,11 @@ fun AppHeaderBar(
         title = {
             Column {
                 Text(
-                    text = "Lewi House",
+                    text = strings.appTitle,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
                 Text(
-                    text = if (currentRole == AppRole.ADMIN) "Admin Manager" else "Tenant Resident",
+                    text = if (currentRole == AppRole.ADMIN) strings.adminManagerRole else strings.tenantResidentRole,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -59,7 +61,12 @@ fun AppHeaderBar(
                 BadgedBox(
                     badge = {
                         if (unreadNotificationsCount > 0) {
-                            Badge { Text(unreadNotificationsCount.toString()) }
+                            Badge(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            ) {
+                                Text(unreadNotificationsCount.toString())
+                            }
                         }
                     }
                 ) {
@@ -72,7 +79,7 @@ fun AppHeaderBar(
 
             // Language Toggle
             TextButton(onClick = onToggleLanguage, modifier = Modifier.testTag("btn_toggle_language")) {
-                Text(currentLanguage.name, fontWeight = FontWeight.Bold)
+                Text(currentLanguage.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             }
 
             // Role Switcher
@@ -84,7 +91,7 @@ fun AppHeaderBar(
             ) {
                 Icon(
                     imageVector = if (currentRole == AppRole.ADMIN) Icons.Default.AdminPanelSettings else Icons.Default.Person,
-                    contentDescription = "Switch Role",
+                    contentDescription = strings.switchRole,
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -95,9 +102,9 @@ fun AppHeaderBar(
                 modifier = Modifier.testTag("btn_logout")
             ) {
                 Icon(
-                    imageVector = Icons.Default.Logout,
-                    contentDescription = "Logout",
-                    tint = Slate500
+                    imageVector = Icons.AutoMirrored.Filled.Logout,
+                    contentDescription = strings.logout,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
@@ -109,7 +116,6 @@ fun AppHeaderBar(
         modifier = modifier
     )
 }
-
 
 @Composable
 fun StatMetricCard(
@@ -259,7 +265,103 @@ fun TicketStatusBadge(status: MaintenanceStatus, strings: StringsDict) {
         MaintenanceStatus.ASSIGNED -> Triple(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer, strings.assigned)
         MaintenanceStatus.IN_PROGRESS -> Triple(MaterialTheme.colorScheme.secondaryContainer, MaterialTheme.colorScheme.onSecondaryContainer, strings.inProgress)
         MaintenanceStatus.RESOLVED -> Triple(MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer, strings.resolved)
-        MaintenanceStatus.CANCELLED -> Triple(MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer, "Cancelled")
+        MaintenanceStatus.CANCELLED -> Triple(MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer, strings.cancelled)
     }
     StatusBadge(statusText = label, containerColor = bgColor, textColor = txtColor)
+}
+
+@Composable
+fun EmptyStateCard(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    modifier: Modifier = Modifier,
+    actionButtonText: String? = null,
+    onActionClick: (() -> Unit)? = null
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            if (actionButtonText != null && onActionClick != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                FilledTonalButton(
+                    onClick = onActionClick,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(text = actionButtonText, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    actionText: String? = null,
+    onActionClick: (() -> Unit)? = null
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (subtitle != null) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        if (actionText != null && onActionClick != null) {
+            TextButton(onClick = onActionClick) {
+                Text(text = actionText, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
 }

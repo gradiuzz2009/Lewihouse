@@ -93,8 +93,8 @@ fun AppNavigation(viewModel: AppViewModel) {
                             NavigationBarItem(
                                 selected = adminTab == AdminTab.DASHBOARD,
                                 onClick = { viewModel.setAdminTab(AdminTab.DASHBOARD) },
-                                icon = { Icon(Icons.Default.Dashboard, contentDescription = "Overview") },
-                                label = { Text("Overview", maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.DASHBOARD) FontWeight.Bold else FontWeight.Medium) },
+                                icon = { Icon(Icons.Default.Dashboard, contentDescription = strings.dashboard) },
+                                label = { Text(strings.dashboard, maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.DASHBOARD) FontWeight.Bold else FontWeight.Medium) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Navy800,
                                     selectedTextColor = Navy800,
@@ -117,6 +117,19 @@ fun AppNavigation(viewModel: AppViewModel) {
                                 )
                             )
                             NavigationBarItem(
+                                selected = adminTab == AdminTab.RESIDENTS,
+                                onClick = { viewModel.setAdminTab(AdminTab.RESIDENTS) },
+                                icon = { Icon(Icons.Default.PeopleAlt, contentDescription = strings.residents) },
+                                label = { Text(strings.residents, maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.RESIDENTS) FontWeight.Bold else FontWeight.Medium) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Navy800,
+                                    selectedTextColor = Navy800,
+                                    unselectedIconColor = Slate400,
+                                    unselectedTextColor = Slate400,
+                                    indicatorColor = Navy800.copy(alpha = 0.10f)
+                                )
+                            )
+                            NavigationBarItem(
                                 selected = adminTab == AdminTab.FINANCE,
                                 onClick = { viewModel.setAdminTab(AdminTab.FINANCE) },
                                 icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = strings.finance) },
@@ -130,10 +143,10 @@ fun AppNavigation(viewModel: AppViewModel) {
                                 )
                             )
                             NavigationBarItem(
-                                selected = adminTab == AdminTab.MAINTENANCE,
-                                onClick = { viewModel.setAdminTab(AdminTab.MAINTENANCE) },
-                                icon = { Icon(Icons.Default.Build, contentDescription = "Services") },
-                                label = { Text("Services", maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.MAINTENANCE) FontWeight.Bold else FontWeight.Medium) },
+                                selected = adminTab == AdminTab.OPERATIONS || adminTab == AdminTab.ELECTRICITY || adminTab == AdminTab.TRANSFER_CALCULATOR || adminTab == AdminTab.MAINTENANCE,
+                                onClick = { viewModel.setAdminTab(AdminTab.OPERATIONS) },
+                                icon = { Icon(Icons.Default.GridView, contentDescription = strings.operations) },
+                                label = { Text(strings.operations, maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.OPERATIONS) FontWeight.Bold else FontWeight.Medium) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Navy800,
                                     selectedTextColor = Navy800,
@@ -154,7 +167,7 @@ fun AppNavigation(viewModel: AppViewModel) {
                                 selected = tenantTab == TenantTab.HOME,
                                 onClick = { viewModel.setTenantTab(TenantTab.HOME) },
                                 icon = { Icon(Icons.Default.Home, contentDescription = strings.dashboard) },
-                                label = { Text("Home", maxLines = 1, fontSize = 10.sp, fontWeight = if (tenantTab == TenantTab.HOME) FontWeight.Bold else FontWeight.Medium) },
+                                label = { Text(strings.dashboard, maxLines = 1, fontSize = 10.sp, fontWeight = if (tenantTab == TenantTab.HOME) FontWeight.Bold else FontWeight.Medium) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Navy800,
                                     selectedTextColor = Navy800,
@@ -166,7 +179,7 @@ fun AppNavigation(viewModel: AppViewModel) {
                             NavigationBarItem(
                                 selected = tenantTab == TenantTab.BILLS,
                                 onClick = { viewModel.setTenantTab(TenantTab.BILLS) },
-                                icon = { Icon(Icons.Default.Payment, contentDescription = strings.myBills) },
+                                icon = { Icon(Icons.Default.Receipt, contentDescription = strings.myBills) },
                                 label = { Text(strings.myBills, maxLines = 1, fontSize = 10.sp, fontWeight = if (tenantTab == TenantTab.BILLS) FontWeight.Bold else FontWeight.Medium) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Navy800,
@@ -180,7 +193,7 @@ fun AppNavigation(viewModel: AppViewModel) {
                                 selected = tenantTab == TenantTab.ELECTRICITY,
                                 onClick = { viewModel.setTenantTab(TenantTab.ELECTRICITY) },
                                 icon = { Icon(Icons.Default.ElectricBolt, contentDescription = strings.electricity) },
-                                label = { Text("PLN", maxLines = 1, fontSize = 10.sp, fontWeight = if (tenantTab == TenantTab.ELECTRICITY) FontWeight.Bold else FontWeight.Medium) },
+                                label = { Text(strings.electricity, maxLines = 1, fontSize = 10.sp, fontWeight = if (tenantTab == TenantTab.ELECTRICITY) FontWeight.Bold else FontWeight.Medium) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Gold600,
                                     selectedTextColor = Gold600,
@@ -250,6 +263,12 @@ fun AppNavigation(viewModel: AppViewModel) {
                         viewModel = viewModel,
                         strings = strings,
                         language = currentLanguage
+                    )
+                    AdminTab.OPERATIONS -> AdminOperationsScreen(
+                        viewModel = viewModel,
+                        strings = strings,
+                        language = currentLanguage,
+                        onNavigateTab = { viewModel.setAdminTab(it) }
                     )
                     AdminTab.TRANSFER_CALCULATOR -> AdminTransferCalculatorScreen(
                         viewModel = viewModel,

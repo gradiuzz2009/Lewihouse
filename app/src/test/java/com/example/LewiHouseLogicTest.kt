@@ -86,4 +86,24 @@ class LewiHouseLogicTest {
             assertTrue(part.all { it.isDigit() })
         }
     }
+
+    @Test
+    fun testFirebaseAuthManagerOfflineFallback() = kotlinx.coroutines.runBlocking {
+        val authManager = com.example.data.security.FirebaseAuthManager()
+        val result = authManager.loginWithCredentials("204", com.example.ui.viewmodels.AppRole.TENANT)
+        assertTrue(result is com.example.data.security.AuthResult.Success)
+        val success = result as com.example.data.security.AuthResult.Success
+        assertEquals(com.example.ui.viewmodels.AppRole.TENANT, success.role)
+        assertEquals("res_204", success.residentId)
+    }
+
+    @Test
+    fun testAdminLoginFallback() = kotlinx.coroutines.runBlocking {
+        val authManager = com.example.data.security.FirebaseAuthManager()
+        val result = authManager.loginWithCredentials("admin@lewihouse.id", com.example.ui.viewmodels.AppRole.ADMIN)
+        assertTrue(result is com.example.data.security.AuthResult.Success)
+        val success = result as com.example.data.security.AuthResult.Success
+        assertEquals(com.example.ui.viewmodels.AppRole.ADMIN, success.role)
+        assertEquals("admin_manager", success.residentId)
+    }
 }

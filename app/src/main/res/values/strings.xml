@@ -1,3 +1,28 @@
 <resources>
     <string name="app_name">Lewi House</string>
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_rooms">Rooms</string>
+    <string name="nav_residents">Tenants</string>
+    <string name="nav_finance">Finance</string>
+    <string name="nav_operations">Operations</string>
+    
+    <string name="nav_home">Home</string>
+    <string name="nav_bills">My Bills</string>
+    <string name="nav_electricity">Electricity</string>
+    <string name="nav_services">Services</string>
+    <string name="nav_profile">Profile</string>
+
+    <string name="status_occupied">Occupied</string>
+    <string name="status_vacant">Vacant</string>
+    <string name="status_maintenance">Maintenance</string>
+    <string name="status_paid">Paid</string>
+    <string name="status_pending">Pending</string>
+    <string name="status_overdue">Overdue</string>
+    
+    <string name="quick_add_room">Add Unit</string>
+    <string name="quick_add_tenant">Register Tenant</string>
+    <string name="quick_issue_token">Generate PLN Token</string>
+    <string name="quick_broadcast">Broadcast Push</string>
+    <string name="pay_now_qris">Pay Now (QRIS)</string>
+    <string name="copy_token">Copy Token Code</string>
 </resources>

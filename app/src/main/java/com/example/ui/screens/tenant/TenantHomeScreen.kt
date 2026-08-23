@@ -59,7 +59,6 @@ fun TenantHomeScreen(
         SimpleDateFormat("MMM", Locale.getDefault()).format(Date()).uppercase()
     }
 
-
     val displayBalance = if (pendingBills.isNotEmpty()) {
         pendingBills.sumOf { it.amount }
     } else {
@@ -79,7 +78,7 @@ fun TenantHomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(32.dp))
-                    .background(Navy800)
+                    .background(MaterialTheme.colorScheme.primary)
             ) {
                 // Background subtle ambient glows
                 Box(
@@ -110,7 +109,7 @@ fun TenantHomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (pendingBills.isNotEmpty()) "CURRENT BALANCE" else "ACTIVE LEASE RATE",
+                            text = if (pendingBills.isNotEmpty()) strings.currentBalance else strings.activeLeaseRate,
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.SemiBold,
                                 letterSpacing = 1.5.sp,
@@ -158,15 +157,15 @@ fun TenantHomeScreen(
                         ) {
                             Icon(
                                 imageVector = if (pendingBills.isNotEmpty()) Icons.Default.WarningAmber else Icons.Default.CheckCircle,
-                                contentDescription = if (pendingBills.isNotEmpty()) "Pending" else "Paid",
+                                contentDescription = if (pendingBills.isNotEmpty()) strings.pending else strings.paid,
                                 tint = if (pendingBills.isNotEmpty()) Gold400 else Emerald400,
                                 modifier = Modifier.size(14.dp)
                             )
                             Text(
                                 text = if (pendingBills.isNotEmpty()) {
-                                    "${pendingBills.size} bill(s) pending"
+                                    String.format(strings.billsPendingCount, pendingBills.size)
                                 } else {
-                                    "Due on ${tenant?.leaseEndDate?.take(7) ?: "2026-10"}-01"
+                                    String.format(strings.dueOn, "${tenant?.leaseEndDate?.take(7) ?: "2026-10"}-01")
                                 },
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     color = Color.White.copy(alpha = 0.95f),
@@ -179,12 +178,15 @@ fun TenantHomeScreen(
                         if (pendingBills.isNotEmpty()) {
                             Button(
                                 onClick = { onNavigateTab(TenantTab.BILLS) },
-                                colors = ButtonDefaults.buttonColors(containerColor = Gold400, contentColor = Navy900),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary,
+                                    contentColor = MaterialTheme.colorScheme.onSecondary
+                                ),
                                 shape = RoundedCornerShape(20.dp),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                                 modifier = Modifier.heightIn(min = 48.dp)
                             ) {
-                                Text("Pay Rent (QRIS)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text(strings.payRentQris, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -245,14 +247,14 @@ fun TenantHomeScreen(
 
                         Column {
                             Text(
-                                text = "Electricity Token",
+                                text = strings.myTokens,
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = SleekTextSecondary,
                                     fontSize = 11.sp
                                 )
                             )
                             Text(
-                                text = if (latestToken != null) "+${LanguageManager.formatKwh(latestToken.kwhAmount)}" else "124.5 kWh Left",
+                                text = if (latestToken != null) "+${LanguageManager.formatKwh(latestToken.kwhAmount)}" else "124.5 kWh",
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = SleekTextPrimary,
@@ -292,10 +294,10 @@ fun TenantHomeScreen(
                                     .background(Navy100),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("🛠️", fontSize = 14.sp)
+                                Icon(Icons.Default.Build, contentDescription = null, tint = Navy800, modifier = Modifier.size(16.dp))
                             }
                             Text(
-                                text = if (activeTicket != null) "ACTIVE" else "ALL CLEAR",
+                                text = if (activeTicket != null) "AKTIF" else "BERES",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.ExtraBold,
                                     color = if (activeTicket != null) Emerald600 else SleekTextMuted,
@@ -306,14 +308,14 @@ fun TenantHomeScreen(
 
                         Column {
                             Text(
-                                text = "Active Request",
+                                text = strings.maintenance,
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = SleekTextSecondary,
                                     fontSize = 11.sp
                                 )
                             )
                             Text(
-                                text = activeTicket?.title ?: "No Pending Fixes",
+                                text = activeTicket?.title ?: "Kondisi Prima",
                                 style = MaterialTheme.typography.bodyMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = SleekTextPrimary,
@@ -334,14 +336,14 @@ fun TenantHomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 SleekActionCard(
-                    emoji = "💳",
-                    title = "Payments",
+                    icon = Icons.Default.Receipt,
+                    title = strings.myBills,
                     onClick = { onNavigateTab(TenantTab.BILLS) },
                     modifier = Modifier.weight(1f)
                 )
                 SleekActionCard(
-                    emoji = "🔌",
-                    title = "Tokens",
+                    icon = Icons.Default.ElectricBolt,
+                    title = strings.myTokens,
                     onClick = { onNavigateTab(TenantTab.ELECTRICITY) },
                     modifier = Modifier.weight(1f)
                 )
@@ -354,14 +356,14 @@ fun TenantHomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 SleekActionCard(
-                    emoji = "🎫",
-                    title = "Repairs",
+                    icon = Icons.Default.Build,
+                    title = strings.newTicket,
                     onClick = { onNavigateTab(TenantTab.MAINTENANCE) },
                     modifier = Modifier.weight(1f)
                 )
                 SleekActionCard(
-                    emoji = "⚙️",
-                    title = "Profile",
+                    icon = Icons.Default.Person,
+                    title = strings.profile,
                     onClick = { onNavigateTab(TenantTab.PROFILE) },
                     modifier = Modifier.weight(1f)
                 )
@@ -373,8 +375,7 @@ fun TenantHomeScreen(
             item {
                 Card(
                     shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Gold500.copy(alpha = 0.10f)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Gold500.copy(alpha = 0.35f)),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { viewModel.openRatingDialog(resolvedUnratedTicket) }
@@ -391,29 +392,29 @@ fun TenantHomeScreen(
                             modifier = Modifier
                                 .size(42.dp)
                                 .clip(CircleShape)
-                                .background(Gold500),
+                                .background(MaterialTheme.colorScheme.secondary),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Star,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onSecondary,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Repair Completed: ${resolvedUnratedTicket.title}",
+                                text = "${strings.rateService}: ${resolvedUnratedTicket.title}",
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.Bold,
-                                    color = Navy800
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                             )
                             Text(
-                                text = "Tap here to rate your technician's service & speed.",
+                                text = strings.rateServicePrompt,
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Slate700,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f),
                                     fontSize = 11.sp
                                 )
                             )
@@ -421,12 +422,12 @@ fun TenantHomeScreen(
 
                         Button(
                             onClick = { viewModel.openRatingDialog(resolvedUnratedTicket) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Gold600),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                             shape = RoundedCornerShape(10.dp),
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                             modifier = Modifier.height(32.dp)
                         ) {
-                            Text("Rate", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(strings.rateService, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -437,8 +438,7 @@ fun TenantHomeScreen(
         item {
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate50),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { viewModel.openSatisfactionSurvey() }
@@ -455,96 +455,36 @@ fun TenantHomeScreen(
                         modifier = Modifier
                             .size(42.dp)
                             .clip(CircleShape)
-                            .background(Navy800),
+                            .background(MaterialTheme.colorScheme.primaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Poll,
+                            imageVector = Icons.Default.Assignment,
                             contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = strings.surveyTitle,
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = Navy800
-                            )
-                        )
-                        Text(
-                            text = "Help us keep Lewi House clean & safe • 2-min survey",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = SleekTextSecondary,
-                                fontSize = 11.sp
-                            )
-                        )
-                    }
-
-                    OutlinedButton(
-                        onClick = { viewModel.openSatisfactionSurvey() },
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        Text(strings.takeSurvey, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Navy800)
-                    }
-                }
-            }
-        }
-
-        // Verification Prompt Card
-        item {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Emerald50),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Emerald100),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Emerald500),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Verified",
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(22.dp)
                         )
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (pendingBills.isEmpty()) "Payment Verified" else "Outstanding Bill Notice",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = if (pendingBills.isEmpty()) Emerald900 else Gold600
-                            )
+                            text = strings.surveyTitle,
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                         )
                         Text(
-                            text = if (pendingBills.isEmpty()) {
-                                "${lastPaidBill?.type?.labelEn ?: "Recent Rent"} confirmed by Manager."
-                            } else {
-                                "Please settle pending dues before the 5th of the month."
-                            },
+                            text = strings.surveySubtitle,
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = if (pendingBills.isEmpty()) Emerald800 else Slate700,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 11.sp
                             )
                         )
                     }
+
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -553,48 +493,37 @@ fun TenantHomeScreen(
 
 @Composable
 fun SleekActionCard(
-    emoji: String,
+    icon: ImageVector,
     title: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     ElevatedCard(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
         modifier = modifier
-            .height(108.dp)
+            .height(56.dp)
             .clickable { onClick() }
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Slate50),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = emoji,
-                    fontSize = 20.sp
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(22.dp)
+            )
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    color = Slate700,
-                    fontSize = 12.sp
-                )
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
 }
-

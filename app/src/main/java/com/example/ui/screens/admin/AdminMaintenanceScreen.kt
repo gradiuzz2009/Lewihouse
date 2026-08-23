@@ -26,6 +26,7 @@ import com.example.data.language.AppLanguage
 import com.example.data.language.LanguageManager
 import com.example.data.language.StringsDict
 import com.example.data.model.*
+import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.PriorityBadge
 import com.example.ui.components.TicketStatusBadge
 import com.example.ui.theme.*
@@ -70,7 +71,7 @@ fun AdminMaintenanceScreen(
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                     )
                     Text(
-                        text = "${tickets.count { it.status != MaintenanceStatus.RESOLVED }} Open requests",
+                        text = "${tickets.count { it.status != MaintenanceStatus.RESOLVED }} ${strings.openMaintenance}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -78,14 +79,14 @@ fun AdminMaintenanceScreen(
 
                 Button(
                     onClick = { viewModel.openFeedbackOverview() },
-                    colors = ButtonDefaults.buttonColors(containerColor = Gold500),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                     shape = RoundedCornerShape(10.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     modifier = Modifier.testTag("btn_open_csat_overview")
                 ) {
-                    Icon(Icons.Default.Star, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondary, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("CSAT / Feedback", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 12.sp)
+                    Text("CSAT", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondary, fontSize = 12.sp)
                 }
             }
         }
@@ -111,7 +112,7 @@ fun AdminMaintenanceScreen(
                                     MaintenanceStatus.ASSIGNED -> strings.assigned
                                     MaintenanceStatus.IN_PROGRESS -> strings.inProgress
                                     MaintenanceStatus.RESOLVED -> strings.resolved
-                                    MaintenanceStatus.CANCELLED -> "Cancelled"
+                                    MaintenanceStatus.CANCELLED -> strings.cancelled
                                 }
                             )
                         }
@@ -123,31 +124,16 @@ fun AdminMaintenanceScreen(
         // Tickets list
         if (filteredTickets.isEmpty()) {
             item {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.TaskAlt,
-                            contentDescription = null,
-                            tint = Emerald600,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Text(
-                            text = "No maintenance tickets in this view",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                EmptyStateCard(
+                    icon = Icons.Default.TaskAlt,
+                    title = strings.emptyTicketsTitle,
+                    description = strings.emptyTicketsDesc,
+                    actionButtonText = strings.resetFilter,
+                    onActionClick = {
+                        selectedStatus = null
+                        selectedPriority = null
                     }
-                }
+                )
             }
         } else {
             items(filteredTickets) { ticket ->
@@ -167,23 +153,23 @@ fun AdminMaintenanceScreen(
     if (updatingTicket != null) {
         val tkt = updatingTicket!!
         var newStatus by remember { mutableStateOf(tkt.status) }
-        var technicianName by remember { mutableStateOf(tkt.assignedTechnician ?: "Pak Joko (AC & Cooling)") }
+        var technicianName by remember { mutableStateOf(tkt.assignedTechnician ?: "Pak Joko (Teknisi AC)") }
         var costText by remember { mutableStateOf(tkt.estimatedCost?.toLong()?.toString() ?: "150000") }
         var notesText by remember { mutableStateOf(tkt.notes ?: "") }
 
         val availableTechs = listOf(
-            "Pak Joko (AC Specialist)",
-            "Pak Budi (Electrician & Wiring)",
-            "Pak Agus (Plumber & Water Systems)",
-            "Pak Hendra (Civil & Painting)",
-            "External Contractor"
+            "Pak Joko (Spesialis AC & Pendingin)",
+            "Pak Budi (Listrik & Kelistrikan)",
+            "Pak Agus (Plumbing & Saluran Air)",
+            "Pak Hendra (Sipil, Cat & Bangunan)",
+            "Teknisi Kontraktor Luar"
         )
 
         AlertDialog(
             onDismissRequest = { updatingTicket = null },
             title = {
                 Text(
-                    text = "Manage Ticket #${tkt.id.takeLast(4).uppercase()}",
+                    text = "${strings.edit} #${tkt.id.takeLast(4).uppercase()}",
                     fontWeight = FontWeight.Bold
                 )
             },
@@ -193,25 +179,35 @@ fun AdminMaintenanceScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     item {
-                        Text(text = "Room ${tkt.roomNumber}: ${tkt.title}", fontWeight = FontWeight.Bold)
-                        Text(text = tkt.description, style = MaterialTheme.typography.bodySmall, color = Slate600)
+                        Text(text = "Unit ${tkt.roomNumber}: ${tkt.title}", fontWeight = FontWeight.Bold)
+                        Text(text = tkt.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
                     item {
-                        Text(text = "Update Status", style = MaterialTheme.typography.labelMedium)
+                        Text(text = strings.status, style = MaterialTheme.typography.labelMedium)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             items(MaintenanceStatus.values()) { st ->
                                 FilterChip(
                                     selected = newStatus == st,
                                     onClick = { newStatus = st },
-                                    label = { Text(st.labelEn) }
+                                    label = {
+                                        Text(
+                                            when (st) {
+                                                MaintenanceStatus.REPORTED -> strings.reported
+                                                MaintenanceStatus.ASSIGNED -> strings.assigned
+                                                MaintenanceStatus.IN_PROGRESS -> strings.inProgress
+                                                MaintenanceStatus.RESOLVED -> strings.resolved
+                                                MaintenanceStatus.CANCELLED -> strings.cancelled
+                                            }
+                                        )
+                                    }
                                 )
                             }
                         }
                     }
 
                     item {
-                        Text(text = "Assign Technician", style = MaterialTheme.typography.labelMedium)
+                        Text(text = strings.assignTech, style = MaterialTheme.typography.labelMedium)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             items(availableTechs) { tech ->
                                 FilterChip(
@@ -227,7 +223,7 @@ fun AdminMaintenanceScreen(
                         OutlinedTextField(
                             value = costText,
                             onValueChange = { costText = it },
-                            label = { Text("Estimated / Repair Cost (IDR)") },
+                            label = { Text("Estimasi Biaya Perbaikan (Rp)") },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
@@ -238,7 +234,7 @@ fun AdminMaintenanceScreen(
                         OutlinedTextField(
                             value = notesText,
                             onValueChange = { notesText = it },
-                            label = { Text("Resolution / Technician Notes") },
+                            label = { Text(strings.details) },
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -257,7 +253,7 @@ fun AdminMaintenanceScreen(
                         )
                         updatingTicket = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Navy800),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     modifier = Modifier.testTag("btn_save_ticket_status")
                 ) {
                     Text(strings.save)
@@ -299,11 +295,11 @@ fun AdminTicketCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Surface(shape = RoundedCornerShape(6.dp), color = Navy800) {
+                    Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.primary) {
                         Text(
                             text = "Unit ${ticket.roomNumber}",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
@@ -320,24 +316,24 @@ fun AdminTicketCard(
                 Text(
                     text = ticket.description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate700
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (ticket.photoEvidenceDesc != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = Gold600, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(14.dp))
                         Text(
                             text = ticket.photoEvidenceDesc,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Gold600
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
             }
 
-            Divider(color = Slate100)
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -346,22 +342,22 @@ fun AdminTicketCard(
             ) {
                 Column {
                     Text(
-                        text = "Reported by ${ticket.residentName}",
+                        text = "Pelapor: ${ticket.residentName}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Slate600
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (ticket.assignedTechnician != null) {
                         Text(
-                            text = "Tech: ${ticket.assignedTechnician}",
+                            text = "Teknisi: ${ticket.assignedTechnician}",
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = Navy800
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
 
                 Button(
                     onClick = onUpdate,
-                    colors = ButtonDefaults.buttonColors(containerColor = Navy800),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     shape = RoundedCornerShape(8.dp)
                 ) {

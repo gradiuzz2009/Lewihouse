@@ -4,11 +4,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -65,13 +65,19 @@ fun AdminDashboardScreen(
         .sumOf { it.amount }
 
     val openTicketsCount = tickets.count { it.status != MaintenanceStatus.RESOLVED }
+    val overduePaymentsCount = payments.count { it.status == PaymentStatus.OVERDUE }
+    val movingOutCount = residents.count { it.status == ResidentStatus.MOVING_OUT }
+
+    val urgentTasksTotal = (if (overduePaymentsCount > 0) 1 else 0) +
+            (if (openTicketsCount > 0) 1 else 0) +
+            (if (movingOutCount > 0) 1 else 0)
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
+        contentPadding = PaddingValues(top = 16.dp, bottom = 120.dp)
     ) {
         // Welcome banner (Sleek 32dp Hero Card)
         item {
@@ -106,7 +112,7 @@ fun AdminDashboardScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "LEWI HOUSE OPERATIONS",
+                            text = strings.adminMode.uppercase(),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.2.sp,
@@ -116,7 +122,7 @@ fun AdminDashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Property Overview",
+                            text = strings.overview,
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onPrimary
@@ -124,9 +130,9 @@ fun AdminDashboardScreen(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Real-time Occupancy & Cashflow Ledger",
+                            text = "${strings.occupancyRate}: $occupancyRate% • ${LanguageManager.formatCurrency(totalCollectedThisMonth, language)}",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
                                 fontSize = 12.sp
                             )
                         )
@@ -149,7 +155,120 @@ fun AdminDashboardScreen(
             }
         }
 
-        // Metrics Grid (2x2)
+        // Urgent Action Banner (if any urgent action needed)
+        if (urgentTasksTotal > 0) {
+            item {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.error),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.NotificationImportant,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onError,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "$urgentTasksTotal ${strings.urgentTasks}",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = strings.urgentBannerSubtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.85f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Operational Pulse Metrics (Available Rooms, Check-Ins, Check-Outs)
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Section Title
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = strings.dailyPulse,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = strings.realtimeUpdates,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    StatMetricCard(
+                        title = strings.vacantRooms,
+                        value = "$vacantRooms",
+                        icon = Icons.Default.MeetingRoom,
+                        iconBgColor = Emerald100,
+                        iconTint = Emerald700,
+                        subValue = strings.readyToRent,
+                        subValueColor = Emerald700,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onNavigateTab(AdminTab.ROOMS) }
+                    )
+                    StatMetricCard(
+                        title = strings.checkInsToday,
+                        value = "2",
+                        icon = Icons.AutoMirrored.Filled.Login,
+                        iconBgColor = Navy100,
+                        iconTint = Navy800,
+                        subValue = strings.scheduled,
+                        subValueColor = Navy800,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onNavigateTab(AdminTab.ROOMS) }
+                    )
+                    StatMetricCard(
+                        title = strings.checkOutsToday,
+                        value = "$movingOutCount",
+                        icon = Icons.AutoMirrored.Filled.Logout,
+                        iconBgColor = Gold100,
+                        iconTint = Gold600,
+                        subValue = strings.noticeGiven,
+                        subValueColor = Gold600,
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onNavigateTab(AdminTab.RESIDENTS) }
+                    )
+                }
+            }
+        }
+
+        // Financial & Facility Health (Occupancy, Revenue, Outstanding Dues, Maintenance SLA)
         item {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
@@ -189,7 +308,7 @@ fun AdminDashboardScreen(
                     StatMetricCard(
                         title = strings.pendingCollections,
                         value = LanguageManager.formatCurrency(pendingDebtAmount, language),
-                        icon = Icons.Default.ReceiptLong,
+                        icon = Icons.AutoMirrored.Filled.ReceiptLong,
                         iconBgColor = MaterialTheme.colorScheme.errorContainer,
                         iconTint = MaterialTheme.colorScheme.onErrorContainer,
                         subValue = "${payments.count { it.status != PaymentStatus.PAID }} ${strings.pending}",
@@ -237,16 +356,16 @@ fun AdminDashboardScreen(
                         QuickActionButton(
                             icon = Icons.Default.Campaign,
                             label = strings.broadcastAnnouncement,
-                            color = MaterialTheme.colorScheme.error,
+                            color = MaterialTheme.colorScheme.primary,
                             onClick = { viewModel.openBroadcastDialog() },
                             modifier = Modifier.testTag("quick_broadcast")
                         )
                         QuickActionButton(
-                            icon = Icons.Default.Star,
-                            label = "CSAT / Ratings",
+                            icon = Icons.Default.PersonAdd,
+                            label = strings.addResident,
                             color = MaterialTheme.colorScheme.secondary,
-                            onClick = { viewModel.openFeedbackOverview() },
-                            modifier = Modifier.testTag("quick_csat_overview")
+                            onClick = { onNavigateTab(AdminTab.RESIDENTS) },
+                            modifier = Modifier.testTag("quick_add_resident")
                         )
                         QuickActionButton(
                             icon = Icons.Default.AddHome,
@@ -262,113 +381,6 @@ fun AdminDashboardScreen(
                             onClick = { onNavigateTab(AdminTab.ELECTRICITY) },
                             modifier = Modifier.testTag("quick_issue_token")
                         )
-                    }
-                }
-            }
-        }
-
-        // Tenant Satisfaction & Quality Oversight Card
-        item {
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { viewModel.openFeedbackOverview() }
-                    .testTag("card_csat_overview")
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.15f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Column {
-                                Text(
-                                    text = "Tenant Satisfaction & CSAT",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                )
-                                Text(
-                                    text = "${feedbacks.size} repair ratings • ${surveys.size} survey responses",
-                                    style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
-                                )
-                            }
-                        }
-
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("Service Rating", style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        text = String.format("%.1f", avgFeedbackRating),
-                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                    )
-                                    Icon(Icons.Default.Star, contentDescription = null, tint = Gold500, modifier = Modifier.size(16.dp))
-                                }
-                            }
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("Overall CSAT", style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        text = "${(avgSurveyRating * 20).toInt()}%",
-                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                    )
-                                    Text("Satisfaction", style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.primary, fontSize = 10.sp))
-                                }
-                            }
-                        }
                     }
                 }
             }
@@ -392,11 +404,11 @@ fun AdminDashboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Unit Occupancy Ratio",
+                            text = strings.unitOccupancyRatio,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                         Text(
-                            text = "$occupiedRooms / $totalRooms Units",
+                            text = "$occupiedRooms / $totalRooms ${strings.units}",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -459,13 +471,23 @@ fun AdminDashboardScreen(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
                 TextButton(onClick = { onNavigateTab(AdminTab.FINANCE) }) {
-                    Text(text = strings.viewAll, color = Navy800)
+                    Text(text = strings.viewAll, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             }
         }
 
-        items(payments.take(4)) { payment ->
-            PaymentItemRow(payment = payment, language = language, strings = strings)
+        if (payments.isEmpty()) {
+            item {
+                EmptyStateCard(
+                    icon = Icons.Default.Receipt,
+                    title = strings.emptyPaymentsTitle,
+                    description = strings.emptyPaymentsDesc
+                )
+            }
+        } else {
+            items(payments.take(4)) { payment ->
+                PaymentItemRow(payment = payment, language = language, strings = strings)
+            }
         }
     }
 }

@@ -76,7 +76,7 @@ fun AdminTransferCalculatorScreen(
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Navy800),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -87,17 +87,17 @@ fun AdminTransferCalculatorScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Calculate, contentDescription = null, tint = Gold400)
+                        Icon(Icons.Default.Calculate, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                         Text(
                             text = strings.transferCalcTitle,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                     Text(
                         text = strings.transferCalcDesc,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Navy100
+                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
                     )
                 }
             }
@@ -116,7 +116,7 @@ fun AdminTransferCalculatorScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "1. Select Transferring Resident",
+                        text = "1. ${strings.residents}",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -125,10 +125,10 @@ fun AdminTransferCalculatorScreen(
                             FilterChip(
                                 selected = isSelected,
                                 onClick = { selectedResidentId = res.id },
-                                label = { Text("${res.fullName} (Room ${res.roomNumber})") },
+                                label = { Text("${res.fullName} (Unit ${res.roomNumber})") },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Navy800,
-                                    selectedLabelColor = Color.White
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                                 )
                             )
                         }
@@ -137,7 +137,7 @@ fun AdminTransferCalculatorScreen(
                     if (currentRoom != null && resident != null) {
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = Slate100,
+                            color = MaterialTheme.colorScheme.surfaceVariant,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -146,12 +146,12 @@ fun AdminTransferCalculatorScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text("Current Unit", style = MaterialTheme.typography.labelSmall, color = Slate600)
+                                    Text(strings.currentRoom, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     Text("Unit ${currentRoom.roomNumber} (${currentRoom.type.name})", fontWeight = FontWeight.Bold)
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text("Current Rent", style = MaterialTheme.typography.labelSmall, color = Slate600)
-                                    Text(LanguageManager.formatCurrency(currentRoom.monthlyRate, language), fontWeight = FontWeight.Bold, color = Navy800)
+                                    Text(strings.monthlyRate, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(LanguageManager.formatCurrency(currentRoom.monthlyRate, language), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 }
                             }
                         }
@@ -173,7 +173,7 @@ fun AdminTransferCalculatorScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "2. Select Destination Unit",
+                        text = "2. ${strings.destinationRoom}",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -184,8 +184,8 @@ fun AdminTransferCalculatorScreen(
                                 onClick = { selectedTargetRoomNumber = rm.roomNumber },
                                 label = { Text("Unit ${rm.roomNumber} - ${rm.type.name} (${LanguageManager.formatCurrency(rm.monthlyRate, language)})") },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = Gold500,
-                                    selectedLabelColor = Color.White
+                                    selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onSecondary
                                 )
                             )
                         }
@@ -194,7 +194,7 @@ fun AdminTransferCalculatorScreen(
                     if (targetRoom != null) {
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = Gold50,
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -203,12 +203,12 @@ fun AdminTransferCalculatorScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text("Target Unit", style = MaterialTheme.typography.labelSmall, color = Gold600)
-                                    Text("Unit ${targetRoom.roomNumber} (${targetRoom.type.name})", fontWeight = FontWeight.Bold, color = Gold600)
+                                    Text(strings.destinationRoom, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Text("Unit ${targetRoom.roomNumber} (${targetRoom.type.name})", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text("New Monthly Rent", style = MaterialTheme.typography.labelSmall, color = Gold600)
-                                    Text(LanguageManager.formatCurrency(targetRoom.monthlyRate, language), fontWeight = FontWeight.Bold, color = Gold600)
+                                    Text(strings.monthlyRate, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                    Text(LanguageManager.formatCurrency(targetRoom.monthlyRate, language), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                 }
                             }
                         }
@@ -235,17 +235,17 @@ fun AdminTransferCalculatorScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "3. Proration Timing",
+                            text = "3. Sisa & Durasi Hari",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Navy100
+                            color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Text(
-                                text = "${daysUsedInMonth.toInt()} Days in Old Unit",
+                                text = "${daysUsedInMonth.toInt()} ${strings.daysUsed}",
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Navy800,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -257,8 +257,8 @@ fun AdminTransferCalculatorScreen(
                         valueRange = 1f..29f,
                         steps = 27,
                         colors = SliderDefaults.colors(
-                            thumbColor = Navy800,
-                            activeTrackColor = Navy800
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary
                         ),
                         modifier = Modifier.fillMaxWidth().testTag("slider_days_used")
                     )
@@ -267,8 +267,8 @@ fun AdminTransferCalculatorScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Day 1 (Start of Cycle)", style = MaterialTheme.typography.labelSmall, color = Slate600)
-                        Text("Day 30 (End of Cycle)", style = MaterialTheme.typography.labelSmall, color = Slate600)
+                        Text("Hari ke-1 (Awal Bulan)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Hari ke-30 (Akhir Bulan)", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -280,7 +280,7 @@ fun AdminTransferCalculatorScreen(
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (calculation.isPayable()) Navy50 else Emerald100.copy(alpha = 0.5f)
+                        containerColor = if (calculation.isPayable()) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
                     ),
                     elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
                     modifier = Modifier.fillMaxWidth()
@@ -290,31 +290,31 @@ fun AdminTransferCalculatorScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "Prorated Settlement Breakdown",
+                            text = "Rincian Perhitungan Prorata",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold),
-                            color = Navy800
+                            color = MaterialTheme.colorScheme.primary
                         )
 
                         CalculationLine(
-                            label = "Old Room Daily Rate (${calculation.fromRoomNumber})",
-                            value = "${LanguageManager.formatCurrency(calculation.oldRoomDailyRate, language)} / day"
+                            label = "Tarif Harian Kamar Lama (${calculation.fromRoomNumber})",
+                            value = "${LanguageManager.formatCurrency(calculation.oldRoomDailyRate, language)} / hari"
                         )
                         CalculationLine(
-                            label = "New Room Daily Rate (${calculation.toRoomNumber})",
-                            value = "${LanguageManager.formatCurrency(calculation.newRoomDailyRate, language)} / day"
+                            label = "Tarif Harian Kamar Baru (${calculation.toRoomNumber})",
+                            value = "${LanguageManager.formatCurrency(calculation.newRoomDailyRate, language)} / hari"
                         )
                         CalculationLine(
-                            label = "Unused Old Room Credit (${calculation.remainingDaysInBillingCycle} days)",
+                            label = "${strings.oldRoomCredit} (${calculation.remainingDaysInBillingCycle} hari)",
                             value = "- ${LanguageManager.formatCurrency(calculation.unusedOldRoomCredit, language)}",
-                            valueColor = Emerald700
+                            valueColor = Emerald600
                         )
                         CalculationLine(
-                            label = "New Room Prorated Charge (${calculation.remainingDaysInBillingCycle} days)",
+                            label = "${strings.newRoomCharge} (${calculation.remainingDaysInBillingCycle} hari)",
                             value = "+ ${LanguageManager.formatCurrency(calculation.newRoomProratedCharge, language)}",
-                            valueColor = Slate800
+                            valueColor = MaterialTheme.colorScheme.onSurface
                         )
                         CalculationLine(
-                            label = "Deposit Adjustment Difference",
+                            label = "Selisih Penyesuaian Deposit",
                             value = if (calculation.depositAdjustment >= 0) {
                                 "+ ${LanguageManager.formatCurrency(calculation.depositAdjustment, language)}"
                             } else {
@@ -322,14 +322,14 @@ fun AdminTransferCalculatorScreen(
                             }
                         )
 
-                        Divider(color = Slate200)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
 
                         // Grand Total Highlight
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (calculation.isPayable()) Navy800 else Emerald700)
+                                .background(if (calculation.isPayable()) MaterialTheme.colorScheme.primary else Emerald600)
                                 .padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -338,10 +338,10 @@ fun AdminTransferCalculatorScreen(
                                 Text(
                                     text = if (calculation.isPayable()) strings.residentPays else strings.propertyRefunds,
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = Gold400
+                                    color = MaterialTheme.colorScheme.secondary
                                 )
                                 Text(
-                                    text = if (calculation.isPayable()) "Net Due from Tenant" else "Credit / Refund to Tenant",
+                                    text = if (calculation.isPayable()) "Selisih yang Harus Dibayar" else "Kredit yang Dikembalikan",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color.White
                                 )
@@ -361,19 +361,19 @@ fun AdminTransferCalculatorScreen(
                         // Execute Transfer Button
                         Button(
                             onClick = { showConfirmDialog = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = Gold500),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(50.dp)
                                 .testTag("btn_execute_transfer")
                         ) {
-                            Icon(Icons.Default.SwapHoriz, contentDescription = null)
+                            Icon(Icons.Default.SwapHoriz, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondary)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = strings.executeTransfer,
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSecondary
                             )
                         }
                     }
@@ -387,22 +387,22 @@ fun AdminTransferCalculatorScreen(
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
             title = {
-                Text("Confirm Room Transfer", fontWeight = FontWeight.Bold)
+                Text("Konfirmasi Pindah Kamar", fontWeight = FontWeight.Bold)
             },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Apply transfer for ${calculation.residentName}:")
-                    Text("• Unit ${calculation.fromRoomNumber} -> Unit ${calculation.toRoomNumber}")
-                    Text("• Effective Date: ${calculation.transferEffectiveDate}")
+                    Text("Terapkan perpindahan kamar untuk ${calculation.residentName}:")
+                    Text("• Kamar ${calculation.fromRoomNumber} -> Kamar ${calculation.toRoomNumber}")
+                    Text("• Tanggal Efektif: ${calculation.transferEffectiveDate}")
                     Text(
                         text = if (calculation.isPayable()) {
-                            "• Tenant owes net difference: ${LanguageManager.formatCurrency(calculation.totalNetPayableOrRefund, language)}"
+                            "• Penghuni membayar selisih: ${LanguageManager.formatCurrency(calculation.totalNetPayableOrRefund, language)}"
                         } else {
-                            "• Refund to tenant: ${LanguageManager.formatCurrency(-calculation.totalNetPayableOrRefund, language)}"
+                            "• Pengembalian ke penghuni: ${LanguageManager.formatCurrency(-calculation.totalNetPayableOrRefund, language)}"
                         },
                         fontWeight = FontWeight.Bold
                     )
-                    Text("This will immediately update unit statuses, resident leases, and create a ledger adjustment record.")
+                    Text("Data status kamar, kontrak penghuni, dan buku kas akan langsung diperbarui.")
                 }
             },
             confirmButton = {
@@ -411,7 +411,7 @@ fun AdminTransferCalculatorScreen(
                         viewModel.executeRoomTransfer(calculation)
                         showConfirmDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Navy800)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text(strings.confirm)
                 }
@@ -426,12 +426,12 @@ fun AdminTransferCalculatorScreen(
 }
 
 @Composable
-fun CalculationLine(label: String, value: String, valueColor: Color = Slate800) {
+fun CalculationLine(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.onSurface) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodySmall, color = Slate700)
+        Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(text = value, style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold), color = valueColor)
     }
 }

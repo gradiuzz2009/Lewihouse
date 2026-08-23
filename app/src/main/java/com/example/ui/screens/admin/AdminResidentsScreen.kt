@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -30,9 +31,11 @@ import com.example.data.language.AppLanguage
 import com.example.data.language.LanguageManager
 import com.example.data.language.StringsDict
 import com.example.data.model.*
+import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.StatusBadge
 import com.example.ui.theme.*
 import com.example.ui.viewmodels.AppViewModel
+import java.net.URLEncoder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,8 +67,8 @@ fun AdminResidentsScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddDialog = true },
-                containerColor = Gold500,
-                contentColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .padding(bottom = 72.dp)
@@ -106,7 +109,7 @@ fun AdminResidentsScreen(
                         trailingIcon = {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = { searchQuery = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear")
+                                    Icon(Icons.Default.Clear, contentDescription = strings.clear)
                                 }
                             }
                         },
@@ -138,7 +141,7 @@ fun AdminResidentsScreen(
                                     when (status) {
                                         ResidentStatus.ACTIVE -> strings.activeLease
                                         ResidentStatus.MOVING_OUT -> strings.movingOutSoon
-                                        ResidentStatus.ARCHIVED -> "Archived"
+                                        ResidentStatus.ARCHIVED -> strings.archived
                                     }
                                 )
                             }
@@ -150,31 +153,16 @@ fun AdminResidentsScreen(
             // Resident Cards List
             if (filteredResidents.isEmpty()) {
                 item {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.PeopleOutline,
-                                contentDescription = null,
-                                tint = Slate400,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Text(
-                                text = "No residents found",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    EmptyStateCard(
+                        icon = Icons.Default.PeopleOutline,
+                        title = strings.emptyResidentsTitle,
+                        description = strings.emptyResidentsDesc,
+                        actionButtonText = strings.resetFilter,
+                        onActionClick = {
+                            searchQuery = ""
+                            selectedStatus = null
                         }
-                    }
+                    )
                 }
             } else {
                 items(filteredResidents) { resident ->
@@ -205,18 +193,18 @@ fun AdminResidentsScreen(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
-                            .background(Navy800),
+                            .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = res.fullName.take(2).uppercase(),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     Column {
                         Text(text = res.fullName, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                        Text(text = "Unit ${res.roomNumber}", style = MaterialTheme.typography.bodySmall, color = Gold500)
+                        Text(text = "Unit ${res.roomNumber}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
                     }
                 }
             },
@@ -226,18 +214,18 @@ fun AdminResidentsScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     DetailRow(label = "KTP / ID No.", value = res.ktpNumber)
-                    DetailRow(label = "Phone", value = res.phone)
+                    DetailRow(label = strings.contactInfo, value = res.phone)
                     DetailRow(label = "Email", value = res.email)
                     DetailRow(label = "Move-in Date", value = res.moveInDate)
-                    DetailRow(label = "Lease End Date", value = res.leaseEndDate)
-                    DetailRow(label = "Monthly Rent", value = LanguageManager.formatCurrency(res.monthlyRent, language))
-                    DetailRow(label = "Deposit Held", value = LanguageManager.formatCurrency(res.depositAmount, language))
-                    DetailRow(label = "Emergency Contact", value = "${res.emergencyContact} (${res.emergencyPhone})")
+                    DetailRow(label = strings.leasePeriod, value = res.leaseEndDate)
+                    DetailRow(label = strings.monthlyRate, value = LanguageManager.formatCurrency(res.monthlyRent, language))
+                    DetailRow(label = strings.deposit, value = LanguageManager.formatCurrency(res.depositAmount, language))
+                    DetailRow(label = strings.emergencyContact, value = "${res.emergencyContact} (${res.emergencyPhone})")
                     if (res.outstandingDebt > 0) {
                         DetailRow(
-                            label = "Outstanding Debt",
+                            label = strings.debtBalance,
                             value = LanguageManager.formatCurrency(res.outstandingDebt, language),
-                            valueColor = Rose600
+                            valueColor = MaterialTheme.colorScheme.error
                         )
                     }
                 }
@@ -245,7 +233,7 @@ fun AdminResidentsScreen(
             confirmButton = {
                 Button(
                     onClick = { viewingResident = null },
-                    colors = ButtonDefaults.buttonColors(containerColor = Navy800)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text(strings.close)
                 }
@@ -257,24 +245,29 @@ fun AdminResidentsScreen(
     if (reminderResident != null) {
         val res = reminderResident!!
         val rentFormatted = LanguageManager.formatCurrency(res.monthlyRent, language)
-        val message = "Dear ${res.fullName}, this is a gentle reminder from Lewi House Management regarding your rent for Unit ${res.roomNumber} ($rentFormatted). Thank you for your cooperation!"
+        val message = LanguageManager.generateWhatsAppReminder(
+            residentName = res.fullName,
+            roomNumber = res.roomNumber,
+            amount = rentFormatted,
+            dueDate = res.leaseEndDate,
+            language = language
+        )
 
         AlertDialog(
             onDismissRequest = { reminderResident = null },
             title = { Text(strings.sendReminder) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Ready to send reminder to ${res.fullName} (${res.phone}):")
+                    Text("${strings.sendReminder}: ${res.fullName} (${res.phone})")
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = Slate100,
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
                             text = message,
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(12.dp),
-                            color = Slate800
+                            modifier = Modifier.padding(12.dp)
                         )
                     }
                 }
@@ -282,14 +275,27 @@ fun AdminResidentsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.showSnackbar("Reminder sent to ${res.fullName} via WhatsApp!")
+                        val cleanPhone = res.phone.replace("+", "").replace("-", "").replace(" ", "").trim()
+                        val waPhone = if (cleanPhone.startsWith("0")) "62" + cleanPhone.substring(1) else cleanPhone
+                        val encoded = try {
+                            URLEncoder.encode(message, "UTF-8")
+                        } catch (e: Exception) {
+                            message
+                        }
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$waPhone?text=$encoded"))
+                        try {
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            // Fallback
+                        }
                         reminderResident = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Emerald600)
+                    colors = ButtonDefaults.buttonColors(containerColor = Emerald600),
+                    modifier = Modifier.testTag("btn_confirm_send_reminder")
                 ) {
-                    Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Send via WhatsApp")
+                    Text("WhatsApp")
                 }
             },
             dismissButton = {
@@ -300,26 +306,26 @@ fun AdminResidentsScreen(
         )
     }
 
-    // Add Resident Dialog
+    // New Resident Registration Modal Dialog
     if (showAddDialog) {
         AddResidentDialog(
-            availableRooms = rooms.filter { it.status == UnitStatus.VACANT || it.currentResidentId == null },
+            availableRooms = rooms.filter { it.status == UnitStatus.VACANT },
             strings = strings,
             language = language,
             onDismiss = { showAddDialog = false },
-            onSave = { fullName, email, phone, roomNumber, moveInDate, leaseEndDate, monthlyRent, deposit, emergency, emergencyPhone, ktp ->
+            onSave = { name, phone, email, ktp, roomNo, moveIn, leaseEnd, rent, deposit, emContact, emPhone, notes ->
                 viewModel.saveResident(
-                    fullName = fullName,
-                    email = email,
+                    fullName = name,
                     phone = phone,
-                    roomNumber = roomNumber,
-                    moveInDate = moveInDate,
-                    leaseEndDate = leaseEndDate,
-                    monthlyRent = monthlyRent,
+                    email = email,
+                    ktpNumber = ktp,
+                    roomNumber = roomNo,
+                    moveInDate = moveIn,
+                    leaseEndDate = leaseEnd,
+                    monthlyRent = rent,
                     depositAmount = deposit,
-                    emergencyContact = emergency,
-                    emergencyPhone = emergencyPhone,
-                    ktpNumber = ktp
+                    emergencyContact = emContact,
+                    emergencyPhone = emPhone
                 )
                 showAddDialog = false
             }
@@ -344,8 +350,9 @@ fun ResidentCard(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Header row: Avatar, Name, Room badge, Status
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -359,114 +366,98 @@ fun ResidentCard(
                         modifier = Modifier
                             .size(42.dp)
                             .clip(CircleShape)
-                            .background(Navy800),
+                            .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = resident.fullName.take(2).uppercase(),
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold
                         )
                     }
+
                     Column {
                         Text(
                             text = resident.fullName,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                         Text(
-                            text = "${resident.phone} • ${resident.email}",
+                            text = "Unit ${resident.roomNumber} • ${resident.phone}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Navy100
-                ) {
-                    Text(
-                        text = "Unit ${resident.roomNumber}",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Navy800,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
+                StatusBadge(
+                    statusText = when (resident.status) {
+                        ResidentStatus.ACTIVE -> strings.activeLease
+                        ResidentStatus.MOVING_OUT -> strings.movingOutSoon
+                        ResidentStatus.ARCHIVED -> strings.archived
+                    },
+                    containerColor = when (resident.status) {
+                        ResidentStatus.ACTIVE -> MaterialTheme.colorScheme.tertiaryContainer
+                        ResidentStatus.MOVING_OUT -> MaterialTheme.colorScheme.secondaryContainer
+                        ResidentStatus.ARCHIVED -> MaterialTheme.colorScheme.surfaceVariant
+                    },
+                    textColor = when (resident.status) {
+                        ResidentStatus.ACTIVE -> MaterialTheme.colorScheme.onTertiaryContainer
+                        ResidentStatus.MOVING_OUT -> MaterialTheme.colorScheme.onSecondaryContainer
+                        ResidentStatus.ARCHIVED -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
             }
 
-            // Lease and financial status
+            // Financial & Lease Snapshot Row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Slate100)
-                    .padding(10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    .padding(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
                     Text(
-                        text = "Lease Until",
+                        text = strings.monthlyRate,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Slate600
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = LanguageManager.formatCurrency(resident.monthlyRent, language),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = strings.leasePeriod,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
                         text = resident.leaseEndDate,
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = Slate800
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                     )
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        text = strings.monthlyRate,
+                        text = strings.debtBalance,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Slate600
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = LanguageManager.formatCurrency(resident.monthlyRent, language),
-                        style = MaterialTheme.typography.bodyMedium.copy(
+                        text = LanguageManager.formatCurrency(resident.outstandingDebt, language),
+                        style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.Bold,
-                            color = Navy800
+                            color = if (resident.outstandingDebt > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
                         )
                     )
                 }
             }
 
-            // Outstanding Debt Warning if any
-            if (resident.outstandingDebt > 0) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Rose100,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(Icons.Default.Warning, contentDescription = null, tint = Rose700, modifier = Modifier.size(16.dp))
-                            Text(
-                                text = "Outstanding: ${LanguageManager.formatCurrency(resident.outstandingDebt, language)}",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Rose700
-                            )
-                        }
-                        TextButton(
-                            onClick = onSendReminder,
-                            contentPadding = PaddingValues(0.dp)
-                        ) {
-                            Text("Send Reminder", color = Rose700, style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold))
-                        }
-                    }
-                }
-            }
-
-            // Action Row
+            // Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
@@ -474,19 +465,20 @@ fun ResidentCard(
             ) {
                 TextButton(
                     onClick = onSendReminder,
-                    contentPadding = PaddingValues(horizontal = 10.dp)
+                    contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
-                    Icon(Icons.Default.Chat, contentDescription = null, tint = Emerald700, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, modifier = Modifier.size(16.dp), tint = Emerald600)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("WhatsApp", color = Emerald700, style = MaterialTheme.typography.labelMedium)
+                    Text(strings.sendReminder, color = Emerald600, style = MaterialTheme.typography.labelMedium)
                 }
+
                 TextButton(
                     onClick = onViewDetails,
-                    contentPadding = PaddingValues(horizontal = 10.dp)
+                    contentPadding = PaddingValues(horizontal = 8.dp)
                 ) {
-                    Icon(Icons.Default.Visibility, contentDescription = null, tint = Navy800, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Visibility, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(strings.details, color = Navy800, style = MaterialTheme.typography.labelMedium)
+                    Text(strings.details, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
@@ -494,13 +486,25 @@ fun ResidentCard(
 }
 
 @Composable
-fun DetailRow(label: String, value: String, valueColor: Color = Slate800) {
+fun DetailRow(
+    label: String,
+    value: String,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodySmall, color = Slate600)
-        Text(text = value, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = valueColor)
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+            color = valueColor
+        )
     }
 }
 
@@ -512,34 +516,38 @@ fun AddResidentDialog(
     language: AppLanguage,
     onDismiss: () -> Unit,
     onSave: (
-        fullName: String,
-        email: String,
+        name: String,
         phone: String,
+        email: String,
+        ktp: String,
         roomNumber: String,
-        moveInDate: String,
-        leaseEndDate: String,
-        monthlyRent: Double,
+        moveIn: String,
+        leaseEnd: String,
+        rent: Double,
         deposit: Double,
-        emergency: String,
-        emergencyPhone: String,
-        ktp: String
+        emContact: String,
+        emPhone: String,
+        notes: String
     ) -> Unit
 ) {
-    var fullName by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("+62 8") }
-    var selectedRoomNumber by remember { mutableStateOf(availableRooms.firstOrNull()?.roomNumber ?: "102") }
-    var moveInDate by remember { mutableStateOf("2026-09-01") }
-    var leaseEndDate by remember { mutableStateOf("2027-08-31") }
-    var monthlyRentText by remember { mutableStateOf("3800000") }
+    var ktp by remember { mutableStateOf("") }
+    var selectedRoom by remember { mutableStateOf(availableRooms.firstOrNull()?.roomNumber ?: "101") }
+    var moveInDate by remember { mutableStateOf("2026-06-01") }
+    var leaseEndDate by remember { mutableStateOf("2027-06-01") }
+    var rentText by remember { mutableStateOf("3800000") }
     var depositText by remember { mutableStateOf("3800000") }
-    var emergencyContact by remember { mutableStateOf("Parent / Spouse") }
-    var emergencyPhone by remember { mutableStateOf("+62 812-0000-0000") }
-    var ktpNumber by remember { mutableStateOf("3271040000000001") }
+    var emContact by remember { mutableStateOf("") }
+    var emPhone by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(strings.newResidentTitle, fontWeight = FontWeight.Bold) },
+        title = {
+            Text(text = strings.newResidentTitle, fontWeight = FontWeight.Bold)
+        },
         text = {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
@@ -547,30 +555,47 @@ fun AddResidentDialog(
             ) {
                 item {
                     OutlinedTextField(
-                        value = fullName,
-                        onValueChange = { fullName = it },
+                        value = name,
+                        onValueChange = { name = it },
                         label = { Text(strings.fullName) },
-                        modifier = Modifier.fillMaxWidth().testTag("input_resident_name"),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("input_resident_name"),
                         singleLine = true
                     )
                 }
 
                 item {
-                    OutlinedTextField(
-                        value = phone,
-                        onValueChange = { phone = it },
-                        label = { Text("Phone Number") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = phone,
+                            onValueChange = { phone = it },
+                            label = { Text(strings.contactInfo) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("input_resident_phone"),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = ktp,
+                            onValueChange = { ktp = it },
+                            label = { Text("KTP / NIK") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                    }
                 }
 
                 item {
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = { Text("Email Address") },
+                        label = { Text("Email") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
@@ -578,29 +603,29 @@ fun AddResidentDialog(
                 }
 
                 item {
-                    OutlinedTextField(
-                        value = ktpNumber,
-                        onValueChange = { ktpNumber = it },
-                        label = { Text("KTP / Passport Number") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                }
-
-                item {
-                    Text(text = "Assign Room", style = MaterialTheme.typography.labelMedium)
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items(availableRooms) { room ->
-                            FilterChip(
-                                selected = selectedRoomNumber == room.roomNumber,
-                                onClick = {
-                                    selectedRoomNumber = room.roomNumber
-                                    monthlyRentText = room.monthlyRate.toLong().toString()
-                                    depositText = room.monthlyRate.toLong().toString()
-                                },
-                                label = { Text("Unit ${room.roomNumber} (${LanguageManager.formatCurrency(room.monthlyRate, language)})") }
-                            )
+                    Text(text = strings.roomNumber, style = MaterialTheme.typography.labelMedium)
+                    if (availableRooms.isNotEmpty()) {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            items(availableRooms) { rm ->
+                                FilterChip(
+                                    selected = selectedRoom == rm.roomNumber,
+                                    onClick = {
+                                        selectedRoom = rm.roomNumber
+                                        rentText = rm.monthlyRate.toLong().toString()
+                                        depositText = rm.monthlyRate.toLong().toString()
+                                    },
+                                    label = { Text("Unit ${rm.roomNumber}") }
+                                )
+                            }
                         }
+                    } else {
+                        OutlinedTextField(
+                            value = selectedRoom,
+                            onValueChange = { selectedRoom = it },
+                            label = { Text(strings.roomNumber) },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
                     }
                 }
 
@@ -619,7 +644,7 @@ fun AddResidentDialog(
                         OutlinedTextField(
                             value = leaseEndDate,
                             onValueChange = { leaseEndDate = it },
-                            label = { Text("Lease End") },
+                            label = { Text(strings.leasePeriod) },
                             modifier = Modifier.weight(1f),
                             singleLine = true
                         )
@@ -627,48 +652,63 @@ fun AddResidentDialog(
                 }
 
                 item {
-                    OutlinedTextField(
-                        value = monthlyRentText,
-                        onValueChange = { monthlyRentText = it },
-                        label = { Text("${strings.monthlyRate} (IDR)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = rentText,
+                            onValueChange = { rentText = it },
+                            label = { Text(strings.monthlyRate) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = depositText,
+                            onValueChange = { depositText = it },
+                            label = { Text(strings.deposit) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                    }
                 }
 
                 item {
-                    OutlinedTextField(
-                        value = depositText,
-                        onValueChange = { depositText = it },
-                        label = { Text("${strings.deposit} (IDR)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                }
-
-                item {
-                    OutlinedTextField(
-                        value = emergencyContact,
-                        onValueChange = { emergencyContact = it },
-                        label = { Text(strings.emergencyContact) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = emContact,
+                            onValueChange = { emContact = it },
+                            label = { Text(strings.emergencyContact) },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = emPhone,
+                            onValueChange = { emPhone = it },
+                            label = { Text("Emergency Phone") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                    }
                 }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    if (fullName.isNotBlank()) {
-                        val rent = monthlyRentText.toDoubleOrNull() ?: 3800000.0
+                    if (name.isNotBlank() && phone.isNotBlank()) {
+                        val rent = rentText.toDoubleOrNull() ?: 3800000.0
                         val deposit = depositText.toDoubleOrNull() ?: 3800000.0
-                        onSave(fullName, email, phone, selectedRoomNumber, moveInDate, leaseEndDate, rent, deposit, emergencyContact, emergencyPhone, ktpNumber)
+                        onSave(name, phone, email, ktp, selectedRoom, moveInDate, leaseEndDate, rent, deposit, emContact, emPhone, notes)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Navy800),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.testTag("btn_save_resident")
             ) {
                 Text(strings.save)

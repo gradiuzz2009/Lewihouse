@@ -52,7 +52,6 @@ fun AdminElectricityScreen(
     var recordingMeter by remember { mutableStateOf<ElectricityMeter?>(null) }
 
     val context = LocalContext.current
-
     val kwhEstimate = (selectedNominal / 1699.53)
 
     LazyColumn(
@@ -90,10 +89,10 @@ fun AdminElectricityScreen(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Gold100),
+                                .background(MaterialTheme.colorScheme.secondaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.ElectricBolt, contentDescription = null, tint = Gold600)
+                            Icon(Icons.Default.ElectricBolt, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
                         Column {
                             Text(
@@ -101,7 +100,7 @@ fun AdminElectricityScreen(
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                             )
                             Text(
-                                text = "Issue PLN 20-digit prepaid tokens directly to tenant meters",
+                                text = "Terbitkan token 20 angka PLN prabayar ke meteran kamar",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -110,7 +109,7 @@ fun AdminElectricityScreen(
 
                     // Target Room Selector
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(text = "Target Unit", style = MaterialTheme.typography.labelMedium)
+                        Text(text = strings.roomNumber, style = MaterialTheme.typography.labelMedium)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(rooms) { room ->
                                 FilterChip(
@@ -118,8 +117,8 @@ fun AdminElectricityScreen(
                                     onClick = { selectedRoomForToken = room.roomNumber },
                                     label = { Text("Unit ${room.roomNumber}") },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = Navy800,
-                                        selectedLabelColor = Color.White
+                                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                                     )
                                 )
                             }
@@ -137,8 +136,8 @@ fun AdminElectricityScreen(
                                     onClick = { selectedNominal = nominal },
                                     label = { Text(LanguageManager.formatCurrency(nominal, language)) },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = Gold500,
-                                        selectedLabelColor = Color.White
+                                        selectedContainerColor = MaterialTheme.colorScheme.secondary,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onSecondary
                                     )
                                 )
                             }
@@ -148,7 +147,7 @@ fun AdminElectricityScreen(
                     // Estimated kWh preview
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = Slate100,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -156,10 +155,10 @@ fun AdminElectricityScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Estimated Energy Added:", style = MaterialTheme.typography.bodySmall, color = Slate700)
+                            Text("${strings.kwhReceived}:", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(
                                 text = LanguageManager.formatKwh(kwhEstimate),
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Emerald700)
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = Emerald600)
                             )
                         }
                     }
@@ -171,7 +170,7 @@ fun AdminElectricityScreen(
                             val residentName = room?.currentResidentName ?: "Resident Unit $selectedRoomForToken"
                             viewModel.issueElectricityToken(selectedRoomForToken, selectedNominal, residentName)
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Navy800),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -188,16 +187,10 @@ fun AdminElectricityScreen(
 
         // Section 2: Room Meter Readings
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = strings.meterReadingTitle,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                )
-            }
+            Text(
+                text = strings.meterReadingTitle,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+            )
         }
 
         items(meters) { meter ->
@@ -215,7 +208,7 @@ fun AdminElectricityScreen(
         // Section 3: Issued Token History
         item {
             Text(
-                text = "Recent Issued Tokens",
+                text = "Riwayat Token Diterbitkan",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
             )
         }
@@ -242,15 +235,15 @@ fun AdminElectricityScreen(
 
         AlertDialog(
             onDismissRequest = { showRecordReadingDialog = false },
-            title = { Text("Record Meter Reading - Room ${target.roomNumber}") },
+            title = { Text("${strings.recordReading} - Unit ${target.roomNumber}") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Meter ID: ${target.meterNumber}", style = MaterialTheme.typography.bodySmall, color = Slate600)
-                    Text("Previous Reading: ${target.currentReadingKwh} kWh", fontWeight = FontWeight.SemiBold)
+                    Text("${strings.meterId}: ${target.meterNumber}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("${strings.lastReading}: ${target.currentReadingKwh} kWh", fontWeight = FontWeight.SemiBold)
                     OutlinedTextField(
                         value = readingText,
                         onValueChange = { readingText = it },
-                        label = { Text("Current Reading (kWh)") },
+                        label = { Text("${strings.currentReading} (kWh)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth().testTag("input_meter_kwh"),
                         singleLine = true
@@ -264,7 +257,7 @@ fun AdminElectricityScreen(
                         viewModel.saveMeterReading(target.roomNumber, kwh)
                         showRecordReadingDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Navy800)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
                     Text(strings.save)
                 }
@@ -307,17 +300,17 @@ fun MeterCardRow(
                         text = "Unit ${meter.roomNumber}",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
-                    Surface(shape = RoundedCornerShape(4.dp), color = Slate100) {
+                    Surface(shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                         Text(
                             text = meter.meterNumber,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Slate600,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
                 }
                 Text(
-                    text = "Usage: ${LanguageManager.formatKwh(meter.consumptionKwh)} (${LanguageManager.formatCurrency(meter.estimatedCost, language)})",
+                    text = "${strings.consumption}: ${LanguageManager.formatKwh(meter.consumptionKwh)} (${LanguageManager.formatCurrency(meter.estimatedCost, language)})",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -325,11 +318,11 @@ fun MeterCardRow(
 
             Button(
                 onClick = onRecord,
-                colors = ButtonDefaults.buttonColors(containerColor = Navy800),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Text("Log kWh", style = MaterialTheme.typography.labelMedium)
+                Text(strings.recordReading, style = MaterialTheme.typography.labelMedium)
             }
         }
     }
@@ -365,10 +358,10 @@ fun TokenHistoryCard(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Gold100),
+                            .background(MaterialTheme.colorScheme.secondaryContainer),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Bolt, contentDescription = null, tint = Gold600, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(20.dp))
                     }
                     Column {
                         Text(
@@ -378,15 +371,15 @@ fun TokenHistoryCard(
                         Text(
                             text = "${token.generatedAt} • ${LanguageManager.formatCurrency(token.amountRp, language)}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate600
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-                Surface(shape = RoundedCornerShape(6.dp), color = Emerald100) {
+                Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.tertiaryContainer) {
                     Text(
                         text = "+${LanguageManager.formatKwh(token.kwhAmount)}",
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Emerald700,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
@@ -415,7 +408,7 @@ fun TokenHistoryCard(
                     onClick = onCopy,
                     modifier = Modifier.size(28.dp)
                 ) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.ContentCopy, contentDescription = strings.copyToken, tint = Color.White, modifier = Modifier.size(16.dp))
                 }
             }
         }

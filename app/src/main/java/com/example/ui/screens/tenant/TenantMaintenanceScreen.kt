@@ -22,8 +22,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.language.AppLanguage
+import com.example.data.language.LanguageManager
 import com.example.data.language.StringsDict
 import com.example.data.model.*
+import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.PriorityBadge
 import com.example.ui.components.TicketStatusBadge
 import com.example.ui.theme.*
@@ -50,8 +52,8 @@ fun TenantMaintenanceScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showNewTicketDialog = true },
-                containerColor = Gold500,
-                contentColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .padding(bottom = 72.dp)
@@ -84,7 +86,7 @@ fun TenantMaintenanceScreen(
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                     )
                     Text(
-                        text = "Report repairs and track in-room technician progress in real-time.",
+                        text = "Laporkan perbaikan kamar dan pantau progres teknisi secara real-time.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -94,30 +96,18 @@ fun TenantMaintenanceScreen(
             // Active Requests Section
             item {
                 Text(
-                    text = "Active Requests (${activeTickets.size})",
+                    text = "Laporan Aktif (${activeTickets.size})",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
             }
 
             if (activeTickets.isEmpty()) {
                 item {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(Icons.Default.CheckCircleOutline, contentDescription = null, tint = Emerald600, modifier = Modifier.size(40.dp))
-                            Text("All systems operating properly!", fontWeight = FontWeight.Bold, color = Navy800)
-                            Text("No open maintenance requests for Unit ${tenant?.roomNumber ?: "204"}", style = MaterialTheme.typography.bodySmall, color = Slate600)
-                        }
-                    }
+                    EmptyStateCard(
+                        icon = Icons.Default.CheckCircleOutline,
+                        title = "Semua Fasilitas Berfungsi Baik",
+                        description = "Tidak ada keluhan perbaikan aktif untuk Unit ${tenant?.roomNumber ?: "204"}."
+                    )
                 }
             } else {
                 items(activeTickets) { ticket ->
@@ -136,7 +126,7 @@ fun TenantMaintenanceScreen(
             if (resolvedTickets.isNotEmpty()) {
                 item {
                     Text(
-                        text = "Resolved History",
+                        text = "Riwayat Selesai",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
@@ -208,11 +198,11 @@ fun TenantTicketProgressCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Surface(shape = RoundedCornerShape(6.dp), color = Slate100) {
+                    Surface(shape = RoundedCornerShape(6.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
                         Text(
                             text = ticket.category.name,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = Slate800,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
@@ -229,7 +219,7 @@ fun TenantTicketProgressCard(
                 Text(
                     text = ticket.description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate700
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -238,18 +228,18 @@ fun TenantTicketProgressCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Slate100)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                StepCircle(label = "Reported", isCompleted = true, isActive = ticket.status == MaintenanceStatus.REPORTED)
+                StepCircle(label = strings.reported, isCompleted = true, isActive = ticket.status == MaintenanceStatus.REPORTED)
                 StepLine(isCompleted = ticket.status != MaintenanceStatus.REPORTED)
-                StepCircle(label = "Assigned", isCompleted = ticket.status == MaintenanceStatus.ASSIGNED || ticket.status == MaintenanceStatus.IN_PROGRESS || ticket.status == MaintenanceStatus.RESOLVED, isActive = ticket.status == MaintenanceStatus.ASSIGNED)
+                StepCircle(label = strings.assigned, isCompleted = ticket.status == MaintenanceStatus.ASSIGNED || ticket.status == MaintenanceStatus.IN_PROGRESS || ticket.status == MaintenanceStatus.RESOLVED, isActive = ticket.status == MaintenanceStatus.ASSIGNED)
                 StepLine(isCompleted = ticket.status == MaintenanceStatus.IN_PROGRESS || ticket.status == MaintenanceStatus.RESOLVED)
-                StepCircle(label = "In Progress", isCompleted = ticket.status == MaintenanceStatus.IN_PROGRESS || ticket.status == MaintenanceStatus.RESOLVED, isActive = ticket.status == MaintenanceStatus.IN_PROGRESS)
+                StepCircle(label = strings.inProgress, isCompleted = ticket.status == MaintenanceStatus.IN_PROGRESS || ticket.status == MaintenanceStatus.RESOLVED, isActive = ticket.status == MaintenanceStatus.IN_PROGRESS)
                 StepLine(isCompleted = ticket.status == MaintenanceStatus.RESOLVED)
-                StepCircle(label = "Resolved", isCompleted = ticket.status == MaintenanceStatus.RESOLVED, isActive = ticket.status == MaintenanceStatus.RESOLVED)
+                StepCircle(label = strings.resolved, isCompleted = ticket.status == MaintenanceStatus.RESOLVED, isActive = ticket.status == MaintenanceStatus.RESOLVED)
             }
 
             if (ticket.assignedTechnician != null) {
@@ -257,31 +247,31 @@ fun TenantTicketProgressCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(Icons.Default.Engineering, contentDescription = null, tint = Navy800, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Engineering, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                     Text(
-                        text = "Assigned to: ${ticket.assignedTechnician}",
+                        text = "Teknisi: ${ticket.assignedTechnician}",
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = Navy800
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
 
             if (ticket.notes != null) {
                 Text(
-                    text = "Resolution: ${ticket.notes}",
+                    text = "Solusi: ${ticket.notes}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Emerald700
+                    color = Emerald600
                 )
             }
 
             // Rating / Feedback Card for Resolved Tickets
             if (ticket.status == MaintenanceStatus.RESOLVED) {
-                HorizontalDivider(color = Slate200, thickness = 1.dp)
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
                 if (feedback != null) {
                     Surface(
                         shape = RoundedCornerShape(12.dp),
-                        color = Gold500.copy(alpha = 0.08f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Gold500.copy(alpha = 0.25f)),
+                        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
@@ -295,15 +285,15 @@ fun TenantTicketProgressCard(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Text(
-                                        text = "Your Rating:",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = Gold600)
+                                        text = "${strings.rateService}:",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
                                     )
                                     Row {
                                         for (i in 1..5) {
                                             Icon(
                                                 imageVector = if (i <= feedback.rating) Icons.Default.Star else Icons.Outlined.StarBorder,
                                                 contentDescription = null,
-                                                tint = if (i <= feedback.rating) Gold500 else Slate300,
+                                                tint = if (i <= feedback.rating) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline,
                                                 modifier = Modifier.size(14.dp)
                                             )
                                         }
@@ -311,21 +301,21 @@ fun TenantTicketProgressCard(
                                 }
                                 Text(
                                     text = feedback.createdAt,
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, color = Slate500)
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 )
                             }
                             if (feedback.aspects.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = feedback.aspects.joinToString(" • "),
-                                    style = MaterialTheme.typography.labelSmall.copy(color = Navy800, fontWeight = FontWeight.Medium)
+                                    style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
                                 )
                             }
                             if (!feedback.comment.isNullOrBlank()) {
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "\"${feedback.comment}\"",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = Slate700, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+                                    style = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
                                 )
                             }
                         }
@@ -333,16 +323,16 @@ fun TenantTicketProgressCard(
                 } else {
                     Button(
                         onClick = onRate,
-                        colors = ButtonDefaults.buttonColors(containerColor = Gold600),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(38.dp)
                             .testTag("btn_rate_ticket_${ticket.id}")
                     ) {
-                        Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSecondary)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(strings.rateService, fontWeight = FontWeight.Bold)
+                        Text(strings.rateService, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondary)
                     }
                 }
             }
@@ -362,21 +352,21 @@ fun StepCircle(label: String, isCompleted: Boolean, isActive: Boolean) {
                 .clip(CircleShape)
                 .background(
                     when {
-                        isCompleted -> Navy800
-                        isActive -> Gold500
-                        else -> Slate300
+                        isCompleted -> MaterialTheme.colorScheme.primary
+                        isActive -> MaterialTheme.colorScheme.secondary
+                        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
                     }
                 ),
             contentAlignment = Alignment.Center
         ) {
             if (isCompleted) {
-                Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+                Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(12.dp))
             }
         }
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-            color = if (isCompleted || isActive) Navy800 else Slate400
+            color = if (isCompleted || isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -387,7 +377,7 @@ fun RowScope.StepLine(isCompleted: Boolean) {
         modifier = Modifier
             .weight(1f)
             .height(2.dp)
-            .background(if (isCompleted) Navy800 else Slate300)
+            .background(if (isCompleted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
     )
 }
 
@@ -401,13 +391,15 @@ fun NewTicketDialog(
 ) {
     var title by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf(MaintenanceCategory.AIR_CONDITIONER) }
-    var description by remember { mutableStateOf("") }
     var selectedPriority by remember { mutableStateOf(MaintenancePriority.MEDIUM) }
-    var attachPhoto by remember { mutableStateOf(true) }
+    var description by remember { mutableStateOf("") }
+    var photoDesc by remember { mutableStateOf("Foto bukti kerusakan AC") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(strings.reportIssue, fontWeight = FontWeight.Bold) },
+        title = {
+            Text(text = strings.newTicket, fontWeight = FontWeight.Bold)
+        },
         text = {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
@@ -417,14 +409,14 @@ fun NewTicketDialog(
                     OutlinedTextField(
                         value = title,
                         onValueChange = { title = it },
-                        label = { Text("Issue Title (e.g. AC Not Cooling)") },
+                        label = { Text("Judul Keluhan (cth: AC Kurang Dingin)") },
                         modifier = Modifier.fillMaxWidth().testTag("input_ticket_title"),
                         singleLine = true
                     )
                 }
 
                 item {
-                    Text("Category", style = MaterialTheme.typography.labelMedium)
+                    Text(text = "Kategori Masalah", style = MaterialTheme.typography.labelMedium)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         items(MaintenanceCategory.values()) { cat ->
                             FilterChip(
@@ -437,13 +429,22 @@ fun NewTicketDialog(
                 }
 
                 item {
-                    Text("Priority Level", style = MaterialTheme.typography.labelMedium)
+                    Text(text = strings.priority, style = MaterialTheme.typography.labelMedium)
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         items(MaintenancePriority.values()) { prio ->
                             FilterChip(
                                 selected = selectedPriority == prio,
                                 onClick = { selectedPriority = prio },
-                                label = { Text(prio.name) }
+                                label = {
+                                    Text(
+                                        when (prio) {
+                                            MaintenancePriority.LOW -> strings.low
+                                            MaintenancePriority.MEDIUM -> strings.medium
+                                            MaintenancePriority.HIGH -> strings.high
+                                            MaintenancePriority.EMERGENCY -> strings.emergency
+                                        }
+                                    )
+                                }
                             )
                         }
                     }
@@ -453,58 +454,23 @@ fun NewTicketDialog(
                     OutlinedTextField(
                         value = description,
                         onValueChange = { description = it },
-                        label = { Text("Describe the issue in detail...") },
-                        modifier = Modifier.fillMaxWidth().height(100.dp),
-                        maxLines = 4
+                        label = { Text("Deskripsi Kerusakan") },
+                        modifier = Modifier.fillMaxWidth().testTag("input_ticket_desc")
                     )
-                }
-
-                item {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (attachPhoto) Gold50 else Slate100,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { attachPhoto = !attachPhoto }
-                            .padding(4.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.CameraAlt,
-                                contentDescription = null,
-                                tint = if (attachPhoto) Gold600 else Slate600
-                            )
-                            Text(
-                                text = if (attachPhoto) "Photo attached (IMG_204_AC_LEAK.jpg)" else "Attach Photo Proof",
-                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                                color = if (attachPhoto) Gold600 else Slate600
-                            )
-                        }
-                    }
                 }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    if (title.isNotBlank()) {
-                        onSubmit(
-                            title,
-                            selectedCategory,
-                            description.ifBlank { "Standard repair requested." },
-                            selectedPriority,
-                            if (attachPhoto) "IMG_204_PHOTO.jpg" else null
-                        )
+                    if (title.isNotBlank() && description.isNotBlank()) {
+                        onSubmit(title, selectedCategory, description, selectedPriority, photoDesc)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Navy800),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.testTag("btn_submit_ticket")
             ) {
-                Text(strings.submitRequest)
+                Text(strings.reportIssue)
             }
         },
         dismissButton = {

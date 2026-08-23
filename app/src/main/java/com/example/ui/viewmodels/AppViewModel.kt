@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.language.AppLanguage
 import com.example.data.local.AppDatabase
+import com.example.data.local.SessionManager
 import com.example.data.model.*
 import com.example.data.repository.LewiHouseRepository
 import kotlinx.coroutines.flow.*
@@ -25,6 +26,7 @@ enum class AdminTab {
     ROOMS,
     RESIDENTS,
     FINANCE,
+    OPERATIONS,
     ELECTRICITY,
     MAINTENANCE,
     TRANSFER_CALCULATOR
@@ -42,25 +44,26 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: LewiHouseRepository
     private val sessionManager = SessionManager(application)
+    private val authManager = com.example.data.security.FirebaseAuthManager()
 
     // Language, Auth & Role State
-    private val _currentLanguage = MutableStateFlow(AppLanguage.EN)
-    val currentLanguage = _currentLanguage.asStateFlow()
+    private val _currentLanguage: MutableStateFlow<AppLanguage> = MutableStateFlow(AppLanguage.EN)
+    val currentLanguage: StateFlow<AppLanguage> = _currentLanguage.asStateFlow()
 
-    private val _isLoggedIn = MutableStateFlow(sessionManager.isLoggedIn)
-    val isLoggedIn = _isLoggedIn.asStateFlow()
+    private val _isLoggedIn: MutableStateFlow<Boolean> = MutableStateFlow(sessionManager.isLoggedIn)
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
-    private val _currentRole = MutableStateFlow(sessionManager.userRole)
-    val currentRole = _currentRole.asStateFlow()
+    private val _currentRole: MutableStateFlow<AppRole> = MutableStateFlow(sessionManager.userRole)
+    val currentRole: StateFlow<AppRole> = _currentRole.asStateFlow()
 
-    private val _selectedTenantId = MutableStateFlow(sessionManager.selectedTenantId)
-    val selectedTenantId = _selectedTenantId.asStateFlow()
+    private val _selectedTenantId: MutableStateFlow<String> = MutableStateFlow(sessionManager.selectedTenantId)
+    val selectedTenantId: StateFlow<String> = _selectedTenantId.asStateFlow()
 
-    private val _adminTab = MutableStateFlow(AdminTab.DASHBOARD)
-    val adminTab = _adminTab.asStateFlow()
+    private val _adminTab: MutableStateFlow<AdminTab> = MutableStateFlow(AdminTab.DASHBOARD)
+    val adminTab: StateFlow<AdminTab> = _adminTab.asStateFlow()
 
-    private val _tenantTab = MutableStateFlow(TenantTab.HOME)
-    val tenantTab = _tenantTab.asStateFlow()
+    private val _tenantTab: MutableStateFlow<TenantTab> = MutableStateFlow(TenantTab.HOME)
+    val tenantTab: StateFlow<TenantTab> = _tenantTab.asStateFlow()
 
     init {
         val db = AppDatabase.getInstance(application)
@@ -70,23 +73,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    suspend fun loginWithCredentials(identifier: String, role: AppRole): Boolean {
-        return if (role == AppRole.TENANT) {
-            val resident = repository.authenticateTenant(identifier)
-            if (resident != null) {
-                _selectedTenantId.value = resident.id
-                _currentRole.value = AppRole.TENANT
+    suspend fun loginWithCredentials(identifier: String, role: AppRole, passwordInput: String = "LewiHouse2026!"): Boolean {
+        return when (val result = authManager.loginWithCredentials(identifier, role, passwordInput)) {
+            is com.example.data.security.AuthResult.Success -> {
+                val resident = if (role == AppRole.TENANT) repository.authenticateTenant(identifier) else null
+                val targetTenantId = resident?.id ?: result.residentId
+                _selectedTenantId.value = targetTenantId
+                _currentRole.value = result.role
                 _isLoggedIn.value = true
-                sessionManager.saveSession(AppRole.TENANT, resident.id)
+                sessionManager.saveSession(result.role, targetTenantId)
                 true
-            } else {
+            }
+            is com.example.data.security.AuthResult.Error -> {
+                showSnackbar(result.message)
                 false
             }
-        } else {
-            _currentRole.value = AppRole.ADMIN
-            _isLoggedIn.value = true
-            sessionManager.saveSession(AppRole.ADMIN, _selectedTenantId.value)
-            true
         }
     }
 
@@ -97,6 +98,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun logout() {
+        authManager.logout()
         sessionManager.clearSession()
         _isLoggedIn.value = false
     }
@@ -129,31 +131,31 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val notifications: StateFlow<List<AppNotification>> = repository.allNotifications
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Active Tenant for Tenant View Simulation
-    private val _selectedTenantId = MutableStateFlow("res_204") // Default: Fauzie Ali Akhmad
-    val selectedTenantId = _selectedTenantId.asStateFlow()
-
-    val currentTenant: StateFlow<Resident?> = combine(residents, selectedTenantId) { resList, id ->
+    val currentTenant: StateFlow<Resident?> = combine(residents, selectedTenantId) { resList: List<Resident>, id: String ->
         resList.find { it.id == id } ?: resList.firstOrNull()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    val currentTenantRoom: StateFlow<RoomUnit?> = combine(rooms, currentTenant) { roomList, tenant ->
+    val currentTenantRoom: StateFlow<RoomUnit?> = combine(rooms, currentTenant) { roomList: List<RoomUnit>, tenant: Resident? ->
         if (tenant != null) roomList.find { it.roomNumber == tenant.roomNumber } else null
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    val currentTenantPayments: StateFlow<List<Payment>> = combine(payments, currentTenant) { payList, tenant ->
+    val currentTenantPayments: StateFlow<List<Payment>> = combine(payments, currentTenant) { payList: List<Payment>, tenant: Resident? ->
         if (tenant != null) payList.filter { it.residentId == tenant.id } else emptyList()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val currentTenantTokens: StateFlow<List<ElectricityToken>> = combine(tokens, currentTenant) { tokList, tenant ->
+    val currentTenantTokens: StateFlow<List<ElectricityToken>> = combine(tokens, currentTenant) { tokList: List<ElectricityToken>, tenant: Resident? ->
         if (tenant != null) tokList.filter { it.roomNumber == tenant.roomNumber } else emptyList()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val currentTenantTickets: StateFlow<List<MaintenanceTicket>> = combine(tickets, currentTenant) { tktList, tenant ->
+    val currentTenantTickets: StateFlow<List<MaintenanceTicket>> = combine(tickets, currentTenant) { tktList: List<MaintenanceTicket>, tenant: Resident? ->
         if (tenant != null) tktList.filter { it.residentId == tenant.id } else emptyList()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val currentTenantNotifications: StateFlow<List<AppNotification>> = combine(notifications, currentTenant, _currentRole) { notifs, tenant, role ->
+    val currentTenantNotifications: StateFlow<List<AppNotification>> = combine(
+        notifications,
+        currentTenant,
+        _currentRole
+    ) { notifs: List<AppNotification>, tenant: Resident?, role: AppRole ->
         if (role == AppRole.ADMIN) {
             notifs
         } else if (tenant != null) {

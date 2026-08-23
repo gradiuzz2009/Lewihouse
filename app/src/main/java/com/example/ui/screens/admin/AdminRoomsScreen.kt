@@ -28,6 +28,7 @@ import com.example.data.language.AppLanguage
 import com.example.data.language.LanguageManager
 import com.example.data.language.StringsDict
 import com.example.data.model.*
+import com.example.ui.components.EmptyStateCard
 import com.example.ui.components.UnitStatusBadge
 import com.example.ui.theme.*
 import com.example.ui.viewmodels.AppViewModel
@@ -59,8 +60,8 @@ fun AdminRoomsScreen(
                     editingRoom = null
                     showAddEditDialog = true
                 },
-                containerColor = Gold500,
-                contentColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.secondary,
+                contentColor = MaterialTheme.colorScheme.onSecondary,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .padding(bottom = 72.dp)
@@ -116,10 +117,10 @@ fun AdminRoomsScreen(
                         FilterChip(
                             selected = selectedFloor == null,
                             onClick = { selectedFloor = null },
-                            label = { Text("All Floors") },
+                            label = { Text(strings.allFloors) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Navy800,
-                                selectedLabelColor = Color.White
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                             )
                         )
                     }
@@ -127,10 +128,10 @@ fun AdminRoomsScreen(
                         FilterChip(
                             selected = selectedFloor == floor,
                             onClick = { selectedFloor = floor },
-                            label = { Text("Floor $floor") },
+                            label = { Text(String.format(strings.floorNumber, floor)) },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = Navy800,
-                                selectedLabelColor = Color.White
+                                selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                             )
                         )
                     }
@@ -171,31 +172,16 @@ fun AdminRoomsScreen(
             // Empty state
             if (filteredRooms.isEmpty()) {
                 item {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.MeetingRoom,
-                                contentDescription = null,
-                                tint = Slate400,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Text(
-                                text = "No rooms match the selected filters",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    EmptyStateCard(
+                        icon = Icons.Default.MeetingRoom,
+                        title = strings.emptyRoomsTitle,
+                        description = strings.emptyRoomsDesc,
+                        actionButtonText = strings.resetFilter,
+                        onActionClick = {
+                            selectedFloor = null
+                            selectedStatus = null
                         }
-                    }
+                    )
                 }
             } else {
                 items(filteredRooms) { room ->
@@ -224,13 +210,13 @@ fun AdminRoomsScreen(
         val targetRoom = statusChangeRoom!!
         AlertDialog(
             onDismissRequest = { statusChangeRoom = null },
-            title = { Text("Update Room ${targetRoom.roomNumber} Status") },
+            title = { Text("${strings.editRoomTitle} ${targetRoom.roomNumber}") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     UnitStatus.values().forEach { status ->
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = if (targetRoom.status == status) Navy100 else Color.Transparent,
+                            color = if (targetRoom.status == status) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
@@ -252,7 +238,7 @@ fun AdminRoomsScreen(
                                     fontWeight = if (targetRoom.status == status) FontWeight.Bold else FontWeight.Normal
                                 )
                                 if (targetRoom.status == status) {
-                                    Icon(Icons.Default.Check, contentDescription = null, tint = Navy800)
+                                    Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
                             }
                         }
@@ -325,13 +311,13 @@ fun RoomUnitCard(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Navy800),
+                            .background(MaterialTheme.colorScheme.primary),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = room.roomNumber,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                     Column {
@@ -340,7 +326,7 @@ fun RoomUnitCard(
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                         )
                         Text(
-                            text = "Floor ${room.floor} • ${room.sizeSqm.toInt()} m²",
+                            text = "${String.format(strings.floorNumber, room.floor)} • ${room.sizeSqm.toInt()} m²",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -375,7 +361,7 @@ fun RoomUnitCard(
                         text = LanguageManager.formatCurrency(room.monthlyRate, language),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
-                            color = Navy800
+                            color = MaterialTheme.colorScheme.primary
                         )
                     )
                 }
@@ -390,7 +376,7 @@ fun RoomUnitCard(
                         text = room.currentResidentName ?: strings.noOccupant,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.SemiBold,
-                            color = if (room.currentResidentName != null) Navy800 else Slate400
+                            color = if (room.currentResidentName != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
                 }
@@ -405,12 +391,12 @@ fun RoomUnitCard(
                     items(room.amenities) { amenity ->
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = Slate100
+                            color = MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Text(
                                 text = amenity,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Slate700,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                             )
                         }
@@ -428,17 +414,17 @@ fun RoomUnitCard(
                     onClick = { onChangeStatus() },
                     contentPadding = PaddingValues(horizontal = 10.dp)
                 ) {
-                    Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(16.dp), tint = Navy800)
+                    Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Change Status", color = Navy800, style = MaterialTheme.typography.labelMedium)
+                    Text(strings.status, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                 }
                 TextButton(
                     onClick = onEdit,
                     contentPadding = PaddingValues(horizontal = 10.dp)
                 ) {
-                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp), tint = Gold500)
+                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.secondary)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(strings.edit, color = Gold500, style = MaterialTheme.typography.labelMedium)
+                    Text(strings.edit, color = MaterialTheme.colorScheme.secondary, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
@@ -560,7 +546,7 @@ fun AddEditRoomDialog(
                     OutlinedTextField(
                         value = notesText,
                         onValueChange = { notesText = it },
-                        label = { Text("Operational Notes") },
+                        label = { Text(strings.details) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -577,7 +563,7 @@ fun AddEditRoomDialog(
                         onSave(roomNumber, selectedType, floor, rate, selectedStatus, amenitiesList, size, notesText)
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Navy800),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                 modifier = Modifier.testTag("btn_save_room")
             ) {
                 Text(strings.save)

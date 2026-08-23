@@ -10,42 +10,63 @@ import java.util.Locale
 import java.util.UUID
 import kotlin.random.Random
 
-class LewiHouseRepository(private val db: AppDatabase) {
+class LewiHouseRepository(
+    private val db: AppDatabase,
+    private val firestoreRepo: LewiHouseFirestoreRepository = LewiHouseFirestoreRepository(localDb = db)
+) {
 
-    val allRooms: Flow<List<RoomUnit>> = db.roomDao().getAllRooms().map { list ->
-        list.map { it.toDomain() }
+    val allRooms: Flow<List<RoomUnit>> = if (firestoreRepo.isCloudEnabled) {
+        firestoreRepo.allRooms
+    } else {
+        db.roomDao().getAllRooms().map { list -> list.map { it.toDomain() } }
     }
 
-    val allResidents: Flow<List<Resident>> = db.residentDao().getAllResidents().map { list ->
-        list.map { it.toDomain() }
+    val allResidents: Flow<List<Resident>> = if (firestoreRepo.isCloudEnabled) {
+        firestoreRepo.allResidents
+    } else {
+        db.residentDao().getAllResidents().map { list -> list.map { it.toDomain() } }
     }
 
-    val allPayments: Flow<List<Payment>> = db.paymentDao().getAllPayments().map { list ->
-        list.map { it.toDomain() }
+    val allPayments: Flow<List<Payment>> = if (firestoreRepo.isCloudEnabled) {
+        firestoreRepo.allPayments
+    } else {
+        db.paymentDao().getAllPayments().map { list -> list.map { it.toDomain() } }
     }
 
-    val allMeters: Flow<List<ElectricityMeter>> = db.electricityMeterDao().getAllMeters().map { list ->
-        list.map { it.toDomain() }
+    val allMeters: Flow<List<ElectricityMeter>> = if (firestoreRepo.isCloudEnabled) {
+        firestoreRepo.allMeters
+    } else {
+        db.electricityMeterDao().getAllMeters().map { list -> list.map { it.toDomain() } }
     }
 
-    val allTokens: Flow<List<ElectricityToken>> = db.electricityTokenDao().getAllTokens().map { list ->
-        list.map { it.toDomain() }
+    val allTokens: Flow<List<ElectricityToken>> = if (firestoreRepo.isCloudEnabled) {
+        firestoreRepo.allTokens
+    } else {
+        db.electricityTokenDao().getAllTokens().map { list -> list.map { it.toDomain() } }
     }
 
-    val allTickets: Flow<List<MaintenanceTicket>> = db.maintenanceTicketDao().getAllTickets().map { list ->
-        list.map { it.toDomain() }
+    val allTickets: Flow<List<MaintenanceTicket>> = if (firestoreRepo.isCloudEnabled) {
+        firestoreRepo.allTickets
+    } else {
+        db.maintenanceTicketDao().getAllTickets().map { list -> list.map { it.toDomain() } }
     }
 
-    val allFeedbacks: Flow<List<ServiceFeedback>> = db.serviceFeedbackDao().getAllFeedbacks().map { list ->
-        list.map { it.toDomain() }
+    val allFeedbacks: Flow<List<ServiceFeedback>> = if (firestoreRepo.isCloudEnabled) {
+        firestoreRepo.allFeedbacks
+    } else {
+        db.serviceFeedbackDao().getAllFeedbacks().map { list -> list.map { it.toDomain() } }
     }
 
-    val allSurveys: Flow<List<SatisfactionSurvey>> = db.satisfactionSurveyDao().getAllSurveys().map { list ->
-        list.map { it.toDomain() }
+    val allSurveys: Flow<List<SatisfactionSurvey>> = if (firestoreRepo.isCloudEnabled) {
+        firestoreRepo.allSurveys
+    } else {
+        db.satisfactionSurveyDao().getAllSurveys().map { list -> list.map { it.toDomain() } }
     }
 
-    val allNotifications: Flow<List<AppNotification>> = db.appNotificationDao().getAllNotifications().map { list ->
-        list.map { it.toDomain() }
+    val allNotifications: Flow<List<AppNotification>> = if (firestoreRepo.isCloudEnabled) {
+        firestoreRepo.allNotifications
+    } else {
+        db.appNotificationDao().getAllNotifications().map { list -> list.map { it.toDomain() } }
     }
 
     suspend fun authenticateTenant(identifier: String): Resident? {
@@ -53,7 +74,7 @@ class LewiHouseRepository(private val db: AppDatabase) {
     }
 
     suspend fun ensureSeedData() {
-        // Fallback in case onCreate callback hasn't finished or was bypassed
+        // Seed Room DB
         val existingRooms = db.roomDao().getRoomById("room_101")
         if (existingRooms == null) {
             db.roomDao().insertRooms(InitialData.rooms)
@@ -66,24 +87,30 @@ class LewiHouseRepository(private val db: AppDatabase) {
             db.satisfactionSurveyDao().insertSurveys(InitialData.surveys)
             db.appNotificationDao().insertNotifications(InitialData.notifications)
         }
+        // Seed Cloud Firestore
+        firestoreRepo.ensureSeedData()
     }
 
     suspend fun saveRoom(room: RoomUnit) {
         db.roomDao().insertRoom(RoomEntity.fromDomain(room))
+        firestoreRepo.saveRoom(room)
     }
 
     suspend fun updateRoomStatus(roomId: String, newStatus: UnitStatus) {
-        val existing = db.roomDao().getRoomById(roomId) ?: return
-        db.roomDao().updateRoom(existing.copy(status = newStatus.name))
+        val existing = db.roomDao().getRoomById(roomId)
+        if (existing != null) {
+            db.roomDao().updateRoom(existing.copy(status = newStatus.name))
+        }
+        firestoreRepo.updateRoomStatus(roomId, newStatus)
     }
 
     suspend fun deleteRoom(roomId: String) {
         db.roomDao().deleteRoomById(roomId)
+        firestoreRepo.deleteRoom(roomId)
     }
 
     suspend fun saveResident(resident: Resident) {
         db.residentDao().insertResident(ResidentEntity.fromDomain(resident))
-        // Also update room occupancy
         val room = db.roomDao().getRoomByNumber(resident.roomNumber)
         if (room != null) {
             db.roomDao().updateRoom(
@@ -94,6 +121,7 @@ class LewiHouseRepository(private val db: AppDatabase) {
                 )
             )
         }
+        firestoreRepo.saveResident(resident)
     }
 
     suspend fun deleteResident(residentId: String) {
@@ -111,21 +139,17 @@ class LewiHouseRepository(private val db: AppDatabase) {
             }
         }
         db.residentDao().deleteResidentById(residentId)
+        firestoreRepo.deleteResident(residentId)
     }
 
     suspend fun savePayment(payment: Payment) {
         db.paymentDao().insertPayment(PaymentEntity.fromDomain(payment))
-    }
-
-    suspend fun updatePaymentStatus(paymentId: String, newStatus: PaymentStatus, receiptRef: String? = null) {
-        val existing = db.paymentDao().getAllPayments() // get list to find
-        // In real app we could have a getPaymentById query or update direct
-        val payments = InitialData.payments
-        // Let's create an update
+        firestoreRepo.savePayment(payment)
     }
 
     suspend fun updatePayment(payment: Payment) {
         db.paymentDao().updatePayment(PaymentEntity.fromDomain(payment))
+        firestoreRepo.updatePayment(payment)
     }
 
     suspend fun saveMeterReading(roomNumber: String, currentKwh: Double) {
@@ -155,6 +179,7 @@ class LewiHouseRepository(private val db: AppDatabase) {
                 )
             )
         }
+        firestoreRepo.saveMeterReading(roomNumber, currentKwh)
     }
 
     suspend fun issueElectricityToken(
@@ -164,12 +189,9 @@ class LewiHouseRepository(private val db: AppDatabase) {
     ): ElectricityToken {
         val meter = db.electricityMeterDao().getMeterByRoom(roomNumber)
         val meterNum = meter?.meterNumber ?: "PLN-$roomNumber-00000"
-        
-        // Tariff calculation for kWh
         val tariff = meter?.tariffPerKwh ?: 1699.53
         val kwh = (amountRp / tariff)
 
-        // 20-digit PLN token simulation
         val part1 = Random.nextInt(1000, 9999)
         val part2 = Random.nextInt(1000, 9999)
         val part3 = Random.nextInt(1000, 9999)
@@ -191,19 +213,22 @@ class LewiHouseRepository(private val db: AppDatabase) {
             residentName = residentName
         )
         db.electricityTokenDao().insertToken(ElectricityTokenEntity.fromDomain(token))
+        firestoreRepo.issueElectricityToken(roomNumber, amountRp, residentName)
         return token
     }
 
     suspend fun saveMaintenanceTicket(ticket: MaintenanceTicket) {
         db.maintenanceTicketDao().insertTicket(MaintenanceTicketEntity.fromDomain(ticket))
+        firestoreRepo.saveMaintenanceTicket(ticket)
     }
 
     suspend fun updateMaintenanceTicket(ticket: MaintenanceTicket) {
         db.maintenanceTicketDao().updateTicket(MaintenanceTicketEntity.fromDomain(ticket))
+        firestoreRepo.updateMaintenanceTicket(ticket)
     }
 
     suspend fun executeRoomTransfer(calculation: RoomTransferCalculation) {
-        // 1. Free up old room
+        // Local Room DB
         val oldRoom = db.roomDao().getRoomByNumber(calculation.fromRoomNumber)
         if (oldRoom != null) {
             db.roomDao().updateRoom(
@@ -215,7 +240,6 @@ class LewiHouseRepository(private val db: AppDatabase) {
             )
         }
 
-        // 2. Assign new room
         val newRoom = db.roomDao().getRoomByNumber(calculation.toRoomNumber)
         if (newRoom != null) {
             db.roomDao().updateRoom(
@@ -227,7 +251,6 @@ class LewiHouseRepository(private val db: AppDatabase) {
             )
         }
 
-        // 3. Update resident roomNumber, monthlyRent, deposit
         val resident = db.residentDao().getResidentById(calculation.residentId)
         if (resident != null) {
             val updatedResident = resident.copy(
@@ -239,7 +262,6 @@ class LewiHouseRepository(private val db: AppDatabase) {
             db.residentDao().updateResident(updatedResident)
         }
 
-        // 4. Record ledger transaction for transfer adjustment
         val nowFormatted = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
         val transferPayment = Payment(
             id = "pay_trf_${UUID.randomUUID().toString().take(8)}",
@@ -256,29 +278,33 @@ class LewiHouseRepository(private val db: AppDatabase) {
             notes = "Prorated Room Transfer (${calculation.daysOccupiedInOldRoom}d used in Room ${calculation.fromRoomNumber}, ${calculation.remainingDaysInBillingCycle}d in Room ${calculation.toRoomNumber})"
         )
         db.paymentDao().insertPayment(PaymentEntity.fromDomain(transferPayment))
+
+        // Cloud Firestore Atomic Sync
+        firestoreRepo.executeRoomTransfer(calculation)
     }
 
-    // Feedback & Rating
     suspend fun saveServiceFeedback(feedback: ServiceFeedback) {
         db.serviceFeedbackDao().insertFeedback(ServiceFeedbackEntity.fromDomain(feedback))
+        firestoreRepo.saveServiceFeedback(feedback)
     }
 
     suspend fun getFeedbackForTicket(ticketId: String): ServiceFeedback? {
         return db.serviceFeedbackDao().getFeedbackByTicketId(ticketId)?.toDomain()
     }
 
-    // Surveys
     suspend fun saveSatisfactionSurvey(survey: SatisfactionSurvey) {
         db.satisfactionSurveyDao().insertSurvey(SatisfactionSurveyEntity.fromDomain(survey))
+        firestoreRepo.saveSatisfactionSurvey(survey)
     }
 
-    // Notifications
     suspend fun sendNotification(notification: AppNotification) {
         db.appNotificationDao().insertNotification(AppNotificationEntity.fromDomain(notification))
+        firestoreRepo.sendNotification(notification)
     }
 
     suspend fun markNotificationAsRead(notificationId: String) {
         db.appNotificationDao().markAsRead(notificationId)
+        firestoreRepo.markNotificationAsRead(notificationId)
     }
 
     suspend fun markAllNotificationsAsRead(residentId: String?) {
@@ -287,10 +313,12 @@ class LewiHouseRepository(private val db: AppDatabase) {
         } else {
             db.appNotificationDao().markAllAsRead()
         }
+        firestoreRepo.markAllNotificationsAsRead(residentId)
     }
 
     suspend fun deleteNotification(notificationId: String) {
         db.appNotificationDao().deleteNotification(notificationId)
+        firestoreRepo.deleteNotification(notificationId)
     }
 }
 
