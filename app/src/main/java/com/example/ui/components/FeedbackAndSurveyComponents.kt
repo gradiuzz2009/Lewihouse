@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.language.StringsDict
@@ -75,7 +76,9 @@ fun ReadOnlyStarRating(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier,
+        modifier = modifier.semantics(mergeDescendants = true) {
+            contentDescription = "$rating out of $maxStars stars"
+        },
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -252,7 +255,11 @@ fun ServiceFeedbackRatingDialog(
                             shape = RoundedCornerShape(20.dp),
                             color = if (isSelected) Navy800 else Slate100,
                             modifier = Modifier
-                                .clickable {
+                                .minimumInteractiveComponentSize()
+                                .clickable(
+                                    role = Role.Checkbox,
+                                    onClickLabel = if (isSelected) "Deselect $aspect" else "Select $aspect"
+                                ) {
                                     if (isSelected) selectedAspects.remove(aspect)
                                     else selectedAspects.add(aspect)
                                 }
@@ -340,6 +347,7 @@ fun SatisfactionSurveyDialog(
         suggestions: String
     ) -> Unit
 ) {
+    var currentStep by remember { mutableStateOf(1) } // 1: Star Ratings, 2: Written Feedback
     var overallRating by remember { mutableStateOf(5) }
     var cleanlinessRating by remember { mutableStateOf(5) }
     var staffRating by remember { mutableStateOf(5) }
@@ -367,7 +375,7 @@ fun SatisfactionSurveyDialog(
                     .fillMaxSize()
                     .padding(20.dp)
             ) {
-                // Header with Close
+                // Header with Step Pill & Close Button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -392,13 +400,22 @@ fun SatisfactionSurveyDialog(
                             )
                         }
                         Column {
-                            Text(
-                                text = strings.surveyTitle,
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    color = Navy800
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    text = strings.surveyTitle,
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Navy800
+                                    )
                                 )
-                            )
+                                Surface(shape = RoundedCornerShape(6.dp), color = Slate100) {
+                                    Text(
+                                        text = "Step $currentStep of 2",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Slate700),
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
                             Text(
                                 text = "Unit $roomNumber • $residentName",
                                 style = MaterialTheme.typography.labelSmall.copy(color = SleekTextSecondary)
@@ -416,122 +433,155 @@ fun SatisfactionSurveyDialog(
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Slate100)
 
-                // Scrollable Questions
+                // Step Content Area
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    Text(
-                        text = strings.surveySubtitle,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = SleekTextSecondary,
-                            lineHeight = 18.sp
-                        ),
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                    if (currentStep == 1) {
+                        Text(
+                            text = "Rate your living experience across core categories:",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = SleekTextSecondary,
+                                lineHeight = 18.sp
+                            ),
+                            modifier = Modifier.padding(bottom = 14.dp)
+                        )
 
-                    // 1. Overall Living Experience
-                    SurveyRatingRow(
-                        title = strings.overallExperience,
-                        subtitle = "Overall satisfaction residing at Lewi House",
-                        rating = overallRating,
-                        onRatingChanged = { overallRating = it }
-                    )
+                        // 1. Overall Living Experience
+                        SurveyRatingRow(
+                            title = strings.overallExperience,
+                            subtitle = "Overall satisfaction residing at Lewi House",
+                            rating = overallRating,
+                            onRatingChanged = { overallRating = it }
+                        )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    // 2. Cleanliness
-                    SurveyRatingRow(
-                        title = strings.cleanlinessRating,
-                        subtitle = "Common areas, corridors, trash management",
-                        rating = cleanlinessRating,
-                        onRatingChanged = { cleanlinessRating = it }
-                    )
+                        // 2. Cleanliness
+                        SurveyRatingRow(
+                            title = strings.cleanlinessRating,
+                            subtitle = "Common areas, corridors, trash management",
+                            rating = cleanlinessRating,
+                            onRatingChanged = { cleanlinessRating = it }
+                        )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    // 3. Staff & Responsiveness
-                    SurveyRatingRow(
-                        title = strings.staffResponsiveness,
-                        subtitle = "Building manager assistance & fast communication",
-                        rating = staffRating,
-                        onRatingChanged = { staffRating = it }
-                    )
+                        // 3. Staff & Responsiveness
+                        SurveyRatingRow(
+                            title = strings.staffResponsiveness,
+                            subtitle = "Building manager assistance & fast communication",
+                            rating = staffRating,
+                            onRatingChanged = { staffRating = it }
+                        )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    // 4. Amenities & Utilities
-                    SurveyRatingRow(
-                        title = strings.amenitiesQuality,
-                        subtitle = "Wi-Fi speed, AC performance, hot water supply",
-                        rating = amenitiesRating,
-                        onRatingChanged = { amenitiesRating = it }
-                    )
+                        // 4. Amenities & Utilities
+                        SurveyRatingRow(
+                            title = strings.amenitiesQuality,
+                            subtitle = "Wi-Fi speed, AC performance, hot water supply",
+                            rating = amenitiesRating,
+                            onRatingChanged = { amenitiesRating = it }
+                        )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                    // 5. Security & Safety
-                    SurveyRatingRow(
-                        title = strings.securitySafety,
-                        subtitle = "Access control, CCTV, quiet rest atmosphere",
-                        rating = securityRating,
-                        onRatingChanged = { securityRating = it }
-                    )
+                        // 5. Security & Safety
+                        SurveyRatingRow(
+                            title = strings.securitySafety,
+                            subtitle = "Access control, CCTV, quiet rest atmosphere",
+                            rating = securityRating,
+                            onRatingChanged = { securityRating = it }
+                        )
+                    } else {
+                        Text(
+                            text = "Help us improve with your personal feedback:",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = SleekTextSecondary,
+                                lineHeight = 18.sp
+                            ),
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
 
-                    Spacer(modifier = Modifier.height(18.dp))
+                        OutlinedTextField(
+                            value = favoriteAspect,
+                            onValueChange = { favoriteAspect = it },
+                            label = { Text(strings.whatDidYouLike) },
+                            placeholder = { Text("e.g. Fast Wi-Fi, responsive building manager, quiet environment") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("input_survey_favorite"),
+                            minLines = 3,
+                            shape = RoundedCornerShape(12.dp)
+                        )
 
-                    // Free form inputs
-                    OutlinedTextField(
-                        value = favoriteAspect,
-                        onValueChange = { favoriteAspect = it },
-                        label = { Text(strings.whatDidYouLike) },
-                        placeholder = { Text("e.g. Fast Wi-Fi, responsive building manager, quiet environment") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("input_survey_favorite"),
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = suggestions,
-                        onValueChange = { suggestions = it },
-                        label = { Text(strings.howCanWeImprove) },
-                        placeholder = { Text("e.g. Add water dispenser on 2nd floor, gym equipment") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("input_survey_suggestions"),
-                        minLines = 2,
-                        maxLines = 4,
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                        OutlinedTextField(
+                            value = suggestions,
+                            onValueChange = { suggestions = it },
+                            label = { Text(strings.howCanWeImprove) },
+                            placeholder = { Text("e.g. Add water dispenser on 2nd floor, gym equipment") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("input_survey_suggestions"),
+                            minLines = 4,
+                            maxLines = 6,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // Submit Button
-                Button(
-                    onClick = {
-                        onSubmit(
-                            overallRating,
-                            cleanlinessRating,
-                            staffRating,
-                            amenitiesRating,
-                            securityRating,
-                            favoriteAspect,
-                            suggestions
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .testTag("btn_submit_survey"),
-                    colors = ButtonDefaults.buttonColors(containerColor = Navy800),
-                    shape = RoundedCornerShape(12.dp)
+                // Action Bar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(strings.submitFeedback, fontWeight = FontWeight.Bold)
+                    if (currentStep == 2) {
+                        OutlinedButton(
+                            onClick = { currentStep = 1 },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("← Back")
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            if (currentStep == 1) {
+                                currentStep = 2
+                            } else {
+                                onSubmit(
+                                    overallRating,
+                                    cleanlinessRating,
+                                    staffRating,
+                                    amenitiesRating,
+                                    securityRating,
+                                    favoriteAspect,
+                                    suggestions
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("btn_submit_survey"),
+                        colors = ButtonDefaults.buttonColors(containerColor = Navy800),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = if (currentStep == 1) "Next: Written Feedback →" else strings.submitFeedback,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }

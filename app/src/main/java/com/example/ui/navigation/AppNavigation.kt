@@ -22,10 +22,12 @@ import com.example.ui.theme.*
 import com.example.ui.viewmodels.AdminTab
 import com.example.ui.viewmodels.AppRole
 import com.example.ui.viewmodels.AppViewModel
+import com.example.ui.screens.login.LoginScreen
 import com.example.ui.viewmodels.TenantTab
 
 @Composable
 fun AppNavigation(viewModel: AppViewModel) {
+    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
     val currentRole by viewModel.currentRole.collectAsState()
     val currentLanguage by viewModel.currentLanguage.collectAsState()
     val adminTab by viewModel.adminTab.collectAsState()
@@ -53,7 +55,15 @@ fun AppNavigation(viewModel: AppViewModel) {
         }
     }
 
-    Scaffold(
+    if (!isLoggedIn) {
+        LoginScreen(
+            viewModel = viewModel,
+            strings = strings,
+            language = currentLanguage,
+            onLoginSuccess = { }
+        )
+    } else {
+        Scaffold(
         topBar = {
             AppHeaderBar(
                 currentRole = currentRole,
@@ -62,7 +72,8 @@ fun AppNavigation(viewModel: AppViewModel) {
                 unreadNotificationsCount = unreadNotifCount,
                 onOpenNotifications = { viewModel.openNotificationCenter() },
                 onToggleLanguage = { viewModel.toggleLanguage() },
-                onSwitchRole = { newRole -> viewModel.setRole(newRole) }
+                onSwitchRole = { newRole -> viewModel.setRole(newRole) },
+                onLogout = { viewModel.logout() }
             )
         },
         bottomBar = {
@@ -74,8 +85,9 @@ fun AppNavigation(viewModel: AppViewModel) {
                     HorizontalDivider(color = Slate100, thickness = 1.dp)
                     if (currentRole == AppRole.ADMIN) {
                         NavigationBar(
-                            containerColor = Color.White,
-                            tonalElevation = 0.dp,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            windowInsets = WindowInsets.navigationBars,
+                            tonalElevation = 3.dp,
                             modifier = Modifier.testTag("admin_bottom_nav")
                         ) {
                             NavigationBarItem(
@@ -133,8 +145,9 @@ fun AppNavigation(viewModel: AppViewModel) {
                         }
                     } else {
                         NavigationBar(
-                            containerColor = Color.White,
-                            tonalElevation = 0.dp,
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            windowInsets = WindowInsets.navigationBars,
+                            tonalElevation = 3.dp,
                             modifier = Modifier.testTag("tenant_bottom_nav")
                         ) {
                             NavigationBarItem(
@@ -394,6 +407,7 @@ fun AppNavigation(viewModel: AppViewModel) {
             strings = strings,
             onDismiss = { viewModel.closeFeedbackOverview() }
         )
+    }
     }
 }
 

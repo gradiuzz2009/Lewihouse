@@ -35,8 +35,8 @@ interface ResidentDao {
     @Query("SELECT * FROM residents WHERE id = :id LIMIT 1")
     suspend fun getResidentById(id: String): ResidentEntity?
 
-    @Query("SELECT * FROM residents WHERE roomNumber = :roomNumber LIMIT 1")
-    suspend fun getResidentByRoomNumber(roomNumber: String): ResidentEntity?
+    @Query("SELECT * FROM residents WHERE roomNumber = :identifier OR email = :identifier OR phone = :identifier LIMIT 1")
+    suspend fun findResidentByIdentifier(identifier: String): ResidentEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertResident(resident: ResidentEntity)

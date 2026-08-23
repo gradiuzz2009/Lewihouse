@@ -20,7 +20,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +54,7 @@ fun TenantElectricityScreen(
     var selectedNominal by remember { mutableDoubleStateOf(100000.0) }
 
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
 
     LazyColumn(
         modifier = modifier
@@ -95,11 +98,11 @@ fun TenantElectricityScreen(
                                 )
                             )
                         }
-                        Surface(shape = RoundedCornerShape(8.dp), color = Gold500) {
+                        Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
                             Text(
                                 text = "Tariff R1 / 1300VA",
                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
@@ -237,6 +240,7 @@ fun TenantElectricityScreen(
                     language = language,
                     strings = strings,
                     onCopy = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clip = ClipData.newPlainText("PLN Token", token.tokenCode)
                         clipboard.setPrimaryClip(clip)

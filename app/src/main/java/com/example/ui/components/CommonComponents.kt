@@ -36,6 +36,7 @@ fun AppHeaderBar(
     onOpenNotifications: () -> Unit = {},
     onToggleLanguage: () -> Unit,
     onSwitchRole: (AppRole) -> Unit,
+    onLogout: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
@@ -46,7 +47,7 @@ fun AppHeaderBar(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 )
                 Text(
-                    text = if (currentRole == AppRole.ADMIN) "Admin" else "Tenant",
+                    text = if (currentRole == AppRole.ADMIN) "Admin Manager" else "Tenant Resident",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -85,6 +86,18 @@ fun AppHeaderBar(
                     imageVector = if (currentRole == AppRole.ADMIN) Icons.Default.AdminPanelSettings else Icons.Default.Person,
                     contentDescription = "Switch Role",
                     tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // Logout Action
+            IconButton(
+                onClick = onLogout,
+                modifier = Modifier.testTag("btn_logout")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Logout,
+                    contentDescription = "Logout",
+                    tint = Slate500
                 )
             }
         },

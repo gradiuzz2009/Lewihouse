@@ -48,10 +48,8 @@ class LewiHouseRepository(private val db: AppDatabase) {
         list.map { it.toDomain() }
     }
 
-    fun getNotificationsForResident(residentId: String): Flow<List<AppNotification>> {
-        return db.appNotificationDao().getNotificationsForResident(residentId).map { list ->
-            list.map { it.toDomain() }
-        }
+    suspend fun authenticateTenant(identifier: String): Resident? {
+        return db.residentDao().findResidentByIdentifier(identifier.trim())?.toDomain()
     }
 
     suspend fun ensureSeedData() {

@@ -25,6 +25,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.language.StringsDict
@@ -261,11 +264,19 @@ fun NotificationFilterChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = if (isSelected) Navy800 else Slate100,
         modifier = Modifier
-            .clickable { onClick() }
+            .minimumInteractiveComponentSize()
+            .clickable(
+                role = Role.Tab,
+                onClickLabel = "Filter by $label"
+            ) {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onClick()
+            }
             .testTag("filter_chip_$label")
     ) {
         Text(
@@ -425,13 +436,13 @@ fun NotificationItemCard(
                     }
                     IconButton(
                         onClick = onDelete,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Delete",
-                            tint = Slate400,
-                            modifier = Modifier.size(14.dp)
+                            contentDescription = "Delete notification",
+                            tint = Slate500,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }

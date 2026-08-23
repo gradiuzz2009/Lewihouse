@@ -8,7 +8,7 @@ val SleekSurface = Color(0xFFFFFFFF)
 val SleekBorder = Color(0xFFF1F5F9)
 val SleekTextPrimary = Color(0xFF1A1C1E)
 val SleekTextSecondary = Color(0xFF64748B)
-val SleekTextMuted = Color(0xFF94A3B8)
+val SleekTextMuted = Color(0xFF475569)
 
 // Navy & Brand
 val Navy950 = Color(0xFF0D1B2A)
@@ -25,6 +25,7 @@ val Orange500 = Color(0xFFF97316)
 val Orange100 = Color(0xFFFFEDD5)
 val Orange50 = Color(0xFFFFF7ED)
 
+val GoldAccessible = Color(0xFF92400E)
 val Gold600 = Color(0xFFB45309)
 val Gold500 = Color(0xFFD97706)
 val Gold400 = Color(0xFFF59E0B)

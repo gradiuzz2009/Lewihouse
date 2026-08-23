@@ -41,6 +41,26 @@ enum class TenantTab {
 class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: LewiHouseRepository
+    private val sessionManager = SessionManager(application)
+
+    // Language, Auth & Role State
+    private val _currentLanguage = MutableStateFlow(AppLanguage.EN)
+    val currentLanguage = _currentLanguage.asStateFlow()
+
+    private val _isLoggedIn = MutableStateFlow(sessionManager.isLoggedIn)
+    val isLoggedIn = _isLoggedIn.asStateFlow()
+
+    private val _currentRole = MutableStateFlow(sessionManager.userRole)
+    val currentRole = _currentRole.asStateFlow()
+
+    private val _selectedTenantId = MutableStateFlow(sessionManager.selectedTenantId)
+    val selectedTenantId = _selectedTenantId.asStateFlow()
+
+    private val _adminTab = MutableStateFlow(AdminTab.DASHBOARD)
+    val adminTab = _adminTab.asStateFlow()
+
+    private val _tenantTab = MutableStateFlow(TenantTab.HOME)
+    val tenantTab = _tenantTab.asStateFlow()
 
     init {
         val db = AppDatabase.getInstance(application)
@@ -50,18 +70,36 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Language & Role State
-    private val _currentLanguage = MutableStateFlow(AppLanguage.EN)
-    val currentLanguage = _currentLanguage.asStateFlow()
+    suspend fun loginWithCredentials(identifier: String, role: AppRole): Boolean {
+        return if (role == AppRole.TENANT) {
+            val resident = repository.authenticateTenant(identifier)
+            if (resident != null) {
+                _selectedTenantId.value = resident.id
+                _currentRole.value = AppRole.TENANT
+                _isLoggedIn.value = true
+                sessionManager.saveSession(AppRole.TENANT, resident.id)
+                true
+            } else {
+                false
+            }
+        } else {
+            _currentRole.value = AppRole.ADMIN
+            _isLoggedIn.value = true
+            sessionManager.saveSession(AppRole.ADMIN, _selectedTenantId.value)
+            true
+        }
+    }
 
-    private val _currentRole = MutableStateFlow(AppRole.ADMIN)
-    val currentRole = _currentRole.asStateFlow()
+    fun login(role: AppRole) {
+        _currentRole.value = role
+        _isLoggedIn.value = true
+        sessionManager.saveSession(role, _selectedTenantId.value)
+    }
 
-    private val _adminTab = MutableStateFlow(AdminTab.DASHBOARD)
-    val adminTab = _adminTab.asStateFlow()
-
-    private val _tenantTab = MutableStateFlow(TenantTab.HOME)
-    val tenantTab = _tenantTab.asStateFlow()
+    fun logout() {
+        sessionManager.clearSession()
+        _isLoggedIn.value = false
+    }
 
     // Data Streams from Room
     val rooms: StateFlow<List<RoomUnit>> = repository.allRooms

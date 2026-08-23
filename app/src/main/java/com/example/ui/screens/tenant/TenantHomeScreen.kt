@@ -154,13 +154,13 @@ fun TenantHomeScreen(
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(if (pendingBills.isNotEmpty()) Gold400 else Emerald400)
+                            Icon(
+                                imageVector = if (pendingBills.isNotEmpty()) Icons.Default.WarningAmber else Icons.Default.CheckCircle,
+                                contentDescription = if (pendingBills.isNotEmpty()) "Pending" else "Paid",
+                                tint = if (pendingBills.isNotEmpty()) Gold400 else Emerald400,
+                                modifier = Modifier.size(14.dp)
                             )
                             Text(
                                 text = if (pendingBills.isNotEmpty()) {
@@ -169,7 +169,7 @@ fun TenantHomeScreen(
                                     "Due on ${tenant?.leaseEndDate?.take(7) ?: "2026-10"}-01"
                                 },
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = Color.White.copy(alpha = 0.9f),
+                                    color = Color.White.copy(alpha = 0.95f),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium
                                 )
@@ -181,8 +181,8 @@ fun TenantHomeScreen(
                                 onClick = { onNavigateTab(TenantTab.BILLS) },
                                 colors = ButtonDefaults.buttonColors(containerColor = Gold400, contentColor = Navy900),
                                 shape = RoundedCornerShape(20.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                                modifier = Modifier.height(36.dp)
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                modifier = Modifier.heightIn(min = 48.dp)
                             ) {
                                 Text("Pay Rent (QRIS)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
@@ -226,7 +226,12 @@ fun TenantHomeScreen(
                                     .background(Orange100),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("⚡", fontSize = 14.sp)
+                                Icon(
+                                    imageVector = Icons.Default.Bolt,
+                                    contentDescription = strings.electricity,
+                                    tint = Orange600,
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                             Text(
                                 text = currentMonthTag,
