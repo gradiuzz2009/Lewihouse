@@ -146,29 +146,47 @@ fun TenantHomeScreen(
                         )
                     )
 
-                    // Next payment status indicator with green dot
+                    // Next payment status indicator and Pay button
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(if (pendingBills.isNotEmpty()) Gold400 else Emerald400)
-                        )
-                        Text(
-                            text = if (pendingBills.isNotEmpty()) {
-                                "${pendingBills.size} bill(s) pending payment"
-                            } else {
-                                "Next payment due on ${tenant?.leaseEndDate?.take(7) ?: "2026-10"}-01"
-                            },
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = Color.White.copy(alpha = 0.9f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(if (pendingBills.isNotEmpty()) Gold400 else Emerald400)
                             )
-                        )
+                            Text(
+                                text = if (pendingBills.isNotEmpty()) {
+                                    "${pendingBills.size} bill(s) pending"
+                                } else {
+                                    "Due on ${tenant?.leaseEndDate?.take(7) ?: "2026-10"}-01"
+                                },
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            )
+                        }
+
+                        if (pendingBills.isNotEmpty()) {
+                            Button(
+                                onClick = { onNavigateTab(TenantTab.BILLS) },
+                                colors = ButtonDefaults.buttonColors(containerColor = Gold400, contentColor = Navy900),
+                                shape = RoundedCornerShape(20.dp),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                                modifier = Modifier.height(36.dp)
+                            ) {
+                                Text("Pay Rent (QRIS)", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
             }
@@ -181,11 +199,10 @@ fun TenantHomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Electricity Card
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, SleekBorder),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                ElevatedCard(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
                     modifier = Modifier
                         .weight(1f)
                         .height(118.dp)
@@ -243,11 +260,10 @@ fun TenantHomeScreen(
                 }
 
                 // Active Request Card
-                Card(
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, SleekBorder),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                ElevatedCard(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
                     modifier = Modifier
                         .weight(1f)
                         .height(118.dp)
@@ -537,11 +553,10 @@ fun SleekActionCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = androidx.compose.foundation.BorderStroke(1.dp, SleekBorder),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ElevatedCard(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp),
         modifier = modifier
             .height(108.dp)
             .clickable { onClick() }

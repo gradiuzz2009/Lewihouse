@@ -20,7 +20,8 @@ enum class MaintenanceStatus(val labelEn: String, val labelId: String) {
     REPORTED("Reported", "Dilaporkan"),
     ASSIGNED("Technician Assigned", "Teknisi Ditugaskan"),
     IN_PROGRESS("In Progress", "Sedang Dikerjakan"),
-    RESOLVED("Resolved", "Selesai")
+    RESOLVED("Resolved", "Selesai"),
+    CANCELLED("Cancelled", "Dibatalkan")
 }
 
 data class MaintenanceTicket(

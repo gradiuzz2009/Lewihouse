@@ -19,18 +19,23 @@ private val DarkColorScheme = darkColorScheme(
     secondary = DarkNavySecondary,
     onSecondary = Navy900,
     secondaryContainer = Gold600,
-    onSecondaryContainer = Gold100,
+    onSecondaryContainer = Navy900,
     tertiary = Emerald500,
     onTertiary = Color.White,
     background = DarkNavyBg,
-    onBackground = Color(0xFFF1F5F9),
+    onBackground = Color(0xFFFFFFFF),
     surface = DarkNavySurface,
-    onSurface = Color(0xFFF1F5F9),
+    onSurface = Color(0xFFFFFFFF),
     surfaceVariant = DarkNavySurfaceVariant,
-    onSurfaceVariant = Color(0xFFCBD5E1),
+    onSurfaceVariant = Color(0xFFE2E8F0),
     outline = DarkNavyOutline,
     error = Rose600,
-    onError = Color.White
+    onError = Color.White,
+    surfaceTint = DarkNavyPrimary,
+    inverseSurface = Color(0xFFE2E8F0),
+    inverseOnSurface = Navy900,
+    inversePrimary = Navy800,
+    scrim = Color.Black.copy(alpha = 0.5f)
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -39,7 +44,7 @@ private val LightColorScheme = lightColorScheme(
     primaryContainer = Navy100,
     onPrimaryContainer = Navy900,
     secondary = Gold500,
-    onSecondary = Color.White,
+    onSecondary = Navy900,
     secondaryContainer = Gold100,
     onSecondaryContainer = Gold600,
     tertiary = Emerald600,
@@ -50,15 +55,20 @@ private val LightColorScheme = lightColorScheme(
     onSurface = SleekTextPrimary,
     surfaceVariant = Slate100,
     onSurfaceVariant = SleekTextSecondary,
-    outline = SleekBorder,
+    outline = Slate400,
     error = Rose600,
-    onError = Color.White
+    onError = Color.White,
+    surfaceTint = Navy800,
+    inverseSurface = Navy900,
+    inverseOnSurface = Color.White,
+    inversePrimary = Color(0xFF93C5FD),
+    scrim = Color.Black.copy(alpha = 0.5f)
 )
 
 @Composable
 fun MyApplicationTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // Use intentional Nusantara Property Ledger brand colors
+    dynamicColor: Boolean = true, // Use dynamic color on supported devices
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

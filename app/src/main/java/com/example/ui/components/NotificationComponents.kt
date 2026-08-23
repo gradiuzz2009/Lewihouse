@@ -51,7 +51,7 @@ fun NotificationCenterSheet(
         when (selectedFilter) {
             "UNREAD" -> notifications.filter { !it.isRead }
             "MAINTENANCE" -> notifications.filter { it.category == NotificationCategory.MAINTENANCE }
-            "BILLS" -> notifications.filter { it.category == NotificationCategory.RENT_DUE || it.category == NotificationCategory.PAYMENT }
+            "BILLS" -> notifications.filter { it.category == NotificationCategory.RENT_DUE }
             "ANNOUNCEMENTS" -> notifications.filter { it.category == NotificationCategory.ANNOUNCEMENT }
             else -> notifications
         }
@@ -317,16 +317,13 @@ fun NotificationItemCard(
     val categoryIcon = when (notification.category) {
         NotificationCategory.MAINTENANCE -> Icons.Default.Build
         NotificationCategory.RENT_DUE -> Icons.Default.Payment
-        NotificationCategory.PAYMENT -> Icons.Default.CheckCircle
         NotificationCategory.ELECTRICITY -> Icons.Default.ElectricBolt
         NotificationCategory.ANNOUNCEMENT -> Icons.Default.Campaign
         NotificationCategory.SURVEY -> Icons.Default.Poll
-        NotificationCategory.ROOM_TRANSFER -> Icons.Default.SwapHoriz
-        NotificationCategory.GENERAL -> Icons.Default.Notifications
     }
 
     val iconColor = when (notification.priority) {
-        NotificationPriority.URGENT -> Crimson600
+        NotificationPriority.URGENT -> MaterialTheme.colorScheme.error
         NotificationPriority.IMPORTANT -> Gold600
         else -> Navy800
     }
@@ -377,7 +374,7 @@ fun NotificationItemCard(
                     if (notification.priority == NotificationPriority.URGENT) {
                         Surface(
                             shape = RoundedCornerShape(8.dp),
-                            color = Crimson600
+                            color = MaterialTheme.colorScheme.error
                         ) {
                             Text(
                                 text = "URGENT",

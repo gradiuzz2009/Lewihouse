@@ -36,10 +36,10 @@ fun AppNavigation(viewModel: AppViewModel) {
     val notifications by viewModel.currentTenantNotifications.collectAsState()
     val unreadNotifCount by viewModel.unreadNotificationCount.collectAsState()
     val showNotifSheet by viewModel.showNotificationCenter.collectAsState()
-    val ticketForRating by viewModel.ticketToRate.collectAsState()
-    val showSurveyDialog by viewModel.showSatisfactionSurveyDialog.collectAsState()
-    val showBroadcastDialog by viewModel.showBroadcastAnnouncementDialog.collectAsState()
-    val showFeedbackOverview by viewModel.showAdminFeedbackOverview.collectAsState()
+    val ticketForRating by viewModel.ratingTicket.collectAsState()
+    val showSurveyDialog by viewModel.showSatisfactionSurvey.collectAsState()
+    val showBroadcastDialog by viewModel.showBroadcastDialog.collectAsState()
+    val showFeedbackOverview by viewModel.showFeedbackOverview.collectAsState()
     val allFeedbacks by viewModel.feedbacks.collectAsState()
     val allSurveys by viewModel.surveys.collectAsState()
 
@@ -81,8 +81,8 @@ fun AppNavigation(viewModel: AppViewModel) {
                             NavigationBarItem(
                                 selected = adminTab == AdminTab.DASHBOARD,
                                 onClick = { viewModel.setAdminTab(AdminTab.DASHBOARD) },
-                                icon = { Icon(Icons.Default.Dashboard, contentDescription = strings.dashboard) },
-                                label = { Text(strings.dashboard, maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.DASHBOARD) FontWeight.Bold else FontWeight.Medium) },
+                                icon = { Icon(Icons.Default.Dashboard, contentDescription = "Overview") },
+                                label = { Text("Overview", maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.DASHBOARD) FontWeight.Bold else FontWeight.Medium) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Navy800,
                                     selectedTextColor = Navy800,
@@ -105,19 +105,6 @@ fun AppNavigation(viewModel: AppViewModel) {
                                 )
                             )
                             NavigationBarItem(
-                                selected = adminTab == AdminTab.RESIDENTS,
-                                onClick = { viewModel.setAdminTab(AdminTab.RESIDENTS) },
-                                icon = { Icon(Icons.Default.People, contentDescription = strings.residents) },
-                                label = { Text(strings.residents, maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.RESIDENTS) FontWeight.Bold else FontWeight.Medium) },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Navy800,
-                                    selectedTextColor = Navy800,
-                                    unselectedIconColor = Slate400,
-                                    unselectedTextColor = Slate400,
-                                    indicatorColor = Navy800.copy(alpha = 0.10f)
-                                )
-                            )
-                            NavigationBarItem(
                                 selected = adminTab == AdminTab.FINANCE,
                                 onClick = { viewModel.setAdminTab(AdminTab.FINANCE) },
                                 icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = strings.finance) },
@@ -131,36 +118,10 @@ fun AppNavigation(viewModel: AppViewModel) {
                                 )
                             )
                             NavigationBarItem(
-                                selected = adminTab == AdminTab.TRANSFER_CALCULATOR,
-                                onClick = { viewModel.setAdminTab(AdminTab.TRANSFER_CALCULATOR) },
-                                icon = { Icon(Icons.Default.Calculate, contentDescription = strings.calculator) },
-                                label = { Text("Transfer", maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.TRANSFER_CALCULATOR) FontWeight.Bold else FontWeight.Medium) },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Gold600,
-                                    selectedTextColor = Gold600,
-                                    unselectedIconColor = Slate400,
-                                    unselectedTextColor = Slate400,
-                                    indicatorColor = Gold500.copy(alpha = 0.12f)
-                                )
-                            )
-                            NavigationBarItem(
-                                selected = adminTab == AdminTab.ELECTRICITY,
-                                onClick = { viewModel.setAdminTab(AdminTab.ELECTRICITY) },
-                                icon = { Icon(Icons.Default.ElectricBolt, contentDescription = strings.electricity) },
-                                label = { Text("PLN", maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.ELECTRICITY) FontWeight.Bold else FontWeight.Medium) },
-                                colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Navy800,
-                                    selectedTextColor = Navy800,
-                                    unselectedIconColor = Slate400,
-                                    unselectedTextColor = Slate400,
-                                    indicatorColor = Navy800.copy(alpha = 0.10f)
-                                )
-                            )
-                            NavigationBarItem(
                                 selected = adminTab == AdminTab.MAINTENANCE,
                                 onClick = { viewModel.setAdminTab(AdminTab.MAINTENANCE) },
-                                icon = { Icon(Icons.Default.Build, contentDescription = strings.maintenance) },
-                                label = { Text("Fixes", maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.MAINTENANCE) FontWeight.Bold else FontWeight.Medium) },
+                                icon = { Icon(Icons.Default.Build, contentDescription = "Services") },
+                                label = { Text("Services", maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.MAINTENANCE) FontWeight.Bold else FontWeight.Medium) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Navy800,
                                     selectedTextColor = Navy800,
@@ -377,14 +338,8 @@ fun AppNavigation(viewModel: AppViewModel) {
             strings = strings,
             onDismiss = { viewModel.closeRatingDialog() },
             onSubmit = { rating, aspects, comment ->
-                val tenantObj = currentTenant
                 viewModel.submitServiceFeedback(
-                    ticketId = ticket.id,
-                    ticketTitle = ticket.title,
-                    technicianName = ticket.assignedTechnician ?: "In-house Maintenance Team",
-                    residentId = tenantObj?.id ?: ticket.residentId,
-                    residentName = tenantObj?.fullName ?: ticket.residentName,
-                    roomNumber = tenantObj?.roomNumber ?: ticket.roomNumber,
+                    ticket = ticket,
                     rating = rating,
                     aspects = aspects,
                     comment = comment
@@ -398,21 +353,23 @@ fun AppNavigation(viewModel: AppViewModel) {
         val tenantObj = currentTenant
         SatisfactionSurveyDialog(
             strings = strings,
+            residentId = tenantObj?.id ?: "res_204",
             residentName = tenantObj?.fullName ?: "Fauzie Ali Akhmad",
             roomNumber = tenantObj?.roomNumber ?: "204",
             onDismiss = { viewModel.closeSatisfactionSurvey() },
-            onSubmit = { overall, cleanliness, speed, amenities, security, comments, wouldRecommend ->
+            onSubmit = { overall, cleanliness, staff, amenities, security, favAspect, suggestions ->
                 viewModel.submitSatisfactionSurvey(
                     residentId = tenantObj?.id ?: "res_204",
                     residentName = tenantObj?.fullName ?: "Fauzie Ali Akhmad",
                     roomNumber = tenantObj?.roomNumber ?: "204",
+                    surveyPeriod = "Q4 2023",
                     overallRating = overall,
                     cleanlinessRating = cleanliness,
-                    maintenanceSpeedRating = speed,
+                    staffResponsivenessRating = staff,
                     amenitiesRating = amenities,
                     securityRating = security,
-                    comments = comments,
-                    wouldRecommend = wouldRecommend
+                    favoriteAspect = favAspect,
+                    suggestions = suggestions
                 )
             }
         )
@@ -424,7 +381,7 @@ fun AppNavigation(viewModel: AppViewModel) {
             strings = strings,
             onDismiss = { viewModel.closeBroadcastDialog() },
             onSendBroadcast = { title, message, priority ->
-                viewModel.broadcastAnnouncement(title, message, priority)
+                viewModel.sendBroadcastAnnouncement(title, message, priority)
             }
         )
     }

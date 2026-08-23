@@ -79,7 +79,7 @@ fun AdminDashboardScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(32.dp))
-                    .background(Navy800)
+                    .background(MaterialTheme.colorScheme.primary)
             ) {
                 // Ambient glows
                 Box(
@@ -87,14 +87,14 @@ fun AdminDashboardScreen(
                         .size(140.dp)
                         .offset(x = 240.dp, y = (-30).dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.05f))
+                        .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.05f))
                 )
                 Box(
                     modifier = Modifier
                         .size(90.dp)
                         .offset(x = (-15).dp, y = 80.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.06f))
+                        .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.06f))
                 )
 
                 Row(
@@ -110,7 +110,7 @@ fun AdminDashboardScreen(
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.2.sp,
-                                color = Gold400,
+                                color = MaterialTheme.colorScheme.secondary,
                                 fontSize = 10.sp
                             )
                         )
@@ -119,14 +119,14 @@ fun AdminDashboardScreen(
                             text = "Property Overview",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Real-time Occupancy & Cashflow Ledger",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = Color.White.copy(alpha = 0.8f),
+                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                                 fontSize = 12.sp
                             )
                         )
@@ -135,13 +135,13 @@ fun AdminDashboardScreen(
                         modifier = Modifier
                             .size(46.dp)
                             .clip(CircleShape)
-                            .background(Gold500),
+                            .background(MaterialTheme.colorScheme.secondary),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Shield,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onSecondary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -160,10 +160,10 @@ fun AdminDashboardScreen(
                         title = strings.occupancyRate,
                         value = "$occupancyRate%",
                         icon = Icons.Default.Bed,
-                        iconBgColor = Navy100,
-                        iconTint = Navy800,
+                        iconBgColor = MaterialTheme.colorScheme.primaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                         subValue = "$occupiedRooms / $totalRooms ${strings.occupied}",
-                        subValueColor = Emerald700,
+                        subValueColor = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .weight(1f)
                             .clickable { onNavigateTab(AdminTab.ROOMS) }
@@ -172,10 +172,10 @@ fun AdminDashboardScreen(
                         title = strings.totalRevenueThisMonth,
                         value = LanguageManager.formatCurrency(totalCollectedThisMonth, language),
                         icon = Icons.Default.AccountBalanceWallet,
-                        iconBgColor = Emerald100,
-                        iconTint = Emerald700,
+                        iconBgColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
                         subValue = "${payments.count { it.status == PaymentStatus.PAID }} ${strings.paid}",
-                        subValueColor = Emerald700,
+                        subValueColor = MaterialTheme.colorScheme.tertiary,
                         modifier = Modifier
                             .weight(1f)
                             .clickable { onNavigateTab(AdminTab.FINANCE) }
@@ -190,10 +190,10 @@ fun AdminDashboardScreen(
                         title = strings.pendingCollections,
                         value = LanguageManager.formatCurrency(pendingDebtAmount, language),
                         icon = Icons.Default.ReceiptLong,
-                        iconBgColor = Rose100,
-                        iconTint = Rose700,
+                        iconBgColor = MaterialTheme.colorScheme.errorContainer,
+                        iconTint = MaterialTheme.colorScheme.onErrorContainer,
                         subValue = "${payments.count { it.status != PaymentStatus.PAID }} ${strings.pending}",
-                        subValueColor = Rose700,
+                        subValueColor = MaterialTheme.colorScheme.error,
                         modifier = Modifier
                             .weight(1f)
                             .clickable { onNavigateTab(AdminTab.FINANCE) }
@@ -202,10 +202,10 @@ fun AdminDashboardScreen(
                         title = strings.openMaintenance,
                         value = "$openTicketsCount",
                         icon = Icons.Default.Build,
-                        iconBgColor = Gold100,
-                        iconTint = Gold600,
+                        iconBgColor = MaterialTheme.colorScheme.secondaryContainer,
+                        iconTint = MaterialTheme.colorScheme.onSecondaryContainer,
                         subValue = "${tickets.count { it.priority == MaintenancePriority.HIGH || it.priority == MaintenancePriority.EMERGENCY }} ${strings.high}",
-                        subValueColor = Gold600,
+                        subValueColor = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier
                             .weight(1f)
                             .clickable { onNavigateTab(AdminTab.MAINTENANCE) }
@@ -218,8 +218,7 @@ fun AdminDashboardScreen(
         item {
             Card(
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
@@ -229,7 +228,7 @@ fun AdminDashboardScreen(
                     Text(
                         text = strings.quickActions,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -238,28 +237,28 @@ fun AdminDashboardScreen(
                         QuickActionButton(
                             icon = Icons.Default.Campaign,
                             label = strings.broadcastAnnouncement,
-                            color = Crimson600,
+                            color = MaterialTheme.colorScheme.error,
                             onClick = { viewModel.openBroadcastDialog() },
                             modifier = Modifier.testTag("quick_broadcast")
                         )
                         QuickActionButton(
                             icon = Icons.Default.Star,
                             label = "CSAT / Ratings",
-                            color = Gold600,
+                            color = MaterialTheme.colorScheme.secondary,
                             onClick = { viewModel.openFeedbackOverview() },
                             modifier = Modifier.testTag("quick_csat_overview")
                         )
                         QuickActionButton(
                             icon = Icons.Default.AddHome,
                             label = strings.addRoom,
-                            color = Navy800,
+                            color = MaterialTheme.colorScheme.primary,
                             onClick = { onNavigateTab(AdminTab.ROOMS) },
                             modifier = Modifier.testTag("quick_add_room")
                         )
                         QuickActionButton(
                             icon = Icons.Default.ElectricBolt,
                             label = strings.issueToken,
-                            color = Emerald600,
+                            color = MaterialTheme.colorScheme.tertiary,
                             onClick = { onNavigateTab(AdminTab.ELECTRICITY) },
                             modifier = Modifier.testTag("quick_issue_token")
                         )
@@ -272,8 +271,7 @@ fun AdminDashboardScreen(
         item {
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate50),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { viewModel.openFeedbackOverview() }
@@ -296,13 +294,13 @@ fun AdminDashboardScreen(
                                 modifier = Modifier
                                     .size(36.dp)
                                     .clip(CircleShape)
-                                    .background(Gold500.copy(alpha = 0.15f)),
+                                    .background(MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Star,
                                     contentDescription = null,
-                                    tint = Gold600,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -311,12 +309,12 @@ fun AdminDashboardScreen(
                                     text = "Tenant Satisfaction & CSAT",
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         fontWeight = FontWeight.Bold,
-                                        color = Navy800
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                 )
                                 Text(
                                     text = "${feedbacks.size} repair ratings • ${surveys.size} survey responses",
-                                    style = MaterialTheme.typography.labelSmall.copy(color = SleekTextSecondary)
+                                    style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f))
                                 )
                             }
                         }
@@ -324,7 +322,7 @@ fun AdminDashboardScreen(
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = Slate400
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.6f)
                         )
                     }
 
@@ -334,19 +332,18 @@ fun AdminDashboardScreen(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = Color.White,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                            color = MaterialTheme.colorScheme.surface,
                             modifier = Modifier.weight(1f)
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
-                                Text("Service Rating", style = MaterialTheme.typography.labelSmall.copy(color = SleekTextSecondary))
+                                Text("Service Rating", style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Text(
                                         text = String.format("%.1f", avgFeedbackRating),
-                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = Navy800)
+                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                                     )
                                     Icon(Icons.Default.Star, contentDescription = null, tint = Gold500, modifier = Modifier.size(16.dp))
                                 }
@@ -355,21 +352,20 @@ fun AdminDashboardScreen(
 
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = Color.White,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Slate200),
+                            color = MaterialTheme.colorScheme.surface,
                             modifier = Modifier.weight(1f)
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
-                                Text("Overall CSAT", style = MaterialTheme.typography.labelSmall.copy(color = SleekTextSecondary))
+                                Text("Overall CSAT", style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant))
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                                 ) {
                                     Text(
                                         text = "${(avgSurveyRating * 20).toInt()}%",
-                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = Emerald700)
+                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                     )
-                                    Text("Satisfaction", style = MaterialTheme.typography.labelSmall.copy(color = Emerald700, fontSize = 10.sp))
+                                    Text("Satisfaction", style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.primary, fontSize = 10.sp))
                                 }
                             }
                         }
@@ -412,7 +408,7 @@ fun AdminDashboardScreen(
                             .fillMaxWidth()
                             .height(14.dp)
                             .clip(RoundedCornerShape(7.dp))
-                            .background(Slate100)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Row(modifier = Modifier.fillMaxSize()) {
                             if (totalRooms > 0) {
@@ -420,19 +416,19 @@ fun AdminDashboardScreen(
                                     modifier = Modifier
                                         .weight(occupiedRooms.toFloat().coerceAtLeast(0.01f))
                                         .fillMaxHeight()
-                                        .background(Navy800)
+                                        .background(MaterialTheme.colorScheme.primary)
                                 )
                                 Box(
                                     modifier = Modifier
                                         .weight(vacantRooms.toFloat().coerceAtLeast(0.01f))
                                         .fillMaxHeight()
-                                        .background(Emerald500)
+                                        .background(MaterialTheme.colorScheme.tertiary)
                                 )
                                 Box(
                                     modifier = Modifier
                                         .weight(maintenanceRooms.toFloat().coerceAtLeast(0.01f))
                                         .fillMaxHeight()
-                                        .background(Gold400)
+                                        .background(MaterialTheme.colorScheme.secondary)
                                 )
                             }
                         }
@@ -443,9 +439,9 @@ fun AdminDashboardScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        LegendItem(color = Navy800, label = "${strings.occupied} ($occupiedRooms)")
-                        LegendItem(color = Emerald500, label = "${strings.vacant} ($vacantRooms)")
-                        LegendItem(color = Gold400, label = "${strings.underMaintenance} ($maintenanceRooms)")
+                        LegendItem(color = MaterialTheme.colorScheme.primary, label = "${strings.occupied} ($occupiedRooms)")
+                        LegendItem(color = MaterialTheme.colorScheme.tertiary, label = "${strings.vacant} ($vacantRooms)")
+                        LegendItem(color = MaterialTheme.colorScheme.secondary, label = "${strings.underMaintenance} ($maintenanceRooms)")
                     }
                 }
             }
@@ -507,7 +503,7 @@ fun QuickActionButton(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1
         )
     }
@@ -562,10 +558,10 @@ fun PaymentItemRow(
                         .clip(RoundedCornerShape(10.dp))
                         .background(
                             when (payment.type) {
-                                PaymentType.RENT -> Navy100
-                                PaymentType.ELECTRICITY -> Gold100
-                                PaymentType.DEPOSIT -> Emerald100
-                                else -> Slate100
+                                PaymentType.RENT -> MaterialTheme.colorScheme.primaryContainer
+                                PaymentType.ELECTRICITY -> MaterialTheme.colorScheme.secondaryContainer
+                                PaymentType.DEPOSIT -> MaterialTheme.colorScheme.tertiaryContainer
+                                else -> MaterialTheme.colorScheme.surfaceVariant
                             }
                         ),
                     contentAlignment = Alignment.Center
@@ -579,10 +575,10 @@ fun PaymentItemRow(
                         },
                         contentDescription = null,
                         tint = when (payment.type) {
-                            PaymentType.RENT -> Navy800
-                            PaymentType.ELECTRICITY -> Gold600
-                            PaymentType.DEPOSIT -> Emerald700
-                            else -> Slate700
+                            PaymentType.RENT -> MaterialTheme.colorScheme.onPrimaryContainer
+                            PaymentType.ELECTRICITY -> MaterialTheme.colorScheme.onSecondaryContainer
+                            PaymentType.DEPOSIT -> MaterialTheme.colorScheme.onTertiaryContainer
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
                         modifier = Modifier.size(20.dp)
                     )

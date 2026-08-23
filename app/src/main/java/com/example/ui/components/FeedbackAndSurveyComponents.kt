@@ -34,6 +34,7 @@ import com.example.data.model.SatisfactionSurvey
 import com.example.data.model.ServiceFeedback
 import com.example.ui.theme.*
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun InteractiveStarRating(
     rating: Int,
@@ -89,6 +90,7 @@ fun ReadOnlyStarRating(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ServiceFeedbackRatingDialog(
     ticket: MaintenanceTicket,
@@ -222,7 +224,7 @@ fun ServiceFeedbackRatingDialog(
                     text = ratingLabels[rating] ?: "",
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        color = if (rating >= 4) Emerald700 else if (rating == 3) Gold600 else Crimson600
+                        color = if (rating >= 4) Emerald700 else if (rating == 3) Gold600 else MaterialTheme.colorScheme.error
                     ),
                     modifier = Modifier.padding(top = 6.dp, bottom = 16.dp)
                 )
@@ -591,6 +593,7 @@ fun SurveyRatingRow(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AdminFeedbackOverviewDialog(
     feedbacks: List<ServiceFeedback>,

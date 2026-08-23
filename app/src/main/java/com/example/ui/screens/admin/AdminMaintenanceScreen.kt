@@ -111,6 +111,7 @@ fun AdminMaintenanceScreen(
                                     MaintenanceStatus.ASSIGNED -> strings.assigned
                                     MaintenanceStatus.IN_PROGRESS -> strings.inProgress
                                     MaintenanceStatus.RESOLVED -> strings.resolved
+                                    MaintenanceStatus.CANCELLED -> "Cancelled"
                                 }
                             )
                         }
@@ -274,6 +275,7 @@ fun AdminMaintenanceScreen(
 @Composable
 fun AdminTicketCard(
     ticket: MaintenanceTicket,
+    feedback: ServiceFeedback?,
     language: AppLanguage,
     strings: StringsDict,
     onUpdate: () -> Unit
