@@ -1,14 +1,14 @@
 import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Home, DoorOpen, Users, Receipt, MessageSquare } from "lucide-react";
+import { Home, DoorOpen, Users, Receipt, Wrench } from "lucide-react";
 
 const items = [
   { to: "/", label: "Beranda", icon: Home, testid: "nav-home" },
   { to: "/rooms", label: "Kamar", icon: DoorOpen, testid: "nav-rooms" },
   { to: "/tenants", label: "Penghuni", icon: Users, testid: "nav-tenants" },
   { to: "/bills", label: "Tagihan", icon: Receipt, testid: "nav-bills" },
-  { to: "/complaints", label: "Keluhan", icon: MessageSquare, testid: "nav-complaints" },
+  { to: "/complaints", label: "Perbaikan", icon: Wrench, testid: "nav-complaints" },
 ];
 
 export default function BottomNav() {

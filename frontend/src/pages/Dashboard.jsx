@@ -1,17 +1,29 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import { api, fmtIDR, monthLabel } from "../lib/api";
-import { Bell, TrendingUp, AlertCircle, Sparkles } from "lucide-react";
+import { History, TrendingUp, AlertCircle, Sparkles, KeyRound, LogOut, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../components/ui";
+import SpeedDial from "../components/SpeedDial";
+import { useAuth } from "../context/AuthContext";
 
-const HERO = "https://images.unsplash.com/photo-1628012209120-d9db7abf7eab?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzF8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBhcmNoaXRlY3R1cmFsJTIwYnVpbGRpbmclMjBleHRlcmlvcnxlbnwwfHx8fDE3ODc1NDM3NTV8MA&ixlib=rb-4.1.0&q=85";
+const HERO = "https://customer-assets-0z36b82j.emergentagent.net/job_dorm-hub-31/artifacts/rbo24c8q_agoda-01-view.webp";
+
+const GALLERY = [
+  { src: HERO, label: "Tampak Depan" },
+  { src: "https://customer-assets-0z36b82j.emergentagent.net/job_dorm-hub-31/artifacts/nu2bu3d8_agoda-04-lobby.webp", label: "Lobi & Resepsionis" },
+  { src: "https://customer-assets-0z36b82j.emergentagent.net/job_dorm-hub-31/artifacts/biwap049_agoda-10-deluxe-bed.webp", label: "Kamar Deluxe" },
+  { src: "https://customer-assets-0z36b82j.emergentagent.net/job_dorm-hub-31/artifacts/styxa5t5_agoda-12-superior-single.webp", label: "Kamar Superior Single" },
+];
 
 export default function Dashboard() {
   const [s, setS] = useState(null);
   const [chart, setChart] = useState([]);
   const [loading, setLoading] = useState(true);
+  const nav = useNavigate();
+  const { logout } = useAuth();
 
   const load = async () => {
     try {
@@ -19,7 +31,7 @@ export default function Dashboard() {
       setS(a.data);
       setChart(b.data.map((d) => ({ ...d, label: monthLabel(d.period).split(" ")[0] })));
     } catch (e) {
-      toast.error("Gagal memuat data");
+      if (e.response?.status !== 401) toast.error("Gagal memuat data");
     } finally {
       setLoading(false);
     }
@@ -39,6 +51,11 @@ export default function Dashboard() {
     }
   };
 
+  const doLogout = async () => {
+    await logout();
+    nav("/login");
+  };
+
   const today = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long" });
 
   return (
@@ -46,7 +63,7 @@ export default function Dashboard() {
       {/* Hero */}
       <div className="relative h-80 overflow-hidden">
         <img src={HERO} alt="Property" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0e1a15]/95 via-[#0e1a15]/60 to-[#0e1a15]/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0e1a15] via-[#0e1a15]/70 to-[#0e1a15]/35" />
         <div className="relative z-10 h-full flex flex-col justify-between px-6 pt-6 pb-16 text-white">
           <div className="flex items-start justify-between">
             <div>
@@ -54,12 +71,29 @@ export default function Dashboard() {
               <h1 className="font-serif text-3xl leading-tight mt-1">Lewi House</h1>
               <p className="text-xs text-white/60 mt-1 capitalize">{today}</p>
             </div>
-            <button
-              className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 grid place-items-center active:scale-95"
-              data-testid="notif-btn"
-            >
-              <Bell size={16} />
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => nav("/access")}
+                className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 grid place-items-center active:scale-95"
+                data-testid="access-btn"
+              >
+                <KeyRound size={16} />
+              </button>
+              <button
+                onClick={() => nav("/activity")}
+                className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 grid place-items-center active:scale-95"
+                data-testid="activity-btn"
+              >
+                <History size={16} />
+              </button>
+              <button
+                onClick={doLogout}
+                className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 grid place-items-center active:scale-95"
+                data-testid="logout-btn"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
           </div>
           <div>
             <p className="text-[10px] uppercase tracking-[0.25em] text-secondary/90">Pendapatan Bulan Ini</p>
@@ -84,15 +118,19 @@ export default function Dashboard() {
             value={fmtIDR(s?.outstanding || 0)}
             sub={`${s?.unpaid_count ?? 0} tagihan tertunda`}
             danger={(s?.unpaid_count ?? 0) > 0}
+            compact
             testid="metric-outstanding"
           />
         </div>
 
-        {/* Quick stats row */}
-        <div className="mt-3 grid grid-cols-3 gap-3">
+        {/* Room state row */}
+        <div className="mt-3 grid grid-cols-3 gap-2">
           <MiniStat label="Terisi" value={s?.rooms_occupied ?? 0} dot="bg-success" />
-          <MiniStat label="Kosong" value={s?.rooms_vacant ?? 0} dot="bg-secondary" />
+          <MiniStat label="Tersedia" value={s?.rooms_available ?? 0} dot="bg-secondary" />
+          <MiniStat label="Dipesan" value={s?.rooms_reserved ?? 0} dot="bg-primary" />
+          <MiniStat label="Dibersihkan" value={s?.rooms_cleaning ?? 0} dot="bg-warning" />
           <MiniStat label="Perbaikan" value={s?.rooms_maintenance ?? 0} dot="bg-danger" />
+          <MiniStat label="Token Aktif" value={s?.active_tokens ?? 0} dot="bg-primary/50" />
         </div>
 
         {/* Revenue chart */}
@@ -115,21 +153,10 @@ export default function Dashboard() {
           <div className="h-32 -mx-2">
             <ResponsiveContainer>
               <BarChart data={chart} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 10, fill: "#5C5C5C" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
+                <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#5C5C5C" }} axisLine={false} tickLine={false} />
                 <Tooltip
                   cursor={{ fill: "rgba(26,54,43,0.06)" }}
-                  contentStyle={{
-                    background: "#1A362B",
-                    border: "none",
-                    borderRadius: 12,
-                    color: "#fff",
-                    fontSize: 12,
-                  }}
+                  contentStyle={{ background: "#1A362B", border: "none", borderRadius: 12, color: "#fff", fontSize: 12 }}
                   formatter={(v) => [fmtIDR(v), "Pendapatan"]}
                   labelStyle={{ color: "#C6A87C", fontSize: 10 }}
                 />
@@ -144,23 +171,47 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Alerts */}
-        {(s?.open_complaints ?? 0) > 0 && (
+        {(s?.active_maintenance ?? 0) > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.25 }}
-            className="mt-4 rounded-2xl bg-primary text-white p-5 flex items-center gap-4"
-            data-testid="alert-complaints"
+            onClick={() => nav("/complaints")}
+            className="mt-4 rounded-2xl bg-primary text-white p-5 flex items-center gap-4 active:scale-[0.99] transition-transform"
+            data-testid="alert-maintenance"
           >
             <span className="w-10 h-10 rounded-full bg-secondary/20 grid place-items-center shrink-0">
-              <AlertCircle size={18} className="text-secondary" />
+              <Wrench size={18} className="text-secondary" />
             </span>
             <div className="flex-1">
               <p className="text-[10px] uppercase tracking-[0.2em] text-secondary">Perlu perhatian</p>
-              <p className="text-sm mt-0.5">{s.open_complaints} keluhan menunggu penanganan</p>
+              <p className="text-sm mt-0.5">{s.active_maintenance} tiket perbaikan sedang berjalan</p>
             </div>
+            <AlertCircle size={16} className="text-secondary" />
           </motion.div>
         )}
+
+        {/* Gallery */}
+        <div className="mt-6" data-testid="property-gallery">
+          <div className="flex items-baseline justify-between mb-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-subtle">Galeri Properti</p>
+              <p className="font-serif text-lg text-primary">Lewi House</p>
+            </div>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-5 px-5 snap-x snap-mandatory">
+            {GALLERY.map((g) => (
+              <div
+                key={g.label}
+                className="shrink-0 w-56 snap-start rounded-2xl overflow-hidden border border-line shadow-soft bg-surface"
+                data-testid={`gallery-item-${g.label}`}
+              >
+                <img src={g.src} alt={g.label} className="w-full h-36 object-cover" loading="lazy" />
+                <p className="px-3 py-2.5 text-[11px] font-semibold text-primary">{g.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Seed */}
         {loading === false && s?.rooms_total === 0 && (
@@ -173,14 +224,26 @@ export default function Dashboard() {
             </Button>
           </div>
         )}
+        {loading === false && (s?.rooms_total ?? 0) > 0 && (
+          <button
+            onClick={() => {
+              if (window.confirm("Reset semua data dan muat ulang data contoh? Data saat ini akan dihapus.")) seed();
+            }}
+            className="mt-6 mx-auto block text-[11px] text-subtle underline underline-offset-4 active:scale-95"
+            data-testid="reseed-btn"
+          >
+            Reset & muat ulang data contoh
+          </button>
+        )}
 
         <div className="h-8" />
       </div>
+      <SpeedDial />
     </div>
   );
 }
 
-function MetricCard({ title, value, sub, danger, testid }) {
+function MetricCard({ title, value, sub, danger, compact, testid }) {
   return (
     <motion.div
       whileHover={{ y: -2 }}
@@ -188,7 +251,7 @@ function MetricCard({ title, value, sub, danger, testid }) {
       data-testid={testid}
     >
       <p className={`text-[10px] uppercase tracking-[0.2em] ${danger ? "text-secondary" : "text-subtle"}`}>{title}</p>
-      <p className={`font-serif text-2xl mt-2 tnum ${danger ? "text-white" : "text-primary"}`}>{value}</p>
+      <p className={`font-serif mt-2 tnum whitespace-nowrap ${compact ? "text-lg" : "text-2xl"} ${danger ? "text-white" : "text-primary"}`}>{value}</p>
       <p className={`text-[11px] mt-1 ${danger ? "text-white/70" : "text-subtle"}`}>{sub}</p>
     </motion.div>
   );
@@ -197,9 +260,9 @@ function MetricCard({ title, value, sub, danger, testid }) {
 function MiniStat({ label, value, dot }) {
   return (
     <div className="bg-surface rounded-xl px-3 py-2.5 border border-line flex items-center gap-2">
-      <span className={`w-2 h-2 rounded-full ${dot}`} />
+      <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
       <div className="min-w-0">
-        <p className="text-[9px] uppercase tracking-widest text-subtle">{label}</p>
+        <p className="text-[9px] uppercase tracking-widest text-subtle truncate">{label}</p>
         <p className="text-sm font-semibold text-ink tnum leading-tight">{value}</p>
       </div>
     </div>

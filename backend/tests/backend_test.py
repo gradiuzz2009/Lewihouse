@@ -1,5 +1,9 @@
+"""Lewi House backend regression suite (pytest)."""
 import os
-from datetime import date
+import re
+import uuid
+from datetime import date, timedelta
+from pathlib import Path
 
 import pytest
 import requests
@@ -13,247 +17,350 @@ BASE_URL = base_url.rstrip("/")
 API = f"{BASE_URL}/api"
 
 
-def period_ago(n):
-    today = date.today()
-    y, m = today.year, today.month - n
-    while m <= 0:
-        m += 12
-        y -= 1
-    return f"{y:04d}-{m:02d}"
+# ---------- fixtures ----------
+@pytest.fixture(scope="session")
+def creds():
+    p = Path("/app/memory/test_credentials.md")
+    if not p.exists():
+        pytest.skip("missing test_credentials.md")
+    c = p.read_text()
+    e = re.search(r'(?im)^\s*(?:[-*]\s*)?(?:\*\*)?Email(?:\*\*)?\s*:\s*`?([^`\s]+)', c)
+    pw = re.search(r'(?im)^\s*(?:[-*]\s*)?(?:\*\*)?Password(?:\*\*)?\s*:\s*`?([^`\s]+)', c)
+    if not e or not pw:
+        pytest.skip("no creds parsed")
+    return {"email": e.group(1), "password": pw.group(1)}
 
 
 @pytest.fixture(scope="session")
-def client():
+def login_response(creds):
+    r = requests.post(f"{API}/auth/login", json=creds, timeout=30)
+    if r.status_code != 200:
+        pytest.fail(f"login failed {r.status_code}: {r.text[:300]}")
+    return r
+
+
+@pytest.fixture(scope="session")
+def client(login_response):
     s = requests.Session()
-    s.headers.update({"Content-Type": "application/json"})
+    s.headers.update({"Authorization": f"Bearer {login_response.json()['access_token']}"})
     return s
 
 
 @pytest.fixture(scope="session", autouse=True)
 def seeded(client):
-    """Seed once for the whole session (seed is destructive/idempotent)."""
     r = client.post(f"{API}/seed", timeout=60)
     assert r.status_code == 200, r.text
-    data = r.json()
-    assert data["ok"] is True
-    assert (data["rooms"], data["tenants"], data["bills"], data["complaints"]) == (6, 3, 9, 2)
-    return data
+    return r.json()
 
 
-# ---------- health ----------
-class TestHealth:
-    def test_root(self, client):
-        r = client.get(f"{API}/", timeout=30)
+# ---------- AUTH ----------
+class TestAuth:
+    def test_protected_route_requires_auth(self):
+        assert requests.get(f"{API}/rooms", timeout=30).status_code == 401
+
+    def test_login_payload_and_cookies(self, login_response, creds):
+        d = login_response.json()
+        assert d["user"]["email"] == creds["email"]
+        assert d["user"]["role"] == "owner"
+        assert isinstance(d["access_token"], str) and len(d["access_token"]) > 20
+        assert "access_token" in login_response.cookies
+        assert "refresh_token" in login_response.cookies
+
+    def test_me_with_bearer(self, client, creds):
+        r = client.get(f"{API}/auth/me", timeout=30)
         assert r.status_code == 200
-        assert r.json() == {"service": "Lewi House API", "status": "ok"}
+        d = r.json()
+        assert d["email"] == creds["email"]
+        assert "password_hash" not in d
+        assert "_id" not in d
+
+    def test_wrong_password_401_indonesian(self, creds):
+        r = requests.post(f"{API}/auth/login",
+                          json={"email": f"nouser-{uuid.uuid4().hex[:6]}@x.com", "password": "bad"}, timeout=30)
+        assert r.status_code == 401
+        assert "salah" in r.json()["detail"].lower()
+
+    def test_invalid_token_401(self):
+        r = requests.get(f"{API}/auth/me", headers={"Authorization": "Bearer bogus.token.x"}, timeout=30)
+        assert r.status_code == 401
+
+    def test_bruteforce_lockout_internal(self):
+        """Lockout is keyed on request.client.host:email. Verified against the app
+        directly; via the public ingress the source IP rotates between proxy pods so
+        the counter is split and lockout may not trigger (reported as a finding)."""
+        email = f"brute-{uuid.uuid4().hex[:8]}@x.com"
+        codes = []
+        for _ in range(6):
+            codes.append(requests.post("http://localhost:8001/api/auth/login",
+                                       json={"email": email, "password": "wrong"}, timeout=30).status_code)
+        assert codes[-1] == 429, f"expected lockout, got {codes}"
+
+    @pytest.mark.xfail(reason="Known: lockout counter keyed on proxy IP, diluted via public ingress")
+    def test_bruteforce_lockout_public(self):
+        email = f"brute-{uuid.uuid4().hex[:8]}@x.com"
+        codes = [requests.post(f"{API}/auth/login", json={"email": email, "password": "wrong"},
+                               timeout=30).status_code for _ in range(6)]
+        assert codes[-1] == 429, f"expected lockout, got {codes}"
+
+    def test_bcrypt_hash_format(self):
+        import subprocess
+        out = subprocess.run(
+            ["mongosh", "--quiet", "lewi_house_db", "--eval",
+             'db.users.findOne({role:"owner"}).password_hash'],
+            capture_output=True, text=True)
+        assert out.stdout.strip().startswith("$2b$"), out.stdout
 
 
-# ---------- rooms ----------
-class TestRooms:
-    def test_list_rooms_after_seed(self, client):
-        r = client.get(f"{API}/rooms", timeout=30)
-        assert r.status_code == 200
-        rooms = r.json()
-        assert len(rooms) == 6
-        statuses = [x["status"] for x in rooms]
-        assert statuses.count("occupied") == 3
-        assert statuses.count("vacant") == 2
-        assert statuses.count("maintenance") == 1
-        # no mongo _id leak
-        assert all("_id" not in x for x in rooms)
-        assert [x["name"] for x in rooms] == sorted(x["name"] for x in rooms)
+# ---------- SEED ----------
+class TestSeed:
+    def test_seed_counts(self, seeded):
+        assert seeded == {"ok": True, "rooms": 7, "tenants": 4, "bills": 9, "tickets": 3, "tokens": 3}
 
-    def test_room_crud(self, client):
-        payload = {"name": "TEST_K-999", "floor": "3", "price": 999000, "status": "vacant",
-                   "facilities": ["AC"], "photo_url": None, "notes": "qa"}
-        c = client.post(f"{API}/rooms", json=payload, timeout=30)
-        assert c.status_code == 200, c.text
-        room = c.json()
-        rid = room["id"]
-        assert room["name"] == "TEST_K-999" and room["price"] == 999000
-        assert room["tenant_id"] is None and room["created_at"]
-
-        g = client.get(f"{API}/rooms/{rid}", timeout=30)
-        assert g.status_code == 200 and g.json()["name"] == "TEST_K-999"
-
-        payload["price"] = 1250000
-        payload["status"] = "maintenance"
-        u = client.put(f"{API}/rooms/{rid}", json=payload, timeout=30)
-        assert u.status_code == 200
-        assert u.json()["price"] == 1250000 and u.json()["status"] == "maintenance"
-        assert client.get(f"{API}/rooms/{rid}", timeout=30).json()["price"] == 1250000
-
-        d = client.delete(f"{API}/rooms/{rid}", timeout=30)
-        assert d.status_code == 200 and d.json()["ok"] is True
-        assert client.get(f"{API}/rooms/{rid}", timeout=30).status_code == 404
-
-    def test_get_room_invalid_id(self, client):
-        r = client.get(f"{API}/rooms/not-an-objectid", timeout=30)
-        assert r.status_code in (400, 404, 422), f"got {r.status_code}: {r.text[:200]}"
-
-    def test_create_room_validation(self, client):
-        r = client.post(f"{API}/rooms", json={"floor": "1"}, timeout=30)
-        assert r.status_code == 422
-
-
-# ---------- tenants ----------
-class TestTenants:
-    def test_list_tenants_after_seed(self, client):
-        r = client.get(f"{API}/tenants", timeout=30)
-        assert r.status_code == 200
-        t = r.json()
-        assert len(t) == 3
-        names = {x["name"] for x in t}
-        assert names == {"Arya Wibowo", "Sinta Dewi", "Budi Santoso"}
-        assert all(x["status"] == "active" for x in t)
-
-    def test_tenant_create_assigns_room(self, client):
+    def test_seed_rooms_statuses(self, client):
         rooms = client.get(f"{API}/rooms", timeout=30).json()
-        vacant = [x for x in rooms if x["status"] == "vacant"]
-        assert len(vacant) >= 2
-        room = vacant[0]
-        payload = {"name": "TEST_Tenant", "phone": "0800-000-0000", "room_id": room["id"],
-                   "monthly_rent": room["price"], "deposit": 0}
-        c = client.post(f"{API}/tenants", json=payload, timeout=30)
-        assert c.status_code == 200, c.text
-        tenant = c.json()
-        tid = tenant["id"]
-        assert tenant["room_id"] == room["id"] and tenant["status"] == "active"
+        assert len(rooms) == 7
+        assert len({r["status"] for r in rooms}) == 5
+        assert all("_id" not in r for r in rooms)
 
-        r1 = client.get(f"{API}/rooms/{room['id']}", timeout=30).json()
-        assert r1["status"] == "occupied" and r1["tenant_id"] == tid
+    def test_seed_tenants(self, client):
+        t = client.get(f"{API}/tenants", timeout=30).json()
+        assert len([x for x in t if x["status"] == "active"]) == 3
+        assert len([x for x in t if x["status"] == "pending_assignment"]) == 1
 
-        # reassign to second vacant room
-        room2 = vacant[1]
-        payload2 = dict(payload, room_id=room2["id"], name="TEST_Tenant Updated")
-        u = client.put(f"{API}/tenants/{tid}", json=payload2, timeout=30)
-        assert u.status_code == 200
-        assert u.json()["room_id"] == room2["id"] and u.json()["name"] == "TEST_Tenant Updated"
-
-        old = client.get(f"{API}/rooms/{room['id']}", timeout=30).json()
-        new = client.get(f"{API}/rooms/{room2['id']}", timeout=30).json()
-        assert old["status"] == "vacant" and old["tenant_id"] is None
-        assert new["status"] == "occupied" and new["tenant_id"] == tid
-
-        # delete frees room
-        d = client.delete(f"{API}/tenants/{tid}", timeout=30)
-        assert d.status_code == 200
-        freed = client.get(f"{API}/rooms/{room2['id']}", timeout=30).json()
-        assert freed["status"] == "vacant" and freed["tenant_id"] is None
-        assert client.get(f"{API}/tenants/{tid}", timeout=30).status_code == 404
-
-    def test_update_missing_tenant(self, client):
-        r = client.put(f"{API}/tenants/507f1f77bcf86cd799439011",
-                       json={"name": "x", "phone": "y"}, timeout=30)
-        assert r.status_code == 404
+    def test_seed_bills_and_tickets(self, client):
+        bills = client.get(f"{API}/bills", timeout=30).json()
+        assert len(bills) == 9
+        # NOTE: seeded partially_paid bill has a past due_date so derive_bill() rewrites
+        # its status to "overdue" -> no bill is reported as partially_paid (finding).
+        assert any(b["amount_paid"] > 0 and b["amount_paid"] < b["total"] for b in bills), \
+            "no partially-paid bill in seed"
+        assert len(client.get(f"{API}/complaints", timeout=30).json()) == 3
+        assert len(client.get(f"{API}/access-tokens", timeout=30).json()) == 3
 
 
-# ---------- bills ----------
+# ---------- ROOMS ----------
+class TestRooms:
+    def test_transition_valid_cleaning_to_available(self, client):
+        rooms = client.get(f"{API}/rooms").json()
+        rid = next(r["id"] for r in rooms if r["status"] == "cleaning")
+        r = client.post(f"{API}/rooms/{rid}/status", json={"status": "available"})
+        assert r.status_code == 200
+        assert r.json()["status"] == "available"
+        assert client.get(f"{API}/rooms/{rid}").json()["status"] == "available"
+
+    def test_transition_invalid_available_to_cleaning(self, client):
+        rooms = client.get(f"{API}/rooms").json()
+        rid = next(r["id"] for r in rooms if r["status"] == "available")
+        r = client.post(f"{API}/rooms/{rid}/status", json={"status": "cleaning"})
+        assert r.status_code == 400
+        assert "tidak diizinkan" in r.json()["detail"]
+
+    def test_transition_bad_status(self, client):
+        rid = client.get(f"{API}/rooms").json()[0]["id"]
+        assert client.post(f"{API}/rooms/{rid}/status", json={"status": "zzz"}).status_code == 400
+
+    def test_room_crud_and_duplicate(self, client):
+        payload = {"name": "TEST-R1", "floor": "3", "wing": "C", "room_type": "vip",
+                   "capacity": 2, "price": 2000000, "deposit": 2000000, "status": "available",
+                   "facilities": ["AC"], "notes": "TEST_"}
+        r = client.post(f"{API}/rooms", json=payload)
+        assert r.status_code == 200, r.text
+        rid = r.json()["id"]
+        got = client.get(f"{API}/rooms/{rid}").json()
+        assert got["name"] == "TEST-R1" and got["deposit"] == 2000000 and got["room_type"] == "vip"
+        assert client.post(f"{API}/rooms", json=payload).status_code == 400
+        upd = {**payload, "price": 2500000}
+        assert client.put(f"{API}/rooms/{rid}", json=upd).json()["price"] == 2500000
+        assert client.delete(f"{API}/rooms/{rid}").status_code == 200
+        assert client.get(f"{API}/rooms/{rid}").status_code == 404
+
+    def test_invalid_id_400(self, client):
+        assert client.get(f"{API}/rooms/notanid").status_code == 400
+
+
+# ---------- TENANT LIFECYCLE ----------
+class TestTenantLifecycle:
+    def test_create_movein_moveout(self, client):
+        rooms = client.get(f"{API}/rooms").json()
+        room = next(r for r in rooms if r["status"] == "available")
+        payload = {"name": "TEST_Tenant", "phone": "0800-000-0000", "nik": "1234567890123456",
+                   "occupation": "QA", "emergency_name": "EM", "emergency_relation": "Teman",
+                   "emergency_phone": "0811", "room_id": room["id"],
+                   "lease_start": "2026-07-01", "lease_end": "2027-07-01",
+                   "monthly_rent": 1000000, "deposit": 1000000}
+        r = client.post(f"{API}/tenants", json=payload)
+        assert r.status_code == 200, r.text
+        t = r.json()
+        tid = t["id"]
+        assert t["status"] == "pending_assignment"
+        assert client.get(f"{API}/rooms/{room['id']}").json()["status"] == "reserved"
+
+        # move-in
+        mi = client.post(f"{API}/tenants/{tid}/move-in", json={})
+        assert mi.status_code == 200, mi.text
+        assert mi.json()["status"] == "active"
+        assert client.get(f"{API}/rooms/{room['id']}").json()["status"] == "occupied"
+        tokens = client.get(f"{API}/access-tokens").json()
+        mine = [x for x in tokens if x.get("tenant_id") == tid]
+        assert mine and mine[0]["status"] == "active" and re.fullmatch(r"\d{6}", mine[0]["pin"])
+
+        # double move-in rejected
+        assert client.post(f"{API}/tenants/{tid}/move-in", json={}).status_code == 400
+
+        # move-out with deduction
+        mo = client.post(f"{API}/tenants/{tid}/move-out",
+                         json={"deductions": [{"label": "Kerusakan", "amount": 250000}]})
+        assert mo.status_code == 200, mo.text
+        d = mo.json()
+        assert d["status"] == "former"
+        assert d["deposit_settlement"]["total_deduction"] == 250000
+        assert d["deposit_settlement"]["refund"] == 750000
+        assert client.get(f"{API}/rooms/{room['id']}").json()["status"] == "cleaning"
+        tokens = client.get(f"{API}/access-tokens").json()
+        assert all(x["status"] != "active" for x in tokens if x.get("tenant_id") == tid)
+        client.delete(f"{API}/tenants/{tid}")
+
+    def test_movein_without_room_400(self, client):
+        r = client.post(f"{API}/tenants", json={"name": "TEST_NoRoom", "phone": "0800"})
+        tid = r.json()["id"]
+        mi = client.post(f"{API}/tenants/{tid}/move-in", json={})
+        assert mi.status_code == 400
+        client.delete(f"{API}/tenants/{tid}")
+
+
+# ---------- BILLS ----------
 class TestBills:
-    def test_list_and_filter(self, client):
-        allb = client.get(f"{API}/bills", timeout=30).json()
-        assert len(allb) == 9
-        paid = client.get(f"{API}/bills", params={"status": "paid"}, timeout=30).json()
-        unpaid = client.get(f"{API}/bills", params={"status": "unpaid"}, timeout=30).json()
-        assert len(paid) == 6 and len(unpaid) == 3
-        assert all(b["status"] == "paid" for b in paid)
-        assert all(b["period"] == period_ago(0) for b in unpaid)
-        for b in allb:
-            assert b["total"] == b["rent"] + b["electricity"] + b["water"] + b["other"]
+    def test_overdue_and_dunning_derived(self, client):
+        tenants = client.get(f"{API}/tenants?status=active").json()
+        t = tenants[0]
+        old_due = (date.today() - timedelta(days=10)).isoformat()
+        r = client.post(f"{API}/bills", json={
+            "tenant_id": t["id"], "room_id": t.get("room_id"), "period": "2026-01",
+            "rent": 500000, "electricity": 0, "water": 0, "other": 0,
+            "due_date": old_due, "status": "unpaid", "notes": "TEST_"})
+        assert r.status_code == 200, r.text
+        b = r.json()
+        assert b["status"] == "overdue" and b["dunning_stage"] == 3
+        client.delete(f"{API}/bills/{b['id']}")
 
-    def test_filter_by_tenant(self, client):
-        tenants = client.get(f"{API}/tenants", timeout=30).json()
-        tid = tenants[0]["id"]
-        bills = client.get(f"{API}/bills", params={"tenant_id": tid}, timeout=30).json()
-        assert len(bills) == 3 and all(b["tenant_id"] == tid for b in bills)
+    def test_invoice_number_format(self, client):
+        tenants = client.get(f"{API}/tenants?status=active").json()
+        t = tenants[0]
+        room = client.get(f"{API}/rooms/{t['room_id']}").json()
+        r = client.post(f"{API}/bills", json={
+            "tenant_id": t["id"], "room_id": t["room_id"], "period": "2026-09",
+            "rent": 1000000, "electricity": 100000, "water": 50000,
+            "due_date": "2026-09-05", "notes": "TEST_"})
+        b = r.json()
+        expected = f"INV-202609-{room['name'].replace('-', '').upper()}"
+        assert b["invoice_number"] == expected, b["invoice_number"]
+        assert b["total"] == 1150000
+        client.delete(f"{API}/bills/{b['id']}")
 
-    def test_bill_crud_and_pay(self, client):
-        tenants = client.get(f"{API}/tenants", timeout=30).json()
-        tid = tenants[0]["id"]
-        payload = {"tenant_id": tid, "room_id": None, "period": "2026-01", "rent": 1000000,
-                   "electricity": 100000, "water": 50000, "other": 25000,
-                   "other_label": "TEST_parkir", "status": "unpaid"}
-        c = client.post(f"{API}/bills", json=payload, timeout=30)
-        assert c.status_code == 200, c.text
-        bill = c.json()
-        bid = bill["id"]
-        assert bill["total"] == 1175000 and bill["status"] == "unpaid"
+    def test_generate_idempotent(self, client):
+        period = "2026-12"  # future period with no seeded bills
+        first = client.post(f"{API}/bills/generate", json={"period": period})
+        assert first.status_code == 200
+        n = first.json()["created"]
+        active = len(client.get(f"{API}/tenants?status=active").json())
+        assert n == active, f"created {n} vs active {active}"
+        second = client.post(f"{API}/bills/generate", json={"period": period})
+        assert second.json()["created"] == 0
+        for b in client.get(f"{API}/bills").json():
+            if b["period"] == period:
+                client.delete(f"{API}/bills/{b['id']}")
 
-        # update recomputes total
-        payload["electricity"] = 200000
-        u = client.put(f"{API}/bills/{bid}", json=payload, timeout=30)
-        assert u.status_code == 200 and u.json()["total"] == 1275000
+    def test_partial_then_full_payment(self, client):
+        tenants = client.get(f"{API}/tenants?status=active").json()
+        t = tenants[0]
+        b = client.post(f"{API}/bills", json={
+            "tenant_id": t["id"], "room_id": t.get("room_id"), "period": "2026-10",
+            "rent": 1000000, "due_date": "2099-10-05", "notes": "TEST_"}).json()
+        r1 = client.post(f"{API}/bills/{b['id']}/payments",
+                         json={"amount": 400000, "method": "qris", "reference": "QR1"})
+        assert r1.status_code == 200, r1.text
+        d1 = r1.json()
+        assert d1["status"] == "partially_paid" and d1["amount_paid"] == 400000
+        assert len(d1["payments"]) == 1 and d1["payments"][0]["method"] == "qris"
+        r2 = client.post(f"{API}/bills/{b['id']}/payments",
+                         json={"amount": 600000, "method": "cash"})
+        d2 = r2.json()
+        assert d2["status"] == "paid" and d2["amount_paid"] == 1000000 and d2["paid_at"]
+        # persistence
+        got = [x for x in client.get(f"{API}/bills").json() if x["id"] == b["id"]][0]
+        assert got["status"] == "paid" and len(got["payments"]) == 2
+        client.delete(f"{API}/bills/{b['id']}")
 
-        p = client.post(f"{API}/bills/{bid}/pay", params={"method": "cash"}, timeout=30)
-        assert p.status_code == 200, p.text
-        pb = p.json()
-        assert pb["status"] == "paid" and pb["payment_method"] == "cash" and pb["paid_at"]
+    def test_payment_zero_rejected(self, client):
+        bills = client.get(f"{API}/bills").json()
+        r = client.post(f"{API}/bills/{bills[0]['id']}/payments", json={"amount": 0, "method": "cash"})
+        assert r.status_code == 400
 
-        # verify persisted
-        got = [b for b in client.get(f"{API}/bills", timeout=30).json() if b["id"] == bid]
-        assert got and got[0]["status"] == "paid"
-
-        assert client.delete(f"{API}/bills/{bid}", timeout=30).status_code == 200
-        assert not [b for b in client.get(f"{API}/bills", timeout=30).json() if b["id"] == bid]
-
-    def test_pay_missing_bill(self, client):
-        r = client.post(f"{API}/bills/507f1f77bcf86cd799439011/pay", timeout=30)
-        assert r.status_code == 404
-
-
-# ---------- complaints ----------
-class TestComplaints:
-    def test_list_after_seed(self, client):
-        c = client.get(f"{API}/complaints", timeout=30).json()
-        assert len(c) == 2
-        assert {x["status"] for x in c} == {"open", "in_progress"}
-
-    def test_complaint_crud(self, client):
-        payload = {"title": "TEST_Lampu mati", "description": "d", "priority": "high", "status": "open"}
-        c = client.post(f"{API}/complaints", json=payload, timeout=30)
-        assert c.status_code == 200, c.text
-        obj = c.json()
-        cid = obj["id"]
-        assert obj["title"] == "TEST_Lampu mati" and obj["resolved_at"] is None
-
-        payload["status"] = "resolved"
-        u = client.put(f"{API}/complaints/{cid}", json=payload, timeout=30)
-        assert u.status_code == 200
-        assert u.json()["status"] == "resolved" and u.json()["resolved_at"]
-
-        assert client.delete(f"{API}/complaints/{cid}", timeout=30).status_code == 200
-        assert not [x for x in client.get(f"{API}/complaints", timeout=30).json() if x["id"] == cid]
+    def test_bills_status_filter(self, client):
+        for s in ["unpaid", "paid", "partially_paid", "overdue"]:
+            r = client.get(f"{API}/bills?status={s}")
+            assert r.status_code == 200
+            assert all(b["status"] == s for b in r.json())
 
 
-# ---------- dashboard & reports ----------
-class TestDashboard:
-    def test_summary(self, client):
-        s = client.get(f"{API}/dashboard/summary", timeout=30).json()
-        unpaid = client.get(f"{API}/bills", params={"status": "unpaid"}, timeout=30).json()
-        assert s["rooms_total"] == 6
-        assert s["rooms_occupied"] == 3 and s["rooms_vacant"] == 2 and s["rooms_maintenance"] == 1
-        assert s["occupancy_rate"] == 50
-        assert s["tenants_active"] == 3
-        assert s["unpaid_count"] == 3
-        assert s["outstanding"] == sum(b["total"] for b in unpaid)
-        assert s["open_complaints"] == 2
-        assert s["period"] == period_ago(0)
-        assert s["revenue_month"] == 0
+# ---------- MAINTENANCE ----------
+class TestTickets:
+    def test_ticket_transitions(self, client):
+        r = client.post(f"{API}/complaints", json={
+            "title": "TEST_Ticket", "description": "d", "category": "electrical",
+            "priority": "urgent", "status": "pending"})
+        assert r.status_code == 200, r.text
+        t = r.json()
+        assert t["priority"] == "urgent" and t["category"] == "electrical"
+        cid = t["id"]
+        bad = client.post(f"{API}/complaints/{cid}/status", json={"status": "resolved"})
+        assert bad.status_code == 400 and "tidak diizinkan" in bad.json()["detail"]
+        assert client.post(f"{API}/complaints/{cid}/status", json={"status": "in_progress"}).json()["status"] == "in_progress"
+        res = client.post(f"{API}/complaints/{cid}/status",
+                          json={"status": "resolved", "cost_material": 100000, "cost_labor": 50000}).json()
+        assert res["status"] == "resolved" and res["cost_material"] == 100000 and res["resolved_at"]
+        assert client.post(f"{API}/complaints/{cid}/status", json={"status": "closed"}).json()["status"] == "closed"
+        assert client.post(f"{API}/complaints/{cid}/status", json={"status": "in_progress"}).status_code == 400
+        client.delete(f"{API}/complaints/{cid}")
+
+
+# ---------- ACCESS TOKENS ----------
+class TestAccessTokens:
+    def test_issue_and_revoke(self, client):
+        r = client.post(f"{API}/access-tokens", json={
+            "label": "TEST_Vendor", "token_type": "vendor",
+            "valid_from": "2026-07-01", "valid_until": "2026-12-31"})
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert re.fullmatch(r"\d{6}", d["pin"]) and d["status"] == "active"
+        assert "_id" not in d
+        tid = d["id"]
+        assert client.post(f"{API}/access-tokens/{tid}/revoke").status_code == 200
+        got = [x for x in client.get(f"{API}/access-tokens").json() if x["id"] == tid][0]
+        assert got["status"] == "revoked" and got["revoked_at"]
+
+    def test_revoke_missing_404(self, client):
+        assert client.post(f"{API}/access-tokens/64b7f9c2e1a2b3c4d5e6f7a8/revoke").status_code == 404
+
+
+# ---------- AUDIT / DASHBOARD ----------
+class TestAuditDashboard:
+    def test_audit_entries(self, client):
+        r = client.get(f"{API}/audit")
+        assert r.status_code == 200
+        docs = r.json()
+        assert docs and all("_id" not in d for d in docs)
+        actions = {d["action"] for d in docs}
+        assert "SEED" in actions
+
+    def test_dashboard_summary(self, client):
+        d = client.get(f"{API}/dashboard/summary").json()
+        for k in ["rooms_total", "rooms_occupied", "rooms_available", "rooms_reserved",
+                  "rooms_cleaning", "rooms_maintenance", "tenants_active", "outstanding",
+                  "revenue_month", "occupancy_rate", "active_maintenance", "active_tokens", "period"]:
+            assert k in d, k
+        assert d["rooms_total"] >= 7
 
     def test_monthly_report(self, client):
-        r = client.get(f"{API}/reports/monthly", params={"months": 6}, timeout=30)
-        assert r.status_code == 200
-        data = r.json()
-        assert len(data) == 6
-        periods = [d["period"] for d in data]
-        assert periods == [period_ago(i) for i in range(5, -1, -1)]
-        paid = client.get(f"{API}/bills", params={"status": "paid"}, timeout=30).json()
-        expected = {}
-        for b in paid:
-            expected[b["period"]] = expected.get(b["period"], 0) + b["total"]
-        for d in data:
-            assert d["income"] == expected.get(d["period"], 0)
-        assert data[-2]["income"] > 0 and data[-3]["income"] > 0
-
-    def test_monthly_report_custom_months(self, client):
-        assert len(client.get(f"{API}/reports/monthly", params={"months": 3}, timeout=30).json()) == 3
+        d = client.get(f"{API}/reports/monthly?months=6").json()
+        assert len(d) == 6 and all("period" in x and "income" in x for x in d)

@@ -1,0 +1,50 @@
+{
+  "summary": "Full backend + frontend E2E validation of the Lewi House major feature build. Backend: 31 pytest tests (/app/backend/tests/backend_test.py) covering JWT auth (401 unauth, login payload+httpOnly cookies, /auth/me, wrong password, invalid token, bcrypt $2b$ hash, brute-force lockout), seed counts (7 rooms/4 tenants/9 bills/3 tickets/3 tokens), room state machine (valid + invalid transitions, CRUD, dup name, bad ObjectId), tenant lifecycle (create->reserved, move-in->occupied + 6-digit PIN auto-issue, double move-in 400, move-out->former/cleaning/tokens revoked/refund math), bills (invoice number format, generate idempotency, partial->full payment, zero payment 400, overdue+dunning derivation, status filters), ticket transitions incl. invalid, access token issue/revoke/404, audit log, dashboard summary, monthly report => 30 passed, 1 xfail (documented lockout gap). Frontend (390x844 mobile): login redirect/login/logout/invalid-password error, dashboard (metrics, 6 room mini-stats, revenue chart, maintenance alert, 4-photo gallery all loading), Speed Dial FAB all 4 actions (record-payment auto-opens pay sheet on /bills, add-tenant, new-ticket, issue-token forms auto-open), Rooms filters + quick actions (room-ready-K-202 -> Tersedia, room-fixed-K-203 -> Dibersihkan, room-cancel-K-204 -> Tersedia), full tenant lifecycle via UI with KYC + rent auto-fill (Calon -> move-in Aktif + PIN token visible on /access -> move-out with deduction, refund preview Rp 900.000, Keluar), bills (generate invoices, partial payment then full payment -> Lunas, remaining-amount prefill, overdue Terlambat + Tahap 3 dunning, all 5 filters), tickets (create with category/priority, start->resolve->close, filters), access tokens (PIN hide/reveal toggle, issue new, revoke -> Dicabut), audit log page (15 entries incl. MASUK/PEMBAYARAN/CHECK-IN/CHECK-OUT/TERBIT TOKEN). Zero JS page errors; no failing API calls except the intentional 401.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/login", "issue": "Brute-force lockout is keyed on request.client.host:email. Behind the public ingress the client IP is the proxy pod and rotates, so 6+ wrong-password attempts through the preview URL never return 429 (verified: lockout only triggers when hitting the app directly on localhost:8001). Key the counter on email only (or X-Forwarded-For) to make the playbook lockout effective."},
+      {"endpoint": "GET /api/bills", "issue": "derive_bill() overwrites status 'partially_paid' with 'overdue' for past-due bills, so the partial-payment state is lost at read time. Consequence in UI: 'Sebagian' filter returns 0 cards and a partially paid overdue invoice shows only 'Terlambat'. Keep both (e.g. is_overdue flag + original status)."},
+      {"endpoint": "CORS", "issue": "CORS_ORIGINS=* combined with allow_credentials=True; playbook requires explicit origin list when credentials/cookies are used."},
+      {"endpoint": "DELETE /api/rooms|tenants|bills|complaints/{id}", "issue": "Always return {ok:true} even when nothing was deleted (no 404 on missing id). Deleting an occupied room also leaves tenant.room_id dangling."},
+      {"endpoint": "PUT /api/tenants/{id}, POST /api/bills", "issue": "Raw ObjectId(prev_room)/ObjectId(room_id) calls on stored/foreign ids are not wrapped by the oid() helper -> 500 on malformed value."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Dashboard", "issue": "Reset/reseed data is only reachable when the DB is completely empty (seed-btn renders only if s.rooms_total === 0), so the requested 'reset + reseed' action is unusable on a populated database. Testing agents/users must call POST /api/seed manually.", "selector": "[data-testid=\"seed-btn\"]", "priority": "MEDIUM"},
+      {"component": "Bills list", "issue": "A partially paid but past-due invoice shows only the 'Terlambat' badge; the amount already paid / 'Sebagian' state is not surfaced on the card (backend derivation, see backend_issues).", "selector": "[data-testid^=\"bill-status-\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard hero", "issues": ["'PENDAPATAN BULAN INI' label (white/70 uppercase) sits over the bright part of the property photo -> poor contrast, nearly unreadable; add a stronger gradient scrim", "'SELAMAT DATANG / Lewi House' block sits close to the floating action icons (key/history/logout) on 390px width"]},
+      {"screen": "Dashboard 'Belum Bayar' metric card", "issues": ["Amount wraps awkwardly ('Rp' on one line, number on the next) at 390px because the serif size is too large for the half-width card"]},
+      {"screen": "Login (desktop 1920px)", "issues": ["Mobile-first column is centered with large empty beige gutters and a very tall empty hero region above the form - acceptable for a PWA but visually sparse on desktop"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Make brute-force lockout effective behind the ingress (key on email, or trust X-Forwarded-For)",
+    "Preserve partial-payment state when deriving overdue status (add is_overdue/dunning without clobbering 'partially_paid') so the 'Sebagian' bill filter works",
+    "Expose a reset/reseed control that is always available (currently hidden unless rooms_total === 0)",
+    "Set explicit CORS origins instead of '*' since allow_credentials=True",
+    "Return 404 from DELETE endpoints when the document does not exist and block deleting an occupied room",
+    "Wrap all ObjectId(...) conversions with the oid() helper to avoid 500s on malformed ids",
+    "Improve dashboard hero contrast (scrim behind 'PENDAPATAN BULAN INI') and fix the 'Belum Bayar' amount wrapping"
+  ],
+  "critical_code_review_comments": [
+    "server.py is 972 lines - split into routers (auth, rooms, tenants, bills, maintenance, access, dashboard, seed) per the <700-line guideline",
+    "Enum-like fields (room_type, bill payment method, ticket category/priority, token_type) are plain str in Pydantic models - use Literal and ge=0 for money fields; POST /api/bills/{id}/payments currently accepts any method string",
+    "List endpoints use hard-coded to_list(1000/2000) with no pagination - will silently truncate at scale",
+    "POST /api/seed wipes rooms/tenants/bills/complaints/access_tokens AND audit_logs for any authenticated user; consider owner-role-only + confirmation flag",
+    "Access token PINs are returned in plaintext from GET /api/access-tokens (fine for demo, but should be hashed/masked server-side for production)"
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (30 passed, 1 documented xfail out of 31)", "frontend": "100% of tested flows (2 non-blocking UX gaps)"},
+  "seed_data_creation": "POST /api/seed re-run before and during testing (7 rooms, 4 tenants, 9 bills, 3 tickets, 3 tokens). UI-created artifacts (QA Tester tenant, QA Tiket Test ticket, QA Vendor Token) were moved out/deleted or revoked; K-202/K-203/K-204 statuses and one invoice payment were mutated by tests - re-seed for a pristine demo state.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@lewihouse.com / lewi2026 (from /app/memory/test_credentials.md) - works for both API and UI",
+  "context_for_next_testing_agent": "Regression suite /app/backend/tests/backend_test.py (session autouse fixture re-seeds the DB, so running it wipes data; run with -p no:randomly). Playwright: dashboard 'seed-btn' only exists when the DB is empty - seed via POST /api/seed with a Bearer token instead. Delete/revoke actions use window.confirm, so register page.on('dialog', lambda d: d.accept()) or they silently no-op. All flows in the review request were exercised and pass; open items are the lockout-behind-proxy gap, overdue-overwrites-partially_paid, hidden reseed control and dashboard hero contrast.",
+  "rca_of_the_issue": "1) Lockout gap: login_attempts identifier = f\"{request.client.host}:{email}\"; through the Kubernetes ingress request.client.host is the proxy pod IP which rotates, so the counter never reaches 5 for one identifier (proved by 6 sequential wrong-password calls to localhost:8001 returning 429 vs public URL returning 401 each time). 2) Missing 'Sebagian' bills: derive_bill() unconditionally sets status='overdue' when status != 'paid' and due_date < today, so the stored 'partially_paid' value is replaced before serialization and the frontend filter (status === 'partially_paid') matches nothing."
+}

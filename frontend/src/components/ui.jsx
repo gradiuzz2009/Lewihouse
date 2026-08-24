@@ -87,6 +87,26 @@ export function Textarea({ label, testid, ...props }) {
   );
 }
 
+export function MoneyInput({ label, testid, value, onChange, ...props }) {
+  const display = value ? String(Math.round(Number(value))).replace(/\B(?=(\d{3})+(?!\d))/g, ".") : "";
+  return (
+    <label className="block mb-4">
+      {label && <span className="text-xs font-semibold text-subtle uppercase tracking-wider mb-1.5 block">{label}</span>}
+      <div className="relative">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-subtle font-semibold">Rp</span>
+        <input
+          {...props}
+          inputMode="numeric"
+          data-testid={testid}
+          value={display}
+          onChange={(e) => onChange(Number(e.target.value.replace(/\D/g, "")) || 0)}
+          className="w-full bg-muted border border-transparent rounded-xl pl-11 pr-4 py-3 text-sm text-ink tnum focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-colors"
+        />
+      </div>
+    </label>
+  );
+}
+
 export function Button({ children, variant = "primary", testid, className = "", ...props }) {
   const variants = {
     primary: "bg-primary text-white hover:bg-[#0f2a20]",
