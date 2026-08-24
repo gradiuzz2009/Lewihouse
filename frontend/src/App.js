@@ -10,6 +10,7 @@ import Complaints from "./pages/Complaints";
 import Access from "./pages/Access";
 import Activity from "./pages/Activity";
 import Chat from "./pages/Chat";
+import Staff from "./pages/Staff";
 import Login from "./pages/Login";
 import TenantPortal from "./pages/TenantPortal";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -76,6 +77,7 @@ function Shell() {
         <Route path="/access" element={<AdminProtected><Access /></AdminProtected>} />
         <Route path="/activity" element={<AdminProtected><Activity /></AdminProtected>} />
         <Route path="/chat" element={<AdminProtected><Chat /></AdminProtected>} />
+        <Route path="/staff" element={<AdminProtected><Staff /></AdminProtected>} />
         <Route path="/portal" element={<TenantProtected><TenantPortal /></TenantProtected>} />
         <Route path="/portal/*" element={<TenantProtected><TenantPortal /></TenantProtected>} />
       </Routes>

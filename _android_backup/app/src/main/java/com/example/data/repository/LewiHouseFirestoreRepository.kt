@@ -19,6 +19,7 @@ import kotlin.random.Random
 
 class LewiHouseFirestoreRepository(
     private val firestore: FirebaseFirestore? = try { FirebaseFirestore.getInstance() } catch (_: Exception) { null },
+    @Suppress("unused")
     private val localDb: AppDatabase? = null,
     private val propertyId: String = "lewi_house_main"
 ) {
@@ -842,5 +843,170 @@ class LewiHouseFirestoreRepository(
     suspend fun deleteNotification(notificationId: String) {
         val ref = propertyRef ?: return
         runCatching { ref.collection("notifications").document(notificationId).delete().await() }
+    }
+
+    // =========================================================================
+    // Real-Time Reactive Chat Snapshot Flows
+    // =========================================================================
+
+    fun getChatMessagesFlow(tenantId: String): Flow<List<ChatMessage>> = callbackFlow {
+        val ref = propertyRef
+        if (ref == null) {
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
+
+        val listener = ref.collection("chats")
+            .document(tenantId)
+            .collection("messages")
+            .orderBy("timestamp")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+
+                val list = snapshot.documents.mapNotNull { doc ->
+                    try {
+                        ChatMessage(
+                            id = doc.getString("id") ?: doc.id,
+                            tenantId = doc.getString("tenantId") ?: tenantId,
+                            senderId = doc.getString("senderId") ?: "",
+                            senderName = doc.getString("senderName") ?: "",
+                            senderRole = try {
+                                ChatSenderRole.valueOf(doc.getString("senderRole") ?: "TENANT")
+                            } catch (_: Exception) { ChatSenderRole.TENANT },
+                            text = doc.getString("text") ?: "",
+                            timestamp = doc.getString("timestamp") ?: "",
+                            isRead = doc.getBoolean("isRead") ?: false,
+                            readByAdmin = doc.getBoolean("readByAdmin") ?: false,
+                            readByTenant = doc.getBoolean("readByTenant") ?: false
+                        )
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                trySend(list)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    fun getAllChatThreadsFlow(): Flow<List<ChatThread>> = callbackFlow {
+        val ref = propertyRef
+        if (ref == null) {
+            trySend(emptyList())
+            awaitClose { }
+            return@callbackFlow
+        }
+
+        val listener = ref.collection("chat_threads")
+            .orderBy("lastTimestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null || snapshot == null) {
+                    trySend(emptyList())
+                    return@addSnapshotListener
+                }
+
+                val list = snapshot.documents.mapNotNull { doc ->
+                    try {
+                        ChatThread(
+                            tenantId = doc.getString("tenantId") ?: doc.id,
+                            tenantName = doc.getString("tenantName") ?: "Penghuni",
+                            roomNumber = doc.getString("roomNumber"),
+                            lastMessage = doc.getString("lastMessage"),
+                            lastTimestamp = doc.getString("lastTimestamp"),
+                            unreadCount = (doc.getLong("unreadCount") ?: 0L).toInt()
+                        )
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                trySend(list)
+            }
+
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun sendChatMessage(message: ChatMessage) {
+        val ref = propertyRef ?: return
+        val msgMap = hashMapOf(
+            "id" to message.id,
+            "tenantId" to message.tenantId,
+            "senderId" to message.senderId,
+            "senderName" to message.senderName,
+            "senderRole" to message.senderRole.name,
+            "text" to message.text,
+            "timestamp" to message.timestamp,
+            "isRead" to message.isRead,
+            "readByAdmin" to message.readByAdmin,
+            "readByTenant" to message.readByTenant
+        )
+
+        runCatching {
+            // Save message to chat subcollection
+            ref.collection("chats")
+                .document(message.tenantId)
+                .collection("messages")
+                .document(message.id)
+                .set(msgMap)
+                .await()
+
+            // Update thread metadata
+            val threadMap = hashMapOf(
+                "tenantId" to message.tenantId,
+                "tenantName" to (if (message.senderRole == ChatSenderRole.TENANT) message.senderName else "Penghuni"),
+                "lastMessage" to message.text,
+                "lastTimestamp" to message.timestamp,
+                "unreadCount" to if (message.senderRole == ChatSenderRole.TENANT) 1L else 0L
+            )
+            ref.collection("chat_threads")
+                .document(message.tenantId)
+                .set(threadMap, SetOptions.merge())
+                .await()
+
+            // Send notification to the other party
+            val notif = AppNotification(
+                id = UUID.randomUUID().toString(),
+                recipientResidentId = if (message.senderRole == ChatSenderRole.ADMIN) message.tenantId else null,
+                recipientName = if (message.senderRole == ChatSenderRole.ADMIN) null else "Admin",
+                title = if (message.senderRole == ChatSenderRole.ADMIN) "Pesan dari Pengelola" else "Pesan dari ${message.senderName}",
+                message = message.text.take(120),
+                category = NotificationCategory.CHAT,
+                priority = NotificationPriority.IMPORTANT,
+                timestamp = message.timestamp,
+                isRead = false,
+                actionType = NotificationAction.OPEN_CHAT,
+                actionPayload = message.tenantId
+            )
+            sendNotification(notif)
+        }
+    }
+
+    suspend fun markChatMessagesAsRead(tenantId: String, byAdmin: Boolean) {
+        val ref = propertyRef ?: return
+        runCatching {
+            val fieldToUpdate = if (byAdmin) "readByAdmin" else "readByTenant"
+            val query = ref.collection("chats")
+                .document(tenantId)
+                .collection("messages")
+                .whereEqualTo(fieldToUpdate, false)
+                .get()
+                .await()
+
+            val batch = firestore?.batch() ?: return@runCatching
+            query.documents.forEach { doc ->
+                batch.update(doc.reference, fieldToUpdate, true)
+                batch.update(doc.reference, "isRead", true)
+            }
+
+            if (byAdmin) {
+                val threadRef = ref.collection("chat_threads").document(tenantId)
+                batch.update(threadRef, "unreadCount", 0L)
+            }
+
+            batch.commit().await()
+        }
     }
 }

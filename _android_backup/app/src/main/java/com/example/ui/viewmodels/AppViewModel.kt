@@ -29,7 +29,8 @@ enum class AdminTab {
     OPERATIONS,
     ELECTRICITY,
     MAINTENANCE,
-    TRANSFER_CALCULATOR
+    TRANSFER_CALCULATOR,
+    CHAT
 }
 
 enum class TenantTab {
@@ -37,7 +38,8 @@ enum class TenantTab {
     BILLS,
     ELECTRICITY,
     MAINTENANCE,
-    PROFILE
+    PROFILE,
+    CHAT
 }
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
@@ -168,6 +170,91 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val unreadNotificationCount: StateFlow<Int> = currentTenantNotifications.map { list ->
         list.count { !it.isRead }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    // =========================================================================
+    // Real-Time Chat Flows & Operations
+    // =========================================================================
+
+    private val _selectedChatTenantId = MutableStateFlow<String?>(null)
+    val selectedChatTenantId: StateFlow<String?> = _selectedChatTenantId.asStateFlow()
+
+    val chatThreads: StateFlow<List<ChatThread>> = repository.allChatThreads
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val chatMessages: StateFlow<List<ChatMessage>> = combine(
+        _selectedChatTenantId,
+        currentTenant,
+        _currentRole
+    ) { selId, tenant, role ->
+        if (role == AppRole.ADMIN) selId else tenant?.id
+    }.flatMapLatest { tenantId ->
+        if (tenantId != null) {
+            repository.getChatMessages(tenantId)
+        } else {
+            flowOf(emptyList())
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val unreadChatCount: StateFlow<Int> = combine(
+        chatThreads,
+        chatMessages,
+        _currentRole
+    ) { threads, messages, role ->
+        if (role == AppRole.ADMIN) {
+            threads.sumOf { it.unreadCount }
+        } else {
+            messages.count { it.senderRole == ChatSenderRole.ADMIN && !it.readByTenant }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    fun selectChatTenant(tenantId: String?) {
+        _selectedChatTenantId.value = tenantId
+        if (tenantId != null) {
+            markChatAsRead(tenantId)
+        }
+    }
+
+    fun sendChatMessage(text: String, targetTenantId: String? = null) {
+        val trimmed = text.trim()
+        if (trimmed.isEmpty()) return
+        val role = _currentRole.value
+        val tenant = currentTenant.value
+        val resolvedTenantId = if (role == AppRole.ADMIN) {
+            targetTenantId ?: _selectedChatTenantId.value ?: return
+        } else {
+            tenant?.id ?: return
+        }
+        val senderName = if (role == AppRole.ADMIN) "Admin Lewi House" else (tenant?.fullName ?: "Penghuni")
+        val senderId = if (role == AppRole.ADMIN) "admin_main" else (tenant?.id ?: "tenant")
+        val msg = ChatMessage(
+            id = UUID.randomUUID().toString(),
+            tenantId = resolvedTenantId,
+            senderId = senderId,
+            senderName = senderName,
+            senderRole = if (role == AppRole.ADMIN) ChatSenderRole.ADMIN else ChatSenderRole.TENANT,
+            text = trimmed,
+            timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()),
+            isRead = false,
+            readByAdmin = (role == AppRole.ADMIN),
+            readByTenant = (role == AppRole.TENANT)
+        )
+        viewModelScope.launch {
+            repository.sendChatMessage(msg)
+        }
+    }
+
+    fun markChatAsRead(tenantId: String? = null) {
+        val role = _currentRole.value
+        val targetId = if (role == AppRole.ADMIN) {
+            tenantId ?: _selectedChatTenantId.value ?: return
+        } else {
+            currentTenant.value?.id ?: return
+        }
+        viewModelScope.launch {
+            repository.markChatAsRead(targetId, byAdmin = (role == AppRole.ADMIN))
+        }
+    }
 
     // Interactive Dialog and Sheet States
     private val _ratingTicket = MutableStateFlow<MaintenanceTicket?>(null)

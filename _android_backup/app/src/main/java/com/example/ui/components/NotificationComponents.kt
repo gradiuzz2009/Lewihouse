@@ -331,6 +331,7 @@ fun NotificationItemCard(
         NotificationCategory.ELECTRICITY -> Icons.Default.ElectricBolt
         NotificationCategory.ANNOUNCEMENT -> Icons.Default.Campaign
         NotificationCategory.SURVEY -> Icons.Default.Poll
+        NotificationCategory.CHAT -> Icons.Default.Chat
     }
 
     val iconColor = when (notification.priority) {
@@ -479,6 +480,7 @@ fun NotificationItemCard(
                     NotificationAction.OPEN_SURVEY -> "Take 2-Min Survey"
                     NotificationAction.VIEW_TICKET -> "View Maintenance Ticket"
                     NotificationAction.VIEW_ANNOUNCEMENT -> "View Details"
+                    NotificationAction.OPEN_CHAT -> "Open Chat Message"
                 }
 
                 val buttonColor = when (notification.actionType) {

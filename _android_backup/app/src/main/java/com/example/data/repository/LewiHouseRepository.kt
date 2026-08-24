@@ -320,5 +320,23 @@ class LewiHouseRepository(
         db.appNotificationDao().deleteNotification(notificationId)
         firestoreRepo.deleteNotification(notificationId)
     }
+
+    // =========================================================================
+    // Chat Repository Operations
+    // =========================================================================
+
+    fun getChatMessages(tenantId: String): Flow<List<ChatMessage>> {
+        return firestoreRepo.getChatMessagesFlow(tenantId)
+    }
+
+    val allChatThreads: Flow<List<ChatThread>> = firestoreRepo.getAllChatThreadsFlow()
+
+    suspend fun sendChatMessage(message: ChatMessage) {
+        firestoreRepo.sendChatMessage(message)
+    }
+
+    suspend fun markChatAsRead(tenantId: String, byAdmin: Boolean) {
+        firestoreRepo.markChatMessagesAsRead(tenantId, byAdmin)
+    }
 }
 

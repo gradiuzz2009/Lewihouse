@@ -1,3 +1,5 @@
+"""Lewi House Kosan Management Backend Server."""
+
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -21,6 +23,7 @@ from typing import List, Optional
 from datetime import datetime, timezone, timedelta, date
 from bson import ObjectId
 from bson.errors import InvalidId
+from firestore_sync import firestore_sync
 
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
@@ -1537,6 +1540,210 @@ async def seed_data(user: dict = Depends(get_current_user)):
 
     await log_audit(user["email"], "SEED", "system", "seed", {"rooms": len(rooms_seed), "tenants": len(tenants_seed)})
     return {"ok": True, "rooms": len(rooms_seed), "tenants": len(tenants_seed), "bills": len(bills), "tickets": len(tickets), "tokens": len(tokens)}
+
+
+# ============ STAFF MANAGEMENT ============
+class StaffCreate(BaseModel):
+    name: str
+    email: str
+    phone: Optional[str] = None
+    role: str = "staff"  # owner | admin | staff
+    password: str
+    notes: Optional[str] = None
+
+
+class StaffUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+    notes: Optional[str] = None
+
+
+class ResetPasswordPayload(BaseModel):
+    password: str
+
+
+@api.get("/staff")
+async def list_staff(user: dict = Depends(get_current_user)):
+    docs = await db.users.find({"role": {"$in": ["owner", "admin", "staff"]}}).sort("created_at", -1).to_list(100)
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+        d.pop("password_hash", None)
+        if "is_active" not in d:
+            d["is_active"] = True
+    return docs
+
+
+@api.post("/staff")
+async def create_staff(payload: StaffCreate, user: dict = Depends(get_current_user)):
+    if user.get("role") not in ["owner", "admin"]:
+        raise HTTPException(status_code=403, detail="Hanya Owner / Admin yang dapat menambah staff")
+    email = payload.email.strip().lower()
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email sudah terdaftar")
+    if payload.role not in ["owner", "admin", "staff"]:
+        raise HTTPException(status_code=400, detail="Role tidak valid")
+    doc = {
+        "email": email,
+        "phone": norm_phone(payload.phone) if payload.phone else None,
+        "name": payload.name.strip(),
+        "role": payload.role,
+        "password_hash": hash_password(payload.password),
+        "is_active": True,
+        "notes": payload.notes or "",
+        "created_at": now_iso(),
+        "created_by": user.get("email"),
+    }
+    ins = await db.users.insert_one(doc)
+    uid = str(ins.inserted_id)
+    doc["id"] = uid
+    doc.pop("_id", None)
+    doc.pop("password_hash", None)
+    await log_audit(user.get("email"), "CREATE", "staff", uid, {"email": email, "role": payload.role, "name": payload.name})
+    return doc
+
+
+@api.put("/staff/{id}")
+async def update_staff(id: str, payload: StaffUpdate, user: dict = Depends(get_current_user)):
+    if user.get("role") not in ["owner", "admin"]:
+        raise HTTPException(status_code=403, detail="Hanya Owner / Admin yang dapat mengubah data staff")
+    target = await db.users.find_one({"_id": oid(id)})
+    if not target or target.get("role") == "tenant":
+        raise HTTPException(status_code=404, detail="Staff tidak ditemukan")
+    update_data = {}
+    if payload.name is not None:
+        update_data["name"] = payload.name.strip()
+    if payload.email is not None:
+        email = payload.email.strip().lower()
+        if email != target.get("email"):
+            existing = await db.users.find_one({"email": email})
+            if existing:
+                raise HTTPException(status_code=400, detail="Email sudah digunakan akun lain")
+            update_data["email"] = email
+    if payload.phone is not None:
+        update_data["phone"] = norm_phone(payload.phone)
+    if payload.role is not None:
+        if payload.role not in ["owner", "admin", "staff"]:
+            raise HTTPException(status_code=400, detail="Role tidak valid")
+        if target.get("role") == "owner" and payload.role != "owner":
+            owner_count = await db.users.count_documents({"role": "owner"})
+            if owner_count <= 1:
+                raise HTTPException(status_code=400, detail="Tidak dapat mengubah role satu-satunya Owner")
+        update_data["role"] = payload.role
+    if payload.is_active is not None:
+        if target.get("role") == "owner" and not payload.is_active:
+            raise HTTPException(status_code=400, detail="Tidak dapat menonaktifkan akun Owner")
+        update_data["is_active"] = payload.is_active
+    if payload.notes is not None:
+        update_data["notes"] = payload.notes
+
+    if update_data:
+        update_data["updated_at"] = now_iso()
+        await db.users.update_one({"_id": oid(id)}, {"$set": update_data})
+        await log_audit(user.get("email"), "UPDATE", "staff", id, update_data)
+
+    res = await db.users.find_one({"_id": oid(id)})
+    res["id"] = str(res.pop("_id"))
+    res.pop("password_hash", None)
+    return res
+
+
+@api.delete("/staff/{id}")
+async def delete_staff(id: str, user: dict = Depends(get_current_user)):
+    if user.get("role") != "owner":
+        raise HTTPException(status_code=403, detail="Hanya Owner yang dapat mencabut/menghapus akun staff")
+    target = await db.users.find_one({"_id": oid(id)})
+    if not target or target.get("role") == "tenant":
+        raise HTTPException(status_code=404, detail="Staff tidak ditemukan")
+    if target.get("role") == "owner":
+        owner_count = await db.users.count_documents({"role": "owner"})
+        if owner_count <= 1:
+            raise HTTPException(status_code=400, detail="Tidak dapat menghapus satu-satunya Owner")
+    await db.users.delete_one({"_id": oid(id)})
+    await log_audit(user.get("email"), "DELETE", "staff", id, {"email": target.get("email"), "name": target.get("name")})
+    return {"ok": True}
+
+
+@api.post("/staff/{id}/reset-password")
+async def reset_staff_password(id: str, payload: ResetPasswordPayload, user: dict = Depends(get_current_user)):
+    if user.get("role") not in ["owner", "admin"]:
+        raise HTTPException(status_code=403, detail="Hanya Owner / Admin yang dapat mereset password")
+    target = await db.users.find_one({"_id": oid(id)})
+    if not target or target.get("role") == "tenant":
+        raise HTTPException(status_code=404, detail="Staff tidak ditemukan")
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="Password minimal 6 karakter")
+    await db.users.update_one({"_id": oid(id)}, {"$set": {"password_hash": hash_password(payload.password), "updated_at": now_iso()}})
+    await log_audit(user.get("email"), "RESET_PASSWORD", "staff", id, {"email": target.get("email")})
+    return {"ok": True}
+
+
+# ============ FIRESTORE SYNC ============
+@api.post("/sync/firestore-full")
+async def trigger_firestore_sync(user: dict = Depends(get_current_user)):
+    """Perform full one-time synchronization from MongoDB to Cloud Firestore."""
+    rooms = await db.rooms.find().to_list(1000)
+    tenants = await db.tenants.find().to_list(1000)
+    bills = await db.bills.find().to_list(10000)
+    complaints = await db.complaints.find().to_list(10000)
+    messages = await db.messages.find().to_list(10000)
+
+    room_map = {str(r["_id"]): r.get("name", "") for r in rooms}
+
+    synced_rooms = 0
+    for r in rooms:
+        await firestore_sync.sync_room(r)
+        synced_rooms += 1
+
+    synced_tenants = 0
+    for t in tenants:
+        r_name = room_map.get(str(t.get("room_id")), "")
+        await firestore_sync.sync_tenant(t, r_name)
+        synced_tenants += 1
+
+    synced_bills = 0
+    for b in bills:
+        await firestore_sync.sync_bill(b)
+        synced_bills += 1
+
+    synced_tickets = 0
+    for c in complaints:
+        await firestore_sync.sync_complaint(c)
+        synced_tickets += 1
+
+    synced_messages = 0
+    for m in messages:
+        await firestore_sync.sync_message(m)
+        synced_messages += 1
+
+    firestore_sync.last_sync_at = now_iso()
+    firestore_sync.sync_stats = {
+        "rooms": synced_rooms,
+        "tenants": synced_tenants,
+        "bills": synced_bills,
+        "complaints": synced_tickets,
+        "messages": synced_messages,
+    }
+
+    await log_audit(user.get("email"), "SYNC_FIRESTORE", "system", "all", firestore_sync.sync_stats)
+    return {
+        "ok": True,
+        "last_sync_at": firestore_sync.last_sync_at,
+        "stats": firestore_sync.sync_stats,
+    }
+
+
+@api.get("/sync/status")
+async def get_sync_status(user: dict = Depends(get_current_user)):
+    return {
+        "status": "connected",
+        "project_id": firestore_sync.project_id,
+        "last_sync_at": firestore_sync.last_sync_at,
+        "stats": firestore_sync.sync_stats,
+    }
 
 
 @app.get("/api/")

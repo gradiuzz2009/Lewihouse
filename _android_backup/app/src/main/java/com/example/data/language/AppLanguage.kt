@@ -271,7 +271,13 @@ data class StringsDict(
     val tenantFeedbackOverview: String,
     val averageRating: String,
     val totalReviews: String,
-    val simulateEvents: String
+    val simulateEvents: String,
+    val chat: String,
+    val typeMessage: String,
+    val noMessagesYet: String,
+    val startConversation: String,
+    val chatWithAdmin: String,
+    val chatWithTenant: String
 )
 
 val EnglishStrings = StringsDict(
@@ -488,10 +494,16 @@ val EnglishStrings = StringsDict(
     broadcastMessage = "Message Body",
     sendBroadcast = "Dispatch Notification",
     broadcastSent = "Push notification sent to all residents!",
-    tenantFeedbackOverview = "Tenant Ratings & CSAT",
+    tenantFeedbackOverview = "Resident Reviews & CSAT",
     averageRating = "Average Satisfaction",
     totalReviews = "Total Reviews",
-    simulateEvents = "Simulate Push Events"
+    simulateEvents = "Simulate Push Triggers",
+    chat = "Chat",
+    typeMessage = "Type a message...",
+    noMessagesYet = "No messages yet",
+    startConversation = "Start a conversation with management.",
+    chatWithAdmin = "Chat with Management",
+    chatWithTenant = "Resident Chat"
 )
 
 val IndonesianStrings = StringsDict(
@@ -711,7 +723,13 @@ val IndonesianStrings = StringsDict(
     tenantFeedbackOverview = "Nilai & Ulasan Penghuni",
     averageRating = "Rata-rata Kepuasan",
     totalReviews = "Total Ulasan",
-    simulateEvents = "Simulasi Notifikasi Push"
+    simulateEvents = "Simulasi Notifikasi Push",
+    chat = "Chat",
+    typeMessage = "Tulis pesan...",
+    noMessagesYet = "Belum ada pesan",
+    startConversation = "Mulai percakapan dengan pengelola.",
+    chatWithAdmin = "Chat Pengelola",
+    chatWithTenant = "Chat Penghuni"
 )
 
 fun getStrings(lang: AppLanguage): StringsDict {

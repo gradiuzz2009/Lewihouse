@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 import { api, fmtIDR, monthLabel } from "../lib/api";
-import { History, TrendingUp, AlertCircle, Sparkles, KeyRound, LogOut, Wrench } from "lucide-react";
+import { History, TrendingUp, AlertCircle, Sparkles, KeyRound, LogOut, Wrench, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../components/ui";
 import SpeedDial from "../components/SpeedDial";
@@ -72,6 +72,14 @@ export default function Dashboard() {
               <p className="text-xs text-white/60 mt-1 capitalize">{today}</p>
             </div>
             <div className="flex gap-2">
+              <button
+                onClick={() => nav("/staff")}
+                className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 grid place-items-center active:scale-95"
+                title="Manajemen Staff"
+                data-testid="staff-btn"
+              >
+                <Users size={16} />
+              </button>
               <button
                 onClick={() => nav("/access")}
                 className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 grid place-items-center active:scale-95"

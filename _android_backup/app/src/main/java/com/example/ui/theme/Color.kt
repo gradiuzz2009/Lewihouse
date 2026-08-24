@@ -42,6 +42,9 @@ val Emerald400 = Color(0xFF34D399)
 val Emerald100 = Color(0xFFD1FAE5)
 val Emerald50 = Color(0xFFECFDF5)
 
+val ForestGreen = Emerald800
+val WarmAmber = Gold600
+
 // Danger / Rose
 val Rose700 = Color(0xFFB91C1C)
 val Rose600 = Color(0xFFDC2626)

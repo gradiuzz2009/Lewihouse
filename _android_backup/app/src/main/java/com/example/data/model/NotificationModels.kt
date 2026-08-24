@@ -5,7 +5,8 @@ enum class NotificationCategory(val labelEn: String, val labelId: String, val ic
     RENT_DUE("Rent & Payment", "Sewa & Tagihan", "💳"),
     ELECTRICITY("Electricity", "Listrik", "⚡"),
     ANNOUNCEMENT("Announcement", "Pengumuman", "📢"),
-    SURVEY("Feedback & Survey", "Survei & Ulasan", "⭐")
+    SURVEY("Feedback & Survey", "Survei & Ulasan", "⭐"),
+    CHAT("Chat Message", "Pesan Chat", "💬")
 }
 
 enum class NotificationPriority(val label: String) {
@@ -20,7 +21,8 @@ enum class NotificationAction {
     VIEW_BILLS,
     VIEW_ELECTRICITY,
     OPEN_SURVEY,
-    VIEW_ANNOUNCEMENT
+    VIEW_ANNOUNCEMENT,
+    OPEN_CHAT
 }
 
 data class AppNotification(

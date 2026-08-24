@@ -37,6 +37,7 @@ fun AppNavigation(viewModel: AppViewModel) {
     val currentTenant by viewModel.currentTenant.collectAsState()
     val notifications by viewModel.currentTenantNotifications.collectAsState()
     val unreadNotifCount by viewModel.unreadNotificationCount.collectAsState()
+    val unreadChatCount by viewModel.unreadChatCount.collectAsState()
     val showNotifSheet by viewModel.showNotificationCenter.collectAsState()
     val ticketForRating by viewModel.ratingTicket.collectAsState()
     val showSurveyDialog by viewModel.showSatisfactionSurvey.collectAsState()
@@ -143,6 +144,31 @@ fun AppNavigation(viewModel: AppViewModel) {
                                 )
                             )
                             NavigationBarItem(
+                                selected = adminTab == AdminTab.CHAT,
+                                onClick = { viewModel.setAdminTab(AdminTab.CHAT) },
+                                icon = {
+                                    BadgedBox(
+                                        badge = {
+                                            if (unreadChatCount > 0) {
+                                                Badge(containerColor = Color(0xFFE53935)) {
+                                                    Text(if (unreadChatCount > 9) "9+" else unreadChatCount.toString())
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Icon(Icons.Default.Chat, contentDescription = strings.chat)
+                                    }
+                                },
+                                label = { Text(strings.chat, maxLines = 1, fontSize = 10.sp, fontWeight = if (adminTab == AdminTab.CHAT) FontWeight.Bold else FontWeight.Medium) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Navy800,
+                                    selectedTextColor = Navy800,
+                                    unselectedIconColor = Slate400,
+                                    unselectedTextColor = Slate400,
+                                    indicatorColor = Navy800.copy(alpha = 0.10f)
+                                )
+                            )
+                            NavigationBarItem(
                                 selected = adminTab == AdminTab.OPERATIONS || adminTab == AdminTab.ELECTRICITY || adminTab == AdminTab.TRANSFER_CALCULATOR || adminTab == AdminTab.MAINTENANCE,
                                 onClick = { viewModel.setAdminTab(AdminTab.OPERATIONS) },
                                 icon = { Icon(Icons.Default.GridView, contentDescription = strings.operations) },
@@ -181,6 +207,31 @@ fun AppNavigation(viewModel: AppViewModel) {
                                 onClick = { viewModel.setTenantTab(TenantTab.BILLS) },
                                 icon = { Icon(Icons.Default.Receipt, contentDescription = strings.myBills) },
                                 label = { Text(strings.myBills, maxLines = 1, fontSize = 10.sp, fontWeight = if (tenantTab == TenantTab.BILLS) FontWeight.Bold else FontWeight.Medium) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Navy800,
+                                    selectedTextColor = Navy800,
+                                    unselectedIconColor = Slate400,
+                                    unselectedTextColor = Slate400,
+                                    indicatorColor = Navy800.copy(alpha = 0.10f)
+                                )
+                            )
+                            NavigationBarItem(
+                                selected = tenantTab == TenantTab.CHAT,
+                                onClick = { viewModel.setTenantTab(TenantTab.CHAT) },
+                                icon = {
+                                    BadgedBox(
+                                        badge = {
+                                            if (unreadChatCount > 0) {
+                                                Badge(containerColor = Color(0xFFE53935)) {
+                                                    Text(if (unreadChatCount > 9) "9+" else unreadChatCount.toString())
+                                                }
+                                            }
+                                        }
+                                    ) {
+                                        Icon(Icons.Default.Chat, contentDescription = strings.chat)
+                                    }
+                                },
+                                label = { Text(strings.chat, maxLines = 1, fontSize = 10.sp, fontWeight = if (tenantTab == TenantTab.CHAT) FontWeight.Bold else FontWeight.Medium) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Navy800,
                                     selectedTextColor = Navy800,
@@ -264,6 +315,10 @@ fun AppNavigation(viewModel: AppViewModel) {
                         strings = strings,
                         language = currentLanguage
                     )
+                    AdminTab.CHAT -> AdminChatScreen(
+                        viewModel = viewModel,
+                        strings = strings
+                    )
                     AdminTab.OPERATIONS -> AdminOperationsScreen(
                         viewModel = viewModel,
                         strings = strings,
@@ -298,6 +353,10 @@ fun AppNavigation(viewModel: AppViewModel) {
                         viewModel = viewModel,
                         strings = strings,
                         language = currentLanguage
+                    )
+                    TenantTab.CHAT -> TenantChatScreen(
+                        viewModel = viewModel,
+                        strings = strings
                     )
                     TenantTab.ELECTRICITY -> TenantElectricityScreen(
                         viewModel = viewModel,
@@ -354,6 +413,14 @@ fun AppNavigation(viewModel: AppViewModel) {
                     }
                     NotificationAction.VIEW_ANNOUNCEMENT -> {
                         // Dismissed
+                    }
+                    NotificationAction.OPEN_CHAT -> {
+                        if (currentRole == AppRole.ADMIN) {
+                            viewModel.setAdminTab(AdminTab.CHAT)
+                            payload?.let { viewModel.selectChatTenant(it) }
+                        } else {
+                            viewModel.setTenantTab(TenantTab.CHAT)
+                        }
                     }
                 }
             },
