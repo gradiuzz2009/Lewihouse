@@ -1,0 +1,13 @@
+/* App level style overrides */
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+* {
+  box-sizing: border-box;
+}

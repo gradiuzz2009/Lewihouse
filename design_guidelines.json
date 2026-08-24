@@ -1,0 +1,122 @@
+{
+  "app_identity": {
+    "name": "Lewi House",
+    "description": "Property management platform engineered for professional efficiency and a premium tenant experience.",
+    "archetype": "LUXURY_MEETS_ORGANIC (Tactile, Boutique, High-End)"
+  },
+  "typography": {
+    "instructions": "Import Google Fonts: 'Playfair Display' and 'Manrope'.",
+    "heading": "Playfair Display (font-serif) - use for app headers, prominent numbers, and key titles to inject a boutique hotel vibe.",
+    "body": "Manrope (font-sans) - clean, geometric, highly legible for data, dashboards, and tables.",
+    "h1": "text-4xl tracking-tight text-[#1A362B]",
+    "h2": "text-2xl tracking-tight text-[#0A0A0A]",
+    "h3": "text-lg font-medium text-[#0A0A0A]",
+    "body_text": "text-sm text-[#5C5C5C] leading-relaxed",
+    "metric": "text-3xl font-light tracking-tighter"
+  },
+  "colors": {
+    "background": "#FDFBF7",
+    "surface": "#FFFFFF",
+    "surface_muted": "#F4F1EA",
+    "primary": "#1A362B",
+    "primary_foreground": "#FFFFFF",
+    "secondary": "#C6A87C",
+    "text_main": "#0A0A0A",
+    "text_muted": "#5C5C5C",
+    "border": "#EAE5D9",
+    "status": {
+      "success": "#2C4C3B",
+      "warning": "#C6A87C",
+      "error": "#8C2A2A"
+    }
+  },
+  "visual enhancers": {
+    "shadows": "Ambient diffuse shadows for cards: shadow-[0_8px_30px_rgba(0,0,0,0.04)]",
+    "borders": "Delicate 1px borders using border-[#EAE5D9] on all cards.",
+    "glassmorphism": "Bottom navigation MUST use backdrop-blur-xl bg-white/90 with a top border. Never use fully transparent.",
+    "corners": "Rounded-2xl for main cards, rounded-full for buttons and badges."
+  },
+  "component instructions": {
+    "buttons": "Pill-shaped (rounded-full). Primary buttons use bg-[#1A362B]. Include active:scale-95 transition.",
+    "badges": "rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest.",
+    "cards": "Dense, highly padded (p-5), white background with subtle border.",
+    "inputs": "Shadcn standard but override focus ring to focus:ring-[#1A362B]. Background #F4F1EA.",
+    "bottom_sheet": "Use Vaul / Shadcn Drawer for opening tenant details or room details on mobile. (Remember we use .jsx not .tsx)"
+  },
+  "grids": {
+    "bento_mobile": "For the dashboard, use a 2-column grid (grid-cols-2 gap-4) for metric cards (e.g., Occupancy vs. Outstanding).",
+    "lists": "Use flex-col gap-4 for vertical lists (rooms, tenants)."
+  },
+  "layouts": {
+    "mobile_container": "Wrap the entire app in a max-w-md mx-auto min-h-screen bg-[#FDFBF7] relative pb-24 shadow-2xl overflow-x-hidden",
+    "bottom_nav": "Fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/90 backdrop-blur-xl border-t border-[#EAE5D9] flex justify-around items-center pt-3 pb-safe z-50 rounded-t-3xl",
+    "hero_header": "Dashboard top should be a relatively positioned block with the property image, a gradient overlay (bg-gradient-to-t from-[#111612]/90 to-transparent), and white text on top to convey a premium feel."
+  },
+  "motion": {
+    "lists": "Use framer-motion to stagger list items (rooms, tenants) on mount.",
+    "tabs": "Use framer-motion layoutId for tab active indicator sliding.",
+    "interactions": "All tap targets must have an active scale down (active:scale-95) and hover colors."
+  },
+  "accessibility": {
+    "contrast": "Ensure white text on the hero image overlay meets 4.5:1 ratio. Provide fallback background color.",
+    "touch_targets": "Minimum 44x44px for all interactive icons and buttons in the bottom nav."
+  },
+  "media": {
+    "image_strategy": "Use object-cover for room thumbnails (rounded-xl) and property hero. Avatars must be rounded-full."
+  },
+  "3d libraries": {
+    "usage": "Not recommended for this specific utility mobile app to preserve battery and performance. Focus on Framer Motion for 2D fluidity."
+  },
+  "image urls": {
+    "property_hero": {
+      "url": "https://images.unsplash.com/photo-1628012209120-d9db7abf7eab?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzF8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBhcmNoaXRlY3R1cmFsJTIwYnVpbGRpbmclMjBleHRlcmlvcnxlbnwwfHx8fDE3ODc1NDM3NTV8MA&ixlib=rb-4.1.0&q=85",
+      "category": "Dashboard Header Background",
+      "description": "Modern architectural building exterior."
+    },
+    "rooms": {
+      "url1": "https://images.unsplash.com/photo-1750420556288-d0e32a6f517b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTJ8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBtaW5pbWFsaXN0JTIwYmVkcm9vbSUyMGludGVyaW9yfGVufDB8fHx8MTc4NzU0Mzc1NXww&ixlib=rb-4.1.0&q=85",
+      "url2": "https://images.unsplash.com/photo-1642541070065-3912f347e7c6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NTJ8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBtaW5pbWFsaXN0JTIwYmVkcm9vbSUyMGludGVyaW9yfGVufDB8fHx8MTc4NzU0Mzc1NXww&ixlib=rb-4.1.0&q=85",
+      "category": "Room List Thumbnails",
+      "description": "Modern minimalist bedroom interiors."
+    },
+    "tenants": {
+      "url1": "https://images.unsplash.com/photo-1607503873903-c5e95f80d7b9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGRpdmVyc2V8ZW58MHx8fHwxNzg3NTQzNzU1fDA&ixlib=rb-4.1.0&q=85",
+      "url2": "https://images.unsplash.com/photo-1581065178047-8ee15951ede6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHw0fHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGRpdmVyc2V8ZW58MHx8fHwxNzg3NTQzNzU1fDA&ixlib=rb-4.1.0&q=85",
+      "url3": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBwb3J0cmFpdCUyMGRpdmVyc2V8ZW58MHx8fHwxNzg3NTQzNzU1fDA&ixlib=rb-4.1.0&q=85",
+      "category": "Tenant Avatars",
+      "description": "Professional diverse portraits."
+    }
+  },
+  "instructions_to_main_agent": [
+    "Use ONLY .js or .jsx extensions for React components. Do not use .tsx.",
+    "Design a mobile PWA. Scaffold the layout inside a centered max-w-md container to simulate a phone on desktop browsers.",
+    "Implement a persistent bottom navigation bar (Home, Rooms, Tenants, Bills).",
+    "Use Indonesian labels: Beranda (Home), Kamar (Rooms), Penghuni (Tenants), Tagihan (Payments).",
+    "Use Recharts for a simple income vs expense bar chart on the Home or Reports view.",
+    "In the Dashboard, overlay the property_hero image with a dark gradient and white text for a premium boutique hotel feel.",
+    "Format currency in IDR (e.g., Rp 2.500.000)."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy",
+    "Use glass-morphism effects with backdrop filters (12-24px blur)",
+    "You MUST NOT apply universal transition. Eg: `transition: all`. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms",
+    "You MUST NOT center align the app container, ie do not add `.App { text-align: center; }` in the css file. This disrupts the human natural reading flow of text",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Prioritize using pre-existing components from src/components/ui when applicable",
+    "Use `sonner` for toasts",
+    "Examine existing components to understand the project's component patterns before creating new ones"
+  ],
+  "GENERAL UI UX DESIGN GUIDELINES": [
+    "All interactive and key informational elements MUST include a `data-testid` attribute to facilitate robust automated testing.",
+    "DO NOT use complete `transparent` background in header, overlays, any surface that has content under it.",
+    "Apply optical alignment over geometrical alignment.",
+    "Maintain strict color contrast ratios (minimum 4.5:1 for normal text)."
+  ]
+}

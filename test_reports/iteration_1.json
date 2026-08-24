@@ -1,0 +1,46 @@
+{
+  "summary": "Full backend + frontend E2E testing of Lewi House (kostan PWA). Backend: 17 pytest tests across health, rooms CRUD, tenants CRUD + room auto-assign/reassign/free, bills CRUD + filters + mark-paid + total recompute, complaints CRUD + resolved_at, dashboard summary and monthly report — 16/17 passed. Frontend: all 5 tabs verified on 390x844 mobile viewport (Dashboard metrics/chart/alert, Rooms filters+create/edit/delete, Tenants create with room auto-fill rent + edit + delete, Bills filters + mark paid + create with rent auto-fill, Complaints create/resolve/delete). All flows worked, zero console errors. DB re-seeded to clean demo state after testing.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET/PUT/DELETE /api/rooms/{id}, /api/tenants/{id}, /api/bills/{id}, /api/complaints/{id}", "issue": "Malformed (non-ObjectId) path id raises bson.errors.InvalidId -> HTTP 500 Internal Server Error instead of 400/404. Repro: GET /api/rooms/not-an-objectid"},
+      {"endpoint": "DELETE /api/rooms/{id}, /api/bills/{id}, /api/complaints/{id}, /api/tenants/{id}", "issue": "Always returns {ok:true} even when the id does not exist (no 404); deleted_count not checked"},
+      {"endpoint": "PUT /api/rooms/{id}, PUT /api/bills/{id}", "issue": "$set is applied before existence check, and 404 is only raised after the update attempt; also PUT with a full RoomCreate body silently resets status/tenant_id consistency (deleting an occupied room leaves the tenant pointing at a non-existent room_id — no referential cleanup)"},
+      {"endpoint": "POST /api/seed", "issue": "Destructive dev endpoint is publicly exposed with no guard/auth — wipes all collections"},
+      {"endpoint": "models", "issue": "No enum/Literal validation on status fields (room.status, bill.status, complaint.status, priority) — arbitrary strings accepted; price/rent negatives accepted (no ge=0)"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Dashboard hero", "issues": ["'PENDAPATAN BULAN INI' value (Rp 0) is visually clipped/overlapped by the Okupansi/Belum Bayar cards that float over the hero image — the big amount is cut in half on 390x844 viewport"]},
+      {"screen": "Toast notifications (all pages)", "issues": ["Success toast renders over the page title (e.g. covers 'Penghuni'/'Keluhan'/'Tagihan' headers) instead of below/above the safe area"]},
+      {"screen": "Complaints list", "issues": ["Complaint created without tenant/room shows placeholder meta '- \u00b7 - \u00b7 24 Agu 2026'; should hide empty segments"]},
+      {"screen": "Tenants list", "issues": ["Seed avatar for male tenant 'Arya Wibowo' is a female photo (avatar/name mismatch in seed data)"]},
+      {"screen": "Bills filters", "issues": ["'Terlambat' (overdue) filter chip exists but backend/seed never produces overdue bills — always empty; no auto-overdue logic based on due_date"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Add a shared ObjectId parse helper (return 400/404 instead of 500) for all /{id} endpoints",
+    "Return 404 on DELETE when the document does not exist (check deleted_count)",
+    "Fix dashboard hero overlap so 'Pendapatan Bulan Ini' amount is not clipped by the floating metric cards",
+    "Reposition toasts so they don't cover page headers",
+    "Optional: guard POST /api/seed, add Literal/ge=0 validation on models, implement overdue derivation for the 'Terlambat' filter"
+  ],
+  "critical_code_review_comments": [
+    "server.py: ObjectId(room_id) is called on raw path params in 10+ places without try/except -> guaranteed 500 on malformed ids; wrap in a dependency e.g. def oid(v)->ObjectId raising HTTPException(400)",
+    "Deleting a room does not clear tenant.room_id / related bills, leaving orphaned references",
+    "PUT endpoints update first and check existence afterwards, so a 404 path still performs a no-op write; check existence first",
+    "Bill.total is recomputed correctly server-side (good), but status transitions are unvalidated (any string accepted)"
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "94% (16/17)", "frontend": "100% of tested flows"},
+  "seed_data_creation": "Used POST /api/seed (6 rooms, 3 tenants, 9 bills, 2 complaints). All TEST_ prefixed artifacts (room, tenant, bill, complaint) were deleted, and DB was re-seeded at the end so state is clean demo data.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "N/A - app has no auth; /app/memory/test_credentials.md does not exist (not required)",
+  "context_for_next_testing_agent": "Regression suite at /app/backend/tests/backend_test.py (session-scoped autouse fixture re-seeds DB, so running it wipes data). Only known failure: test_get_room_invalid_id (500 on malformed ObjectId). All frontend data-testids listed in the request exist and work, plus input-room-price, input-tenant-rent, input-bill-rent, input-bill-electricity, input-complaint-status/description, delete-room-{id}, delete-tenant-{id}, delete-complaint-{id}, room-card-{id}, tenant-card-{id}, bill-card-{id}, complaint-card-{id}.",
+  "rca_of_the_issue": "500 on invalid id: bson.ObjectId(str) raises InvalidId for non-24-hex strings; server.py line 156 (and all other /{id} handlers) constructs ObjectId directly from the path param with no validation, so the exception propagates as an unhandled 500 (confirmed in /var/log/supervisor/backend.err.log)."
+}
