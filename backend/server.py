@@ -12,7 +12,8 @@ import asyncio
 import bcrypt
 import jwt
 from pywebpush import webpush, WebPushException
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, WebSocket, WebSocketDisconnect, Query
+from starlette.websockets import WebSocketState
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
@@ -1155,6 +1156,118 @@ async def portal_create_request(payload: RequestPayload, user: dict = Depends(re
     await notify_admins("request_new", {"request_type": payload.request_type},
                         "Pengajuan Baru", f"{t['name'] if t else 'Penghuni'} mengajukan {payload.request_type}.", "/")
     return doc
+
+
+# ============ WEBSOCKET CHAT ============
+class ConnectionManager:
+    def __init__(self):
+        self.active: dict[str, list[WebSocket]] = {}
+
+    async def connect(self, tenant_id: str, ws: WebSocket):
+        await ws.accept()
+        self.active.setdefault(tenant_id, []).append(ws)
+
+    def disconnect(self, tenant_id: str, ws: WebSocket):
+        if tenant_id in self.active:
+            self.active[tenant_id] = [w for w in self.active[tenant_id] if w is not ws]
+            if not self.active[tenant_id]:
+                del self.active[tenant_id]
+
+    async def broadcast(self, tenant_id: str, message: dict):
+        for ws in self.active.get(tenant_id, []):
+            try:
+                if ws.client_state == WebSocketState.CONNECTED:
+                    await ws.send_json(message)
+            except Exception:
+                pass
+
+
+ws_manager = ConnectionManager()
+
+
+async def ws_auth(token: str) -> dict | None:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "access":
+            return None
+        user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+        if not user:
+            return None
+        user["id"] = str(user.pop("_id"))
+        user.pop("password_hash", None)
+        return user
+    except Exception:
+        return None
+
+
+@app.websocket("/ws/chat/{tenant_id}")
+async def websocket_chat(ws: WebSocket, tenant_id: str, token: str = Query(...)):
+    user = await ws_auth(token)
+    if not user:
+        await ws.close(code=4001, reason="Unauthorized")
+        return
+    is_admin = user.get("role") in ("owner", "admin", "staff")
+    is_own_tenant = user.get("role") == "tenant" and user.get("tenant_id") == tenant_id
+    if not is_admin and not is_own_tenant:
+        await ws.close(code=4003, reason="Forbidden")
+        return
+    await ws_manager.connect(tenant_id, ws)
+    try:
+        while True:
+            data = await ws.receive_json()
+            text = (data.get("text") or "").strip()
+            if not text:
+                continue
+            sender = "admin" if is_admin else "tenant"
+            sender_name = user.get("name") or ("Admin" if is_admin else "Penghuni")
+            doc = {
+                "tenant_id": tenant_id, "sender": sender, "sender_name": sender_name,
+                "text": text, "created_at": now_iso(),
+                "read_by_admin": is_admin, "read_by_tenant": not is_admin,
+            }
+            r = await db.messages.insert_one(doc)
+            doc["id"] = str(r.inserted_id)
+            doc.pop("_id", None)
+            await ws_manager.broadcast(tenant_id, doc)
+            if sender == "tenant":
+                await notify_admins("chat", {"tenant_id": tenant_id},
+                                    f"Pesan dari {sender_name}", text[:100], "/chat")
+            else:
+                await notify_tenant(tenant_id, "chat", {"from": "admin"},
+                                    "Pesan dari Pengelola", text[:100], "/portal/chat")
+    except WebSocketDisconnect:
+        ws_manager.disconnect(tenant_id, ws)
+    except Exception:
+        ws_manager.disconnect(tenant_id, ws)
+
+
+# ============ FCM DEVICE TOKENS ============
+class FCMTokenPayload(BaseModel):
+    token: str
+    device_type: str = "android"
+
+
+@common.post("/push/register-fcm")
+async def register_fcm_token(payload: FCMTokenPayload, user: dict = Depends(get_current_user)):
+    await db.fcm_tokens.update_one(
+        {"user_id": user["id"], "token": payload.token},
+        {"$set": {"user_id": user["id"], "token": payload.token,
+                  "device_type": payload.device_type, "updated_at": now_iso()}},
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+@common.get("/notifications/unread-count")
+async def unread_notification_count(user: dict = Depends(get_current_user)):
+    count = await db.notifications.count_documents({"user_id": user["id"], "read": False})
+    chat_unread = 0
+    if user.get("role") in ("owner", "admin", "staff"):
+        chat_unread = await db.messages.count_documents({"sender": "tenant", "read_by_admin": False})
+    elif user.get("role") == "tenant" and user.get("tenant_id"):
+        chat_unread = await db.messages.count_documents(
+            {"tenant_id": user["tenant_id"], "sender": "admin", "read_by_tenant": False})
+    return {"notifications": count, "chat": chat_unread, "total": count + chat_unread}
 
 
 # ============ REMINDERS ============

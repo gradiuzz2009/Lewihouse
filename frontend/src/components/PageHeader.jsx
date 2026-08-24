@@ -1,8 +1,9 @@
 import React from "react";
 import { ChevronLeft, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import NotificationBell from "./NotificationBell";
 
-export function PageHeader({ title, subtitle, onBack, action, testid = "page-header" }) {
+export function PageHeader({ title, subtitle, onBack, action, testid = "page-header", showBell = true }) {
   const nav = useNavigate();
   return (
     <div className="px-6 pt-8 pb-4 flex items-start justify-between" data-testid={testid}>
@@ -22,7 +23,10 @@ export function PageHeader({ title, subtitle, onBack, action, testid = "page-hea
           {subtitle && <p className="text-xs text-subtle mt-1">{subtitle}</p>}
         </div>
       </div>
-      {action}
+      <div className="flex items-center gap-2">
+        {showBell && <NotificationBell />}
+        {action}
+      </div>
     </div>
   );
 }

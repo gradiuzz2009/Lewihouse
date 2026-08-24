@@ -9,11 +9,13 @@ import Bills from "./pages/Bills";
 import Complaints from "./pages/Complaints";
 import Access from "./pages/Access";
 import Activity from "./pages/Activity";
+import Chat from "./pages/Chat";
 import Login from "./pages/Login";
+import TenantPortal from "./pages/TenantPortal";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import "./App.css";
 
-function Protected({ children }) {
+function AdminProtected({ children }) {
   const { user } = useAuth();
   if (user === null)
     return (
@@ -22,28 +24,62 @@ function Protected({ children }) {
       </div>
     );
   if (!user) return <Navigate to="/login" replace />;
+  if (user.role === "tenant") return <Navigate to="/portal" replace />;
   return children;
+}
+
+function TenantProtected({ children }) {
+  const { user } = useAuth();
+  if (user === null)
+    return (
+      <div className="min-h-screen grid place-items-center bg-bg" data-testid="auth-loading">
+        <p className="font-serif text-primary text-lg animate-pulse">Lewi House</p>
+      </div>
+    );
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== "tenant") return <Navigate to="/" replace />;
+  return children;
+}
+
+function PostLoginRedirect() {
+  const { user } = useAuth();
+  if (user === null)
+    return (
+      <div className="min-h-screen grid place-items-center bg-bg">
+        <p className="font-serif text-primary text-lg animate-pulse">Lewi House</p>
+      </div>
+    );
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === "tenant") return <Navigate to="/portal" replace />;
+  return <Dashboard />;
 }
 
 function Shell() {
   const loc = useLocation();
+  const { user } = useAuth();
   const isLogin = loc.pathname === "/login";
+  const isPortal = loc.pathname.startsWith("/portal");
+  const showAdminNav = !isLogin && !isPortal && user && user.role !== "tenant";
+
   return (
     <div
-      className="max-w-md mx-auto min-h-screen bg-bg relative pb-24 shadow-lifted overflow-x-hidden"
+      className={`${isPortal ? "" : "max-w-md"} mx-auto min-h-screen bg-bg relative ${showAdminNav ? "pb-24" : ""} shadow-lifted overflow-x-hidden`}
       data-testid="app-shell"
     >
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route path="/" element={<Protected><Dashboard /></Protected>} />
-        <Route path="/rooms" element={<Protected><Rooms /></Protected>} />
-        <Route path="/tenants" element={<Protected><Tenants /></Protected>} />
-        <Route path="/bills" element={<Protected><Bills /></Protected>} />
-        <Route path="/complaints" element={<Protected><Complaints /></Protected>} />
-        <Route path="/access" element={<Protected><Access /></Protected>} />
-        <Route path="/activity" element={<Protected><Activity /></Protected>} />
+        <Route path="/" element={<PostLoginRedirect />} />
+        <Route path="/rooms" element={<AdminProtected><Rooms /></AdminProtected>} />
+        <Route path="/tenants" element={<AdminProtected><Tenants /></AdminProtected>} />
+        <Route path="/bills" element={<AdminProtected><Bills /></AdminProtected>} />
+        <Route path="/complaints" element={<AdminProtected><Complaints /></AdminProtected>} />
+        <Route path="/access" element={<AdminProtected><Access /></AdminProtected>} />
+        <Route path="/activity" element={<AdminProtected><Activity /></AdminProtected>} />
+        <Route path="/chat" element={<AdminProtected><Chat /></AdminProtected>} />
+        <Route path="/portal" element={<TenantProtected><TenantPortal /></TenantProtected>} />
+        <Route path="/portal/*" element={<TenantProtected><TenantPortal /></TenantProtected>} />
       </Routes>
-      {!isLogin && <BottomNav />}
+      {showAdminNav && <BottomNav />}
       <Toaster
         position="bottom-center"
         offset={90}
