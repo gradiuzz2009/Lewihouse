@@ -7,8 +7,11 @@ load_dotenv(ROOT_DIR / ".env")
 import os
 import secrets
 import random
+import json
+import asyncio
 import bcrypt
 import jwt
+from pywebpush import webpush, WebPushException
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -22,6 +25,9 @@ MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
 JWT_SECRET = os.environ["JWT_SECRET"]
 JWT_ALGORITHM = "HS256"
+VAPID_PUBLIC_KEY = os.environ["VAPID_PUBLIC_KEY"]
+VAPID_PRIVATE_KEY_FILE = str(ROOT_DIR / os.environ["VAPID_PRIVATE_KEY_FILE"])
+VAPID_SUBJECT = os.environ["VAPID_SUBJECT"]
 
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
@@ -93,12 +99,33 @@ async def get_current_user(request: Request) -> dict:
 
 
 auth_router = APIRouter(prefix="/api/auth")
-api = APIRouter(prefix="/api", dependencies=[Depends(get_current_user)])
+
+
+async def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    if user.get("role") == "tenant":
+        raise HTTPException(status_code=403, detail="Admin only")
+    return user
+
+
+async def require_tenant(user: dict = Depends(get_current_user)) -> dict:
+    if user.get("role") != "tenant" or not user.get("tenant_id"):
+        raise HTTPException(status_code=403, detail="Tenant only")
+    return user
+
+
+api = APIRouter(prefix="/api", dependencies=[Depends(require_admin)])
+portal = APIRouter(prefix="/api/portal")
+common = APIRouter(prefix="/api", dependencies=[Depends(get_current_user)])
 
 
 class LoginPayload(BaseModel):
-    email: str
+    email: Optional[str] = None
+    identifier: Optional[str] = None
     password: str
+
+
+def norm_phone(p: str) -> str:
+    return "".join(ch for ch in (p or "") if ch.isdigit())
 
 
 def set_auth_cookies(response: Response, access: str, refresh: str):
@@ -108,29 +135,36 @@ def set_auth_cookies(response: Response, access: str, refresh: str):
 
 @auth_router.post("/login")
 async def login(payload: LoginPayload, request: Request, response: Response):
-    email = payload.email.strip().lower()
-    identifier = email
+    ident = (payload.identifier or payload.email or "").strip().lower()
+    if not ident:
+        raise HTTPException(status_code=400, detail="Email / No. HP wajib diisi")
+    identifier = ident
     attempt = await db.login_attempts.find_one({"identifier": identifier})
     if attempt and attempt.get("count", 0) >= 5:
         locked_at = datetime.fromisoformat(attempt["last_at"])
         if datetime.now(timezone.utc) - locked_at < timedelta(minutes=15):
             raise HTTPException(status_code=429, detail="Terlalu banyak percobaan. Coba lagi 15 menit.")
         await db.login_attempts.delete_one({"identifier": identifier})
-    user = await db.users.find_one({"email": email})
+    if "@" in ident:
+        user = await db.users.find_one({"email": ident})
+    else:
+        user = await db.users.find_one({"phone": norm_phone(ident)})
     if not user or not verify_password(payload.password, user["password_hash"]):
         await db.login_attempts.update_one(
             {"identifier": identifier},
             {"$inc": {"count": 1}, "$set": {"last_at": now_iso()}},
             upsert=True,
         )
-        raise HTTPException(status_code=401, detail="Email atau password salah")
+        raise HTTPException(status_code=401, detail="Email/No. HP atau password salah")
     await db.login_attempts.delete_one({"identifier": identifier})
     uid = str(user["_id"])
-    access = create_access_token(uid, email, user.get("role", "admin"))
+    role = user.get("role", "admin")
+    access = create_access_token(uid, user.get("email") or user.get("phone", ""), role)
     refresh = create_refresh_token(uid)
     set_auth_cookies(response, access, refresh)
-    await log_audit("system", "LOGIN", "user", uid, {"email": email})
-    return {"user": {"id": uid, "email": email, "name": user.get("name"), "role": user.get("role", "admin")},
+    await log_audit("system", "LOGIN", "user", uid, {"identifier": ident, "role": role})
+    return {"user": {"id": uid, "email": user.get("email"), "phone": user.get("phone"),
+                     "name": user.get("name"), "role": role, "tenant_id": user.get("tenant_id")},
             "access_token": access}
 
 
@@ -158,7 +192,7 @@ async def refresh_token(request: Request, response: Response):
         user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
-        access = create_access_token(str(user["_id"]), user["email"], user.get("role", "admin"))
+        access = create_access_token(str(user["_id"]), user.get("email") or user.get("phone", ""), user.get("role", "admin"))
         response.set_cookie("access_token", access, httponly=True, secure=True, samesite="none", max_age=43200, path="/")
         return {"access_token": access}
     except jwt.InvalidTokenError:
@@ -242,6 +276,7 @@ class Tenant(TenantBase):
     id: str
     status: str = "pending_assignment"  # pending_assignment | active | former
     deposit_settlement: Optional[dict] = None
+    portal_password: Optional[str] = None
     created_at: str
 
 
@@ -505,7 +540,11 @@ async def move_in(tenant_id: str, user: dict = Depends(get_current_user)):
         "status": "active", "created_at": now_iso(), "revoked_at": None,
     })
     await log_audit(user["email"], "MOVE_IN", "tenant", tenant_id, {"name": d["name"], "pin_issued": True})
+    portal_pw = await create_portal_account(tenant_id, d)
+    await notify_tenant(tenant_id, "welcome", {"name": d["name"]},
+                        "Selamat datang di Lewi House", "Akun portal Anda aktif. Cek tagihan & ajukan tiket di sini.")
     d["status"] = "active"
+    d["portal_password"] = portal_pw
     return doc_to(Tenant, d)
 
 
@@ -538,6 +577,7 @@ async def move_out(tenant_id: str, payload: MoveOutPayload, user: dict = Depends
     )
     await log_audit(user["email"], "MOVE_OUT", "tenant", tenant_id,
                     {"name": d["name"], "refund": refund, "deductions": total_deduction})
+    await remove_portal_account(tenant_id)
     d.update({"status": "former", "deposit_settlement": settlement, "room_id": None})
     return doc_to(Tenant, d)
 
@@ -552,6 +592,7 @@ async def delete_tenant(tenant_id: str, user: dict = Depends(get_current_user)):
     await db.access_tokens.update_many({"tenant_id": tenant_id, "status": "active"},
                                        {"$set": {"status": "revoked", "revoked_at": now_iso()}})
     await db.tenants.delete_one({"_id": oid(tenant_id)})
+    await remove_portal_account(tenant_id)
     await log_audit(user["email"], "DELETE", "tenant", tenant_id)
     return {"ok": True}
 
@@ -785,6 +826,422 @@ async def revoke_access_token(token_id: str, user: dict = Depends(get_current_us
     return {"ok": True}
 
 
+# ============ PORTAL ACCOUNTS ============
+async def create_portal_account(tenant_id: str, tenant: dict) -> str:
+    phone = norm_phone(tenant.get("phone", ""))
+    if not phone:
+        return None
+    pw = "lewi" + (phone[-4:] if len(phone) >= 4 else phone)
+    existing = await db.users.find_one({"phone": phone, "role": "tenant"})
+    if existing:
+        await db.users.update_one({"_id": existing["_id"]},
+                                  {"$set": {"tenant_id": tenant_id, "name": tenant["name"],
+                                            "password_hash": hash_password(pw)}})
+    else:
+        await db.users.insert_one({
+            "phone": phone, "email": tenant.get("email"), "name": tenant["name"],
+            "role": "tenant", "tenant_id": tenant_id,
+            "password_hash": hash_password(pw), "created_at": now_iso(),
+        })
+    await db.tenants.update_one({"_id": ObjectId(tenant_id)}, {"$set": {"portal_password": pw}})
+    return pw
+
+
+async def remove_portal_account(tenant_id: str):
+    users = await db.users.find({"tenant_id": tenant_id, "role": "tenant"}).to_list(10)
+    for u in users:
+        await db.push_subscriptions.delete_many({"user_id": str(u["_id"])})
+    await db.users.delete_many({"tenant_id": tenant_id, "role": "tenant"})
+    await db.tenants.update_one({"_id": ObjectId(tenant_id)}, {"$set": {"portal_password": None}})
+
+
+@api.post("/tenants/{tenant_id}/reset-portal-password")
+async def reset_portal_password(tenant_id: str, user: dict = Depends(get_current_user)):
+    d = await db.tenants.find_one({"_id": oid(tenant_id)})
+    if not d:
+        raise HTTPException(404, "Tenant not found")
+    phone = norm_phone(d.get("phone", ""))
+    acct = await db.users.find_one({"tenant_id": tenant_id, "role": "tenant"})
+    if not acct and d.get("status") != "active":
+        raise HTTPException(400, "Penghuni belum aktif")
+    pw = f"{random.SystemRandom().randint(0, 999999):06d}"
+    if acct:
+        await db.users.update_one({"_id": acct["_id"]}, {"$set": {"password_hash": hash_password(pw), "phone": phone}})
+    else:
+        await db.users.insert_one({"phone": phone, "email": d.get("email"), "name": d["name"], "role": "tenant",
+                                   "tenant_id": tenant_id, "password_hash": hash_password(pw), "created_at": now_iso()})
+    await db.tenants.update_one({"_id": oid(tenant_id)}, {"$set": {"portal_password": pw}})
+    await log_audit(user["email"], "PORTAL_RESET", "tenant", tenant_id, {"name": d["name"]})
+    return {"ok": True, "portal_password": pw, "phone": phone}
+
+
+# ============ PUSH NOTIFICATIONS ============
+async def send_push_to_user(user_id: str, title: str, body: str, url: str = "/"):
+    subs = await db.push_subscriptions.find({"user_id": user_id}).to_list(20)
+    payload = json.dumps({"title": title, "body": body, "url": url})
+    for s in subs:
+        try:
+            webpush(
+                subscription_info=s["subscription"],
+                data=payload,
+                vapid_private_key=VAPID_PRIVATE_KEY_FILE,
+                vapid_claims={"sub": VAPID_SUBJECT},
+            )
+        except WebPushException:
+            await db.push_subscriptions.delete_one({"_id": s["_id"]})
+        except Exception:
+            pass
+
+
+async def notify_tenant(tenant_id: str, ntype: str, data: dict, title: str, body: str, url: str = "/"):
+    acct = await db.users.find_one({"tenant_id": tenant_id, "role": "tenant"})
+    if not acct:
+        return
+    uid = str(acct["_id"])
+    await db.notifications.insert_one({
+        "user_id": uid, "tenant_id": tenant_id, "type": ntype, "data": data,
+        "title": title, "body": body, "url": url, "read": False, "created_at": now_iso(),
+    })
+    await send_push_to_user(uid, title, body, url)
+
+
+async def notify_admins(ntype: str, data: dict, title: str, body: str, url: str = "/"):
+    admins = await db.users.find({"role": {"$in": ["owner", "admin", "staff"]}}).to_list(20)
+    for a in admins:
+        uid = str(a["_id"])
+        await db.notifications.insert_one({
+            "user_id": uid, "tenant_id": None, "type": ntype, "data": data,
+            "title": title, "body": body, "url": url, "read": False, "created_at": now_iso(),
+        })
+        await send_push_to_user(uid, title, body, url)
+
+
+@common.get("/push/vapid-key")
+async def get_vapid_key():
+    return {"public_key": VAPID_PUBLIC_KEY}
+
+
+class SubscribePayload(BaseModel):
+    subscription: dict
+
+
+@common.post("/push/subscribe")
+async def push_subscribe(payload: SubscribePayload, user: dict = Depends(get_current_user)):
+    endpoint = payload.subscription.get("endpoint")
+    if not endpoint:
+        raise HTTPException(400, "Invalid subscription")
+    await db.push_subscriptions.update_one(
+        {"user_id": user["id"], "subscription.endpoint": endpoint},
+        {"$set": {"user_id": user["id"], "subscription": payload.subscription, "created_at": now_iso()}},
+        upsert=True,
+    )
+    return {"ok": True}
+
+
+@common.get("/notifications")
+async def my_notifications(user: dict = Depends(get_current_user)):
+    docs = await db.notifications.find({"user_id": user["id"]}).sort("created_at", -1).to_list(50)
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+    return docs
+
+
+@common.post("/notifications/read-all")
+async def read_all_notifications(user: dict = Depends(get_current_user)):
+    await db.notifications.update_many({"user_id": user["id"]}, {"$set": {"read": True}})
+    return {"ok": True}
+
+
+# ============ CHAT ============
+class MessagePayload(BaseModel):
+    text: str
+
+
+async def _get_messages(tenant_id: str):
+    docs = await db.messages.find({"tenant_id": tenant_id}).sort("created_at", 1).to_list(500)
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+    return docs
+
+
+@api.get("/chat/threads")
+async def chat_threads():
+    tenants = await db.tenants.find({"status": "active"}).to_list(500)
+    threads = []
+    for t in tenants:
+        tid = str(t["_id"])
+        last = await db.messages.find({"tenant_id": tid}).sort("created_at", -1).to_list(1)
+        unread = await db.messages.count_documents({"tenant_id": tid, "sender": "tenant", "read_by_admin": False})
+        threads.append({
+            "tenant_id": tid, "name": t["name"], "avatar_url": t.get("avatar_url"),
+            "room_id": t.get("room_id"),
+            "last_message": last[0]["text"] if last else None,
+            "last_at": last[0]["created_at"] if last else None,
+            "unread": unread,
+        })
+    threads.sort(key=lambda x: x["last_at"] or "", reverse=True)
+    return threads
+
+
+@api.get("/chat/unread-count")
+async def chat_unread_count():
+    n = await db.messages.count_documents({"sender": "tenant", "read_by_admin": False})
+    return {"unread": n}
+
+
+@api.get("/chat/{tenant_id}/messages")
+async def admin_get_messages(tenant_id: str):
+    await db.messages.update_many({"tenant_id": tenant_id, "sender": "tenant"}, {"$set": {"read_by_admin": True}})
+    return await _get_messages(tenant_id)
+
+
+@api.post("/chat/{tenant_id}/messages")
+async def admin_send_message(tenant_id: str, payload: MessagePayload, user: dict = Depends(get_current_user)):
+    if not payload.text.strip():
+        raise HTTPException(400, "Pesan kosong")
+    doc = {"tenant_id": tenant_id, "sender": "admin", "sender_name": user.get("name") or "Admin",
+           "text": payload.text.strip(), "created_at": now_iso(),
+           "read_by_admin": True, "read_by_tenant": False}
+    r = await db.messages.insert_one(doc)
+    doc["id"] = str(r.inserted_id)
+    doc.pop("_id", None)
+    await notify_tenant(tenant_id, "chat", {"from": "admin"}, "Pesan dari Pengelola", payload.text.strip()[:100], "/portal/chat")
+    return doc
+
+
+# ============ TENANT REQUESTS ============
+REQUEST_TYPES = ["renewal", "checkout", "other"]
+
+
+class RequestPayload(BaseModel):
+    request_type: str
+    note: Optional[str] = None
+
+
+@api.get("/requests")
+async def list_requests(status: Optional[str] = None):
+    q = {"status": status} if status else {}
+    docs = await db.requests.find(q).sort("created_at", -1).to_list(200)
+    out = []
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+        t = None
+        if d.get("tenant_id"):
+            t = await db.tenants.find_one({"_id": ObjectId(d["tenant_id"])})
+        d["tenant_name"] = t["name"] if t else "-"
+        out.append(d)
+    return out
+
+
+class RequestStatusPayload(BaseModel):
+    status: str  # approved | rejected
+
+
+@api.post("/requests/{req_id}/status")
+async def update_request(req_id: str, payload: RequestStatusPayload, user: dict = Depends(get_current_user)):
+    if payload.status not in ("approved", "rejected"):
+        raise HTTPException(400, "Status tidak valid")
+    d = await db.requests.find_one({"_id": oid(req_id)})
+    if not d:
+        raise HTTPException(404, "Request not found")
+    await db.requests.update_one({"_id": oid(req_id)},
+                                 {"$set": {"status": payload.status, "resolved_at": now_iso()}})
+    await log_audit(user["email"], "REQUEST_" + payload.status.upper(), "request", req_id,
+                    {"type": d.get("request_type")})
+    label = "disetujui" if payload.status == "approved" else "ditolak"
+    await notify_tenant(d["tenant_id"], "request_update",
+                        {"request_type": d.get("request_type"), "status": payload.status},
+                        "Update Pengajuan", f"Pengajuan {d.get('request_type')} Anda {label}.", "/portal")
+    return {"ok": True, "status": payload.status}
+
+
+# ============ TENANT PORTAL ============
+@portal.get("/me")
+async def portal_me(user: dict = Depends(require_tenant)):
+    t = await db.tenants.find_one({"_id": ObjectId(user["tenant_id"])})
+    if not t:
+        raise HTTPException(404, "Tenant not found")
+    room = await db.rooms.find_one({"_id": ObjectId(t["room_id"])}) if t.get("room_id") else None
+    t["id"] = str(t.pop("_id"))
+    t.pop("portal_password", None)
+    if room:
+        room["id"] = str(room.pop("_id"))
+    return {"tenant": t, "room": room}
+
+
+@portal.get("/bills")
+async def portal_bills(user: dict = Depends(require_tenant)):
+    docs = await db.bills.find({"tenant_id": user["tenant_id"]}).sort("created_at", -1).to_list(200)
+    return [doc_to(Bill, derive_bill(d)) for d in docs]
+
+
+@portal.get("/tickets")
+async def portal_tickets(user: dict = Depends(require_tenant)):
+    docs = await db.complaints.find({"tenant_id": user["tenant_id"]}).sort("created_at", -1).to_list(200)
+    return [doc_to(Ticket, d) for d in docs]
+
+
+class PortalTicketPayload(BaseModel):
+    title: str
+    description: Optional[str] = None
+    category: str = "other"
+    priority: str = "medium"
+
+
+@portal.post("/tickets")
+async def portal_create_ticket(payload: PortalTicketPayload, user: dict = Depends(require_tenant)):
+    t = await db.tenants.find_one({"_id": ObjectId(user["tenant_id"])})
+    doc = {
+        "tenant_id": user["tenant_id"], "room_id": t.get("room_id") if t else None,
+        "title": payload.title, "description": payload.description,
+        "category": payload.category, "priority": payload.priority,
+        "status": "pending", "assignee": None, "scheduled_at": None,
+        "cost_material": 0, "cost_labor": 0, "created_at": now_iso(), "resolved_at": None,
+    }
+    r = await db.complaints.insert_one(doc)
+    await log_audit(user.get("phone") or user.get("name", "tenant"), "CREATE", "ticket", str(r.inserted_id),
+                    {"title": payload.title, "by": "tenant"})
+    await notify_admins("ticket_new", {"title": payload.title, "tenant": t["name"] if t else ""},
+                        "Tiket Baru dari Penghuni", f"{t['name'] if t else 'Penghuni'}: {payload.title}", "/complaints")
+    return doc_to(Ticket, {**doc, "_id": r.inserted_id})
+
+
+@portal.get("/messages")
+async def portal_messages(user: dict = Depends(require_tenant)):
+    await db.messages.update_many({"tenant_id": user["tenant_id"], "sender": "admin"},
+                                  {"$set": {"read_by_tenant": True}})
+    return await _get_messages(user["tenant_id"])
+
+
+@portal.post("/messages")
+async def portal_send_message(payload: MessagePayload, user: dict = Depends(require_tenant)):
+    if not payload.text.strip():
+        raise HTTPException(400, "Pesan kosong")
+    doc = {"tenant_id": user["tenant_id"], "sender": "tenant", "sender_name": user.get("name") or "Penghuni",
+           "text": payload.text.strip(), "created_at": now_iso(),
+           "read_by_admin": False, "read_by_tenant": True}
+    r = await db.messages.insert_one(doc)
+    doc["id"] = str(r.inserted_id)
+    doc.pop("_id", None)
+    await notify_admins("chat", {"tenant_id": user["tenant_id"]},
+                        f"Pesan dari {user.get('name', 'Penghuni')}", payload.text.strip()[:100], "/chat")
+    return doc
+
+
+@portal.get("/requests")
+async def portal_requests(user: dict = Depends(require_tenant)):
+    docs = await db.requests.find({"tenant_id": user["tenant_id"]}).sort("created_at", -1).to_list(50)
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+    return docs
+
+
+@portal.post("/requests")
+async def portal_create_request(payload: RequestPayload, user: dict = Depends(require_tenant)):
+    if payload.request_type not in REQUEST_TYPES:
+        raise HTTPException(400, "Tipe pengajuan tidak valid")
+    pending = await db.requests.find_one({"tenant_id": user["tenant_id"], "request_type": payload.request_type,
+                                          "status": "pending"})
+    if pending:
+        raise HTTPException(400, "Pengajuan serupa masih menunggu persetujuan")
+    doc = {"tenant_id": user["tenant_id"], "request_type": payload.request_type,
+           "note": payload.note, "status": "pending", "created_at": now_iso(), "resolved_at": None}
+    r = await db.requests.insert_one(doc)
+    doc["id"] = str(r.inserted_id)
+    doc.pop("_id", None)
+    t = await db.tenants.find_one({"_id": ObjectId(user["tenant_id"])})
+    await log_audit(user.get("phone", "tenant"), "REQUEST_NEW", "request", doc["id"],
+                    {"type": payload.request_type, "name": t["name"] if t else ""})
+    await notify_admins("request_new", {"request_type": payload.request_type},
+                        "Pengajuan Baru", f"{t['name'] if t else 'Penghuni'} mengajukan {payload.request_type}.", "/")
+    return doc
+
+
+# ============ REMINDERS ============
+def _bill_stage(d: dict):
+    if d.get("status") == "paid" or not d.get("due_date"):
+        return None
+    try:
+        due = date.fromisoformat(d["due_date"])
+    except ValueError:
+        return None
+    days = (due - datetime.now(timezone.utc).date()).days
+    if 0 <= days <= 3:
+        return "due_soon"
+    if days < 0:
+        late = -days
+        return "overdue_1" if late <= 3 else ("overdue_2" if late <= 7 else "overdue_3")
+    return None
+
+
+async def run_reminder_sweep(actor: str) -> int:
+    bills = await db.bills.find({"status": {"$in": ["unpaid", "partially_paid"]}}).to_list(2000)
+    sent = 0
+    for b in bills:
+        stage = _bill_stage(b)
+        if not stage:
+            continue
+        bid = str(b["_id"])
+        already = await db.reminder_log.find_one({"bill_id": bid, "stage": stage})
+        if already:
+            continue
+        acct = await db.users.find_one({"tenant_id": b["tenant_id"], "role": "tenant"})
+        if not acct:
+            continue
+        remaining = b.get("total", 0) - b.get("amount_paid", 0)
+        inv = b.get("invoice_number", "")
+        if stage == "due_soon":
+            title = "Tagihan Segera Jatuh Tempo"
+            body = f"{inv}: Rp {remaining:,.0f} jatuh tempo {b.get('due_date')}. Mohon segera dibayar."
+        else:
+            title = "Tagihan Terlambat"
+            body = f"{inv}: Rp {remaining:,.0f} telah melewati jatuh tempo {b.get('due_date')}."
+        await notify_tenant(b["tenant_id"], "bill_reminder",
+                            {"stage": stage, "invoice": inv, "amount": remaining, "due_date": b.get("due_date")},
+                            title, body.replace(",", "."), "/portal/bills")
+        await db.reminder_log.insert_one({"bill_id": bid, "stage": stage, "sent_at": now_iso(), "actor": actor})
+        sent += 1
+    if sent:
+        await log_audit(actor, "REMINDER_RUN", "bill", "sweep", {"sent": sent})
+    return sent
+
+
+@api.get("/reminders/preview")
+async def reminders_preview():
+    bills = await db.bills.find({"status": {"$in": ["unpaid", "partially_paid"]}}).to_list(2000)
+    out = []
+    for b in bills:
+        stage = _bill_stage(b)
+        if not stage:
+            continue
+        bid = str(b["_id"])
+        t = await db.tenants.find_one({"_id": ObjectId(b["tenant_id"])}) if b.get("tenant_id") else None
+        already = await db.reminder_log.find_one({"bill_id": bid, "stage": stage})
+        out.append({
+            "bill_id": bid, "invoice_number": b.get("invoice_number"),
+            "tenant_id": b.get("tenant_id"), "tenant_name": t["name"] if t else "-",
+            "phone": t.get("phone") if t else None,
+            "amount": b.get("total", 0) - b.get("amount_paid", 0),
+            "due_date": b.get("due_date"), "stage": stage, "already_sent": bool(already),
+        })
+    return out
+
+
+@api.post("/reminders/send")
+async def reminders_send(user: dict = Depends(get_current_user)):
+    sent = await run_reminder_sweep(user["email"])
+    return {"ok": True, "sent": sent}
+
+
+async def reminder_loop():
+    while True:
+        try:
+            await run_reminder_sweep("system")
+        except Exception:
+            pass
+        await asyncio.sleep(21600)
+
+
 # ============ DASHBOARD & REPORTS ============
 @api.get("/dashboard/summary")
 async def dashboard_summary():
@@ -846,8 +1303,10 @@ async def monthly_report(months: int = 6):
 # ============ SEED ============
 @api.post("/seed")
 async def seed_data(user: dict = Depends(get_current_user)):
-    for col in ["rooms", "tenants", "bills", "complaints", "access_tokens", "audit_logs"]:
+    for col in ["rooms", "tenants", "bills", "complaints", "access_tokens", "audit_logs",
+                "messages", "requests", "notifications", "reminder_log"]:
         await db[col].delete_many({})
+    await db.users.delete_many({"role": "tenant"})
 
     rooms_seed = [
         {"name": "K-101", "floor": "1", "wing": "A", "room_type": "standard", "capacity": 1, "price": 1500000, "deposit": 1500000, "status": "occupied", "facilities": ["AC", "WiFi", "Kamar Mandi Dalam"], "photo_url": "https://customer-assets-0z36b82j.emergentagent.net/job_dorm-hub-31/artifacts/styxa5t5_agoda-12-superior-single.webp", "notes": ""},
@@ -945,6 +1404,24 @@ async def seed_data(user: dict = Depends(get_current_user)):
         tk["created_at"] = now_iso()
         await db.access_tokens.insert_one(tk)
 
+    for i in [0, 1, 2]:
+        t = await db.tenants.find_one({"_id": ObjectId(tenant_ids[i])})
+        await create_portal_account(tenant_ids[i], t)
+
+    await db.messages.insert_many([
+        {"tenant_id": tenant_ids[0], "sender": "tenant", "sender_name": "Arya Wibowo",
+         "text": "Selamat pagi Pak, kran wastafel kamar saya masih menetes. Kapan bisa diperbaiki?",
+         "created_at": now_iso(), "read_by_admin": False, "read_by_tenant": True},
+        {"tenant_id": tenant_ids[1], "sender": "admin", "sender_name": "Admin Lewi House",
+         "text": "Halo Sinta, tagihan bulan ini sudah terbit ya. Terima kasih!",
+         "created_at": now_iso(), "read_by_admin": True, "read_by_tenant": False},
+    ])
+    await db.requests.insert_one({
+        "tenant_id": tenant_ids[2], "request_type": "renewal",
+        "note": "Saya ingin perpanjang sewa 1 tahun lagi.", "status": "pending",
+        "created_at": now_iso(), "resolved_at": None,
+    })
+
     await log_audit(user["email"], "SEED", "system", "seed", {"rooms": len(rooms_seed), "tenants": len(tenants_seed)})
     return {"ok": True, "rooms": len(rooms_seed), "tenants": len(tenants_seed), "bills": len(bills), "tickets": len(tickets), "tokens": len(tokens)}
 
@@ -956,6 +1433,8 @@ async def root():
 
 app.include_router(auth_router)
 app.include_router(api)
+app.include_router(common)
+app.include_router(portal)
 
 _origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",")]
 if "*" in _origins:
@@ -978,9 +1457,18 @@ else:
 
 @app.on_event("startup")
 async def startup():
-    await db.users.create_index("email", unique=True)
+    try:
+        await db.users.drop_index("email_1")
+    except Exception:
+        pass
+    await db.users.create_index("email", unique=True, sparse=True)
+    await db.users.create_index("phone", sparse=True)
     await db.login_attempts.create_index("identifier")
     await db.rooms.create_index("name")
+    await db.messages.create_index([("tenant_id", 1), ("created_at", 1)])
+    await db.notifications.create_index([("user_id", 1), ("created_at", -1)])
+    await db.reminder_log.create_index([("bill_id", 1), ("stage", 1)])
+    asyncio.create_task(reminder_loop())
     admin_email = os.environ["ADMIN_EMAIL"].lower()
     admin_password = os.environ["ADMIN_PASSWORD"]
     existing = await db.users.find_one({"email": admin_email})

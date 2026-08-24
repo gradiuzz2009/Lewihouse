@@ -21,10 +21,11 @@ export function AuthProvider({ children }) {
       });
   }, []);
 
-  const login = async (email, password) => {
-    const { data } = await api.post("/auth/login", { email, password });
+  const login = async (identifier, password) => {
+    const { data } = await api.post("/auth/login", { identifier, password });
     localStorage.setItem("lh_token", data.access_token);
     setUser(data.user);
+    return data.user;
   };
 
   const logout = async () => {
