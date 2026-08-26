@@ -1,0 +1,29 @@
+{
+  "short_name": "Lewi House",
+  "name": "Lewi House - Manajemen Kostan",
+  "description": "Aplikasi manajemen kostan Lewi House. Kelola kamar, penghuni, tagihan, dan maintenance dari HP Anda.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#1A362B",
+  "background_color": "#FDFBF7",
+  "categories": ["business", "productivity"],
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/logo192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

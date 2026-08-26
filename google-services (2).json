@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "291852041359",
+    "project_id": "lewihouse",
+    "storage_bucket": "lewihouse.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:291852041359:android:d940495c6d8c58397084fa",
+        "android_client_info": {
+          "package_name": "com.aistudio.lewihouse.pmzkx"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "291852041359-cksg1peocd176pbjc4k9gqlp11v64k5l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBE1KJSshladTuLTI5crEAUgAJ8bCFuHFA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "291852041359-cksg1peocd176pbjc4k9gqlp11v64k5l.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:291852041359:android:25bff829800e2a687084fa",
+        "android_client_info": {
+          "package_name": "com.lewihouse.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "291852041359-cksg1peocd176pbjc4k9gqlp11v64k5l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBE1KJSshladTuLTI5crEAUgAJ8bCFuHFA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "291852041359-cksg1peocd176pbjc4k9gqlp11v64k5l.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

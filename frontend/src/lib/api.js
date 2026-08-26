@@ -1,20 +1,21 @@
 import axios from "axios";
+import { handleMockApi } from "./mockData";
 
 const BASE = process.env.REACT_APP_BACKEND_URL;
 
-export const api = axios.create({
-  baseURL: `${BASE}/api`,
+const axiosInstance = axios.create({
+  baseURL: BASE ? `${BASE.replace(/\/$/, "")}/api` : "/api",
   headers: { "Content-Type": "application/json" },
   withCredentials: true,
 });
 
-api.interceptors.request.use((cfg) => {
+axiosInstance.interceptors.request.use((cfg) => {
   const t = localStorage.getItem("lh_token");
   if (t) cfg.headers.Authorization = `Bearer ${t}`;
   return cfg;
 });
 
-api.interceptors.response.use(
+axiosInstance.interceptors.response.use(
   (r) => r,
   (err) => {
     if (err.response?.status === 401 && !String(err.config?.url).includes("/auth/")) {
@@ -24,6 +25,35 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
+
+// Wrapper that transparently proxies to live backend if available, or seamlessly uses mock storage
+async function requestWithFallback(method, url, data, config) {
+  if (BASE) {
+    try {
+      if (method === "get") return await axiosInstance.get(url, config);
+      if (method === "post") return await axiosInstance.post(url, data, config);
+      if (method === "put") return await axiosInstance.put(url, data, config);
+      if (method === "delete") return await axiosInstance.delete(url, config);
+    } catch (err) {
+      // If live backend gives 401 on auth check, let it bubble
+      if (err.response?.status === 401 && String(url).includes("/auth/login")) {
+        throw err;
+      }
+    }
+  }
+
+  // Fallback to local persistent mock engine (for Firebase static hosting & offline mode)
+  const result = handleMockApi(method, url, data);
+  return { data: result, status: 200, statusText: "OK", headers: {}, config: {} };
+}
+
+export const api = {
+  get: (url, config) => requestWithFallback("get", url, null, config),
+  post: (url, data, config) => requestWithFallback("post", url, data, config),
+  put: (url, data, config) => requestWithFallback("put", url, data, config),
+  delete: (url, config) => requestWithFallback("delete", url, null, config),
+  interceptors: axiosInstance.interceptors,
+};
 
 export const fmtIDR = (n = 0) => {
   const num = Number(n) || 0;

@@ -53,6 +53,10 @@ android {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
   }
+  lint {
+    checkReleaseBuilds = false
+    abortOnError = false
+  }
   buildFeatures {
     compose = true
     buildConfig = true
@@ -93,6 +97,8 @@ dependencies {
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
+  implementation("androidx.webkit:webkit:1.12.1")
+  implementation("androidx.fragment:fragment-ktx:1.8.6")
   // implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="40" fill="#1A362B"/>
+  <text x="96" y="115" text-anchor="middle" fill="#C6A87C" font-family="serif" font-size="72" font-weight="bold">LH</text>
+  <path d="M56 80 L96 52 L136 80" stroke="#C6A87C" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
