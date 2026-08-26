@@ -13,6 +13,11 @@ import json
 import asyncio
 import bcrypt
 import jwt
+import urllib.parse
+import hashlib
+import hmac
+import httpx
+import base64
 from pywebpush import webpush, WebPushException
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, WebSocket, WebSocketDisconnect, Query
 from starlette.websockets import WebSocketState
@@ -33,8 +38,10 @@ VAPID_PUBLIC_KEY = os.environ["VAPID_PUBLIC_KEY"]
 VAPID_PRIVATE_KEY_FILE = str(ROOT_DIR / os.environ["VAPID_PRIVATE_KEY_FILE"])
 VAPID_SUBJECT = os.environ["VAPID_SUBJECT"]
 
-client = AsyncIOMotorClient(MONGO_URL)
-db = client[DB_NAME]
+MIDTRANS_SERVER_KEY = os.environ.get("MIDTRANS_SERVER_KEY", "")
+MIDTRANS_CLIENT_KEY = os.environ.get("MIDTRANS_CLIENT_KEY", "")
+MIDTRANS_IS_PRODUCTION = os.environ.get("MIDTRANS_IS_PRODUCTION", "false").lower() == "true"
+MIDTRANS_SNAP_URL = "https://app.midtrans.com/snap/v1/transactions" if MIDTRANS_IS_PRODUCTION else "https://app.sandbox.midtrans.com/snap/v1/transactions"
 
 app = FastAPI(title="Lewi House API")
 
@@ -120,6 +127,7 @@ async def require_tenant(user: dict = Depends(get_current_user)) -> dict:
 api = APIRouter(prefix="/api", dependencies=[Depends(require_admin)])
 portal = APIRouter(prefix="/api/portal")
 common = APIRouter(prefix="/api", dependencies=[Depends(get_current_user)])
+payment_router = APIRouter(prefix="/api/payments")
 
 
 class LoginPayload(BaseModel):
@@ -492,8 +500,10 @@ async def create_tenant(payload: TenantCreate, user: dict = Depends(get_current_
             {"_id": oid(doc["room_id"])},
             {"$set": {"status": "reserved", "tenant_id": tid}},
         )
-    await log_audit(user["email"], "CREATE", "tenant", tid, {"name": doc["name"]})
-    return doc_to(Tenant, {**doc, "_id": r.inserted_id})
+    portal_pw = await create_portal_account(tid, doc)
+    doc["portal_password"] = portal_pw
+    await log_audit(user["email"], "CREATE", "tenant", tid, {"name": doc["name"], "app_password_generated": bool(portal_pw)})
+    return doc_to(Tenant, {**doc, "_id": r.inserted_id, "portal_password": portal_pw})
 
 
 @api.get("/tenants/{tenant_id}", response_model=Tenant)
@@ -501,6 +511,9 @@ async def get_tenant(tenant_id: str):
     d = await db.tenants.find_one({"_id": oid(tenant_id)})
     if not d:
         raise HTTPException(404, "Tenant not found")
+    if not d.get("portal_password"):
+        pw = await create_portal_account(tenant_id, d)
+        d["portal_password"] = pw
     return doc_to(Tenant, d)
 
 
@@ -518,6 +531,9 @@ async def update_tenant(tenant_id: str, payload: TenantCreate, user: dict = Depe
         if new_room:
             new_status = "occupied" if prev.get("status") == "active" else "reserved"
             await db.rooms.update_one({"_id": oid(new_room)}, {"$set": {"status": new_status, "tenant_id": tenant_id}})
+    if not prev.get("portal_password") or prev.get("phone") != upd.get("phone") or prev.get("email") != upd.get("email"):
+        portal_pw = await create_portal_account(tenant_id, {**prev, **upd})
+        upd["portal_password"] = portal_pw
     await log_audit(user["email"], "UPDATE", "tenant", tenant_id, {"name": upd["name"]})
     d = await db.tenants.find_one({"_id": oid(tenant_id)})
     return doc_to(Tenant, d)
@@ -716,6 +732,134 @@ async def delete_bill(bill_id: str, user: dict = Depends(get_current_user)):
     return {"ok": True}
 
 
+def format_whatsapp_reminder(bill: dict, tenant: dict, room: dict, stage: str = "due_soon") -> str:
+    tname = tenant.get("name", "Penghuni") if tenant else "Penghuni"
+    rname = room.get("name", "-") if room else "Kamar"
+    inv = bill.get("invoice_number", "-")
+    total = float(bill.get("total", 0))
+    paid = float(bill.get("amount_paid", 0))
+    remaining = max(0, total - paid)
+    due_date = bill.get("due_date", "-")
+    
+    greeting = f"Halo Kak *{tname}*,"
+    if stage == "due_soon":
+        header = "🔔 *PENGINGAT JATUH TEMPO TAGIHAN KOSAN (H-3)*"
+        intro = f"Berikut kami sampaikan rincian tagihan sewa kamar *{rname}* yang akan jatuh tempo pada *{due_date}*:"
+    elif stage == "due_today":
+        header = "⚠️ *PENGINGAT HARI JATUH TEMPO (H-0)*"
+        intro = f"Hari ini adalah batas waktu pembayaran tagihan sewa kamar *{rname}* ({due_date}):"
+    elif stage == "overdue_1":
+        header = "❗ *PEMBERITAHUAN KETERLAMBATAN (H+1)*"
+        intro = f"Tagihan sewa kamar *{rname}* telah melewati batas jatuh tempo ({due_date}). Mohon untuk segera melakukan pembayaran:"
+    elif stage in ("overdue_2", "overdue_3"):
+        header = "🚨 *SURAT PERINGATAN KETERLAMBATAN (FINAL NOTICE)*"
+        intro = f"Tagihan sewa kamar *{rname}* berstatus BELUM LUNAS melewati jatuh tempo ({due_date}). Mohon segera diselesaikan:"
+    else:
+        header = "📄 *RINCIAN TAGIHAN LEWI HOUSE*"
+        intro = f"Berikut adalah rincian tagihan sewa kamar *{rname}*:"
+
+    rincian = []
+    if bill.get("rent"): rincian.append(f"• Sewa Kamar: Rp {int(bill['rent']):,}".replace(",", "."))
+    if bill.get("electricity"): rincian.append(f"• Listrik / PLN: Rp {int(bill['electricity']):,}".replace(",", "."))
+    if bill.get("water"): rincian.append(f"• Air / PDAM: Rp {int(bill['water']):,}".replace(",", "."))
+    if bill.get("other"): rincian.append(f"• {bill.get('other_label') or 'Biaya Lain'}: Rp {int(bill['other']):,}".replace(",", "."))
+    if bill.get("late_fee"): rincian.append(f"• Denda Keterlambatan: Rp {int(bill['late_fee']):,}".replace(",", "."))
+    rincian_str = "\n".join(rincian) if rincian else "• Sewa Kamar Standar"
+
+    total_fmt = f"Rp {int(total):,}".replace(",", ".")
+    paid_fmt = f"Rp {int(paid):,}".replace(",", ".")
+    rem_fmt = f"Rp {int(remaining):,}".replace(",", ".")
+
+    msg = f"""{header}
+*LEWI HOUSE BOUTIQUE LIVING*
+
+{greeting}
+{intro}
+
+📋 *No. Invoice:* {inv}
+🏠 *Kamar:* {rname}
+🗓️ *Periode:* {bill.get('period', '-')}
+📅 *Jatuh Tempo:* {due_date}
+
+*Rincian Biaya:*
+{rincian_str}
+-------------------------
+💰 *Total Tagihan:* {total_fmt}
+💳 *Sudah Dibayar:* {paid_fmt}
+❗ *Sisa Pembayaran:* *{rem_fmt}*
+
+*Metode Pembayaran Resmi:*
+1. *Aplikasi Portal Penghuni* (QRIS Instant / Virtual Account)
+2. *Transfer Bank BCA:*
+   • No. Rekening: `8830912881`
+   • Atas Nama: *Lewi House Management*
+3. *Transfer Bank Mandiri:*
+   • No. Rekening: `1320098765432`
+   • Atas Nama: *Lewi House Management*
+
+_Setelah transfer, mohon konfirmasi via aplikasi portal atau chat ini._
+_Terima kasih atas kerjasamanya! 🙏_"""
+    return msg.strip()
+
+
+def to_wa_phone(raw: str) -> str:
+    digits = "".join(ch for ch in (raw or "") if ch.isdigit())
+    if digits.startswith("08"):
+        return "628" + digits[2:]
+    if digits.startswith("8"):
+        return "62" + digits
+    if digits.startswith("62"):
+        return digits
+    return digits
+
+
+@api.get("/bills/{bill_id}/whatsapp-link")
+async def get_bill_whatsapp_link(bill_id: str):
+    bill = await db.bills.find_one({"_id": oid(bill_id)})
+    if not bill:
+        raise HTTPException(404, "Bill not found")
+    tenant = await db.tenants.find_one({"_id": ObjectId(bill["tenant_id"])}) if bill.get("tenant_id") else None
+    room = await db.rooms.find_one({"_id": ObjectId(bill["room_id"])}) if bill.get("room_id") else None
+    stage = _bill_stage(bill) or "info"
+    phone_clean = to_wa_phone(tenant.get("phone", "")) if tenant else ""
+    msg = format_whatsapp_reminder(bill, tenant, room, stage)
+    encoded = urllib.parse.quote(msg)
+    wa_url = f"https://wa.me/{phone_clean}?text={encoded}" if phone_clean else ""
+    return {
+        "bill_id": bill_id,
+        "phone": tenant.get("phone") if tenant else None,
+        "wa_phone": phone_clean,
+        "stage": stage,
+        "message": msg,
+        "whatsapp_url": wa_url,
+    }
+
+
+@api.post("/bills/{bill_id}/simulate-payment", response_model=Bill)
+async def admin_simulate_payment(bill_id: str, user: dict = Depends(get_current_user)):
+    bill = await db.bills.find_one({"_id": oid(bill_id)})
+    if not bill:
+        raise HTTPException(404, "Bill not found")
+    remaining = max(0, bill.get("total", 0) - bill.get("amount_paid", 0))
+    if remaining <= 0:
+        return doc_to(Bill, derive_bill(bill))
+    ref = f"SIM-ADMIN-{int(datetime.now().timestamp())}"
+    payment = {"amount": remaining, "method": "qris", "reference": ref, "paid_at": now_iso()}
+    upd = {
+        "amount_paid": bill.get("total", 0),
+        "status": "paid",
+        "paid_at": now_iso(),
+        "payment_method": "qris",
+    }
+    await db.bills.update_one({"_id": oid(bill_id)}, {"$set": upd, "$push": {"payments": payment}})
+    await log_audit(user["email"], "PAYMENT_SIMULATION", "bill", bill_id, {"amount": remaining, "reference": ref})
+    if bill.get("tenant_id"):
+        await notify_tenant(bill["tenant_id"], "payment_success", {"invoice": bill.get("invoice_number"), "amount": remaining},
+                            "Pembayaran Berhasil Dikonfirmasi", f"Tagihan {bill.get('invoice_number')} sebesar Rp {int(remaining):,} telah LUNAS.".replace(",", "."), "/portal/bills")
+    updated = await db.bills.find_one({"_id": oid(bill_id)})
+    return doc_to(Bill, derive_bill(updated))
+
+
 # ============ MAINTENANCE TICKETS ============
 TICKET_TRANSITIONS = {
     "pending": {"in_progress", "closed"},
@@ -833,19 +977,47 @@ async def revoke_access_token(token_id: str, user: dict = Depends(get_current_us
 # ============ PORTAL ACCOUNTS ============
 async def create_portal_account(tenant_id: str, tenant: dict) -> str:
     phone = norm_phone(tenant.get("phone", ""))
-    if not phone:
-        return None
-    pw = "lewi" + (phone[-4:] if len(phone) >= 4 else phone)
-    existing = await db.users.find_one({"phone": phone, "role": "tenant"})
+    email = (tenant.get("email") or "").strip().lower()
+    
+    if tenant.get("portal_password"):
+        pw = tenant["portal_password"]
+    elif phone and len(phone) >= 4:
+        pw = "lewi" + phone[-4:]
+    else:
+        pw = f"lewi{random.SystemRandom().randint(1000, 9999)}"
+        
+    pw_hash = hash_password(pw)
+    
+    query_cond = [{"tenant_id": tenant_id, "role": "tenant"}]
+    if phone:
+        query_cond.append({"phone": phone, "role": "tenant"})
+    if email:
+        query_cond.append({"email": email, "role": "tenant"})
+    existing = await db.users.find_one({"$or": query_cond})
+    
     if existing:
-        await db.users.update_one({"_id": existing["_id"]},
-                                  {"$set": {"tenant_id": tenant_id, "name": tenant["name"],
-                                            "password_hash": hash_password(pw)}})
+        await db.users.update_one(
+            {"_id": existing["_id"]},
+            {"$set": {
+                "tenant_id": tenant_id,
+                "name": tenant.get("name", "Penghuni"),
+                "phone": phone or existing.get("phone"),
+                "email": email or existing.get("email"),
+                "password_hash": pw_hash,
+                "role": "tenant",
+                "is_active": True,
+            }}
+        )
     else:
         await db.users.insert_one({
-            "phone": phone, "email": tenant.get("email"), "name": tenant["name"],
-            "role": "tenant", "tenant_id": tenant_id,
-            "password_hash": hash_password(pw), "created_at": now_iso(),
+            "phone": phone or None,
+            "email": email or None,
+            "name": tenant.get("name", "Penghuni"),
+            "role": "tenant",
+            "tenant_id": tenant_id,
+            "password_hash": pw_hash,
+            "is_active": True,
+            "created_at": now_iso(),
         })
     await db.tenants.update_one({"_id": ObjectId(tenant_id)}, {"$set": {"portal_password": pw}})
     return pw
@@ -1161,6 +1333,228 @@ async def portal_create_request(payload: RequestPayload, user: dict = Depends(re
     return doc
 
 
+class PayRequest(BaseModel):
+    method: str = "qris"  # qris | bca_va | mandiri_va | bri_va | bni_va | manual
+
+
+@portal.post("/bills/{bill_id}/pay")
+async def portal_initiate_payment(bill_id: str, payload: PayRequest, user: dict = Depends(require_tenant)):
+    bill = await db.bills.find_one({"_id": oid(bill_id), "tenant_id": user["tenant_id"]})
+    if not bill:
+        raise HTTPException(404, "Tagihan tidak ditemukan")
+    
+    total = bill.get("total", bill_total(bill))
+    amount_paid = bill.get("amount_paid", 0)
+    remaining = max(0, total - amount_paid)
+    
+    if remaining <= 0 or bill.get("status") == "paid":
+        raise HTTPException(400, "Tagihan sudah lunas")
+    
+    tenant = await db.tenants.find_one({"_id": ObjectId(user["tenant_id"])})
+    room = await db.rooms.find_one({"_id": ObjectId(bill["room_id"])}) if bill.get("room_id") else None
+    
+    inv_clean = bill.get("invoice_number", "INV").replace("/", "-").replace(" ", "")
+    order_id = f"LH-{inv_clean}-{int(datetime.now().timestamp())}"
+    expiry_time = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat()
+    
+    clean_digits = norm_phone(tenant.get("phone", ""))[-6:] or "123456"
+    va_numbers = {
+        "bca": {"bank": "BCA", "va_number": f"88309{clean_digits}", "name": "Lewi House - BCA VA"},
+        "mandiri": {"bank": "Mandiri", "va_number": f"89998{clean_digits}", "name": "Lewi House - Mandiri VA"},
+        "bri": {"bank": "BRI", "va_number": f"12800{clean_digits}", "name": "Lewi House - BRI VA"},
+        "bni": {"bank": "BNI", "va_number": f"98800{clean_digits}", "name": "Lewi House - BNI VA"},
+    }
+    
+    qris_string = f"00020101021226580016ID.CO.LEWIHOUSE.WWW011893600912{clean_digits}520458125303360540{int(remaining)}5802ID5910LEWI HOUSE6007BANDUNG62070703A016304ABCD"
+    qris_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={urllib.parse.quote(qris_string)}"
+    
+    snap_token = None
+    snap_redirect_url = None
+    
+    if MIDTRANS_SERVER_KEY:
+        try:
+            auth_str = base64.b64encode(f"{MIDTRANS_SERVER_KEY}:".encode()).decode()
+            headers = {"Authorization": f"Basic {auth_str}", "Content-Type": "application/json", "Accept": "application/json"}
+            snap_payload = {
+                "transaction_details": {"order_id": order_id, "gross_amount": int(remaining)},
+                "customer_details": {
+                    "first_name": tenant.get("name", "Penghuni"),
+                    "email": tenant.get("email") or "tenant@lewihouse.com",
+                    "phone": tenant.get("phone") or "081234567890",
+                },
+                "item_details": [{
+                    "id": bill.get("invoice_number", "INV"),
+                    "price": int(remaining),
+                    "quantity": 1,
+                    "name": f"Sewa Kamar {room.get('name', '')} {bill.get('period', '')}".strip()[:50],
+                }],
+                "expiry": {"duration": 24, "unit": "hours"}
+            }
+            async with httpx.AsyncClient(timeout=10.0) as http_client:
+                resp = await http_client.post(MIDTRANS_SNAP_URL, json=snap_payload, headers=headers)
+                if resp.status_code in (200, 201):
+                    snap_data = resp.json()
+                    snap_token = snap_data.get("token")
+                    snap_redirect_url = snap_data.get("redirect_url")
+        except Exception:
+            pass
+
+    order_doc = {
+        "order_id": order_id,
+        "bill_id": str(bill["_id"]),
+        "tenant_id": user["tenant_id"],
+        "amount": remaining,
+        "method": payload.method,
+        "status": "pending",
+        "snap_token": snap_token,
+        "snap_redirect_url": snap_redirect_url,
+        "qris_string": qris_string,
+        "qris_url": qris_url,
+        "va_numbers": va_numbers,
+        "expiry_time": expiry_time,
+        "created_at": now_iso(),
+    }
+    await db.payment_orders.insert_one(order_doc)
+
+    return {
+        "order_id": order_id,
+        "bill_id": str(bill["_id"]),
+        "invoice_number": bill.get("invoice_number"),
+        "total": total,
+        "amount": remaining,
+        "snap_token": snap_token,
+        "snap_redirect_url": snap_redirect_url,
+        "qris_url": qris_url,
+        "qris_string": qris_string,
+        "va_numbers": va_numbers,
+        "bank_transfer": {
+            "bca": {"bank": "BCA", "account_number": "8830912881", "account_name": "Lewi House Management"},
+            "mandiri": {"bank": "Bank Mandiri", "account_number": "1320098765432", "account_name": "Lewi House Management"},
+        },
+        "expiry_time": expiry_time,
+        "is_sandbox": not bool(MIDTRANS_SERVER_KEY),
+    }
+
+
+@portal.post("/bills/{bill_id}/simulate-payment")
+async def portal_simulate_payment(bill_id: str, user: dict = Depends(require_tenant)):
+    bill = await db.bills.find_one({"_id": oid(bill_id), "tenant_id": user["tenant_id"]})
+    if not bill:
+        raise HTTPException(404, "Tagihan tidak ditemukan")
+    remaining = max(0, bill.get("total", 0) - bill.get("amount_paid", 0))
+    if remaining <= 0:
+        return {"ok": True, "status": "paid", "message": "Tagihan sudah lunas"}
+    
+    ref = f"QRIS-SIM-{int(datetime.now().timestamp())}"
+    payment = {"amount": remaining, "method": "qris", "reference": ref, "paid_at": now_iso()}
+    upd = {
+        "amount_paid": bill.get("total", 0),
+        "status": "paid",
+        "paid_at": now_iso(),
+        "payment_method": "qris",
+    }
+    await db.bills.update_one({"_id": oid(bill_id)}, {"$set": upd, "$push": {"payments": payment}})
+    await db.payment_orders.update_many({"bill_id": bill_id, "status": "pending"}, {"$set": {"status": "settlement", "settled_at": now_iso()}})
+    
+    await log_audit(user.get("name", "Penghuni"), "PAYMENT", "bill", bill_id, {"invoice": bill.get("invoice_number"), "amount": remaining, "method": "qris"})
+    await notify_admins("payment_received", {"invoice": bill.get("invoice_number"), "amount": remaining, "tenant": user.get("name")},
+                        "Pembayaran Diterima", f"{user.get('name', 'Penghuni')} telah melunasi invoice {bill.get('invoice_number')} (Rp {int(remaining):,}).".replace(",", "."), "/bills")
+    
+    return {"ok": True, "status": "paid", "reference": ref, "amount": remaining}
+
+
+@portal.get("/bills/{bill_id}/payment-status")
+async def portal_check_payment_status(bill_id: str, user: dict = Depends(require_tenant)):
+    bill = await db.bills.find_one({"_id": oid(bill_id), "tenant_id": user["tenant_id"]})
+    if not bill:
+        raise HTTPException(404, "Tagihan tidak ditemukan")
+    return {
+        "bill_id": bill_id,
+        "status": bill.get("status", "unpaid"),
+        "amount_paid": bill.get("amount_paid", 0),
+        "total": bill.get("total", 0),
+        "is_paid": bill.get("status") == "paid",
+    }
+
+
+# ============ MIDTRANS WEBHOOK ============
+@payment_router.post("/midtrans-webhook")
+async def midtrans_webhook(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON payload")
+
+    order_id = body.get("order_id")
+    status_code = body.get("status_code")
+    gross_amount = body.get("gross_amount")
+    signature_key = body.get("signature_key")
+    transaction_status = body.get("transaction_status")
+    fraud_status = body.get("fraud_status")
+
+    if not order_id:
+        raise HTTPException(400, "Missing order_id")
+
+    if MIDTRANS_SERVER_KEY and signature_key:
+        expected_sig = hashlib.sha512(f"{order_id}{status_code}{gross_amount}{MIDTRANS_SERVER_KEY}".encode()).hexdigest()
+        if expected_sig != signature_key:
+            raise HTTPException(403, "Invalid signature key")
+
+    order = await db.payment_orders.find_one({"order_id": order_id})
+    bill_id = order.get("bill_id") if order else None
+    
+    if not bill_id:
+        parts = order_id.split("-")
+        if len(parts) >= 2:
+            inv = parts[1]
+            b = await db.bills.find_one({"invoice_number": {"$regex": inv}})
+            if b:
+                bill_id = str(b["_id"])
+
+    if not bill_id:
+        return {"status": "ok", "message": "Order not matched"}
+
+    bill = await db.bills.find_one({"_id": oid(bill_id)})
+    if not bill:
+        return {"status": "ok", "message": "Bill not found"}
+
+    if transaction_status in ("capture", "settlement") and fraud_status in (None, "accept"):
+        paid_amount = float(gross_amount or order.get("amount", bill.get("total", 0)))
+        total_paid = bill.get("amount_paid", 0) + paid_amount
+        is_full = total_paid >= bill.get("total", 0)
+        
+        payment_record = {
+            "amount": paid_amount,
+            "method": body.get("payment_type") or "midtrans",
+            "reference": order_id,
+            "paid_at": now_iso(),
+        }
+        
+        upd = {
+            "amount_paid": total_paid,
+            "status": "paid" if is_full else "partially_paid",
+            "payment_method": body.get("payment_type") or "midtrans",
+        }
+        if is_full:
+            upd["paid_at"] = now_iso()
+
+        await db.bills.update_one({"_id": oid(bill_id)}, {"$set": upd, "$push": {"payments": payment_record}})
+        await db.payment_orders.update_one({"order_id": order_id}, {"$set": {"status": "settlement", "settled_at": now_iso()}})
+        
+        await log_audit("system", "PAYMENT_WEBHOOK", "bill", bill_id, {"order_id": order_id, "amount": paid_amount, "method": body.get("payment_type")})
+        
+        if bill.get("tenant_id"):
+            await notify_tenant(bill["tenant_id"], "payment_success", {"invoice": bill.get("invoice_number"), "amount": paid_amount},
+                                "Pembayaran Berhasil Dikonfirmasi", f"Pembayaran untuk tagihan {bill.get('invoice_number')} sebesar Rp {int(paid_amount):,} telah diterima.".replace(",", "."), "/portal/bills")
+        await notify_admins("payment_received", {"invoice": bill.get("invoice_number"), "amount": paid_amount},
+                            "Pembayaran Diterima (Midtrans)", f"Invoice {bill.get('invoice_number')} (Rp {int(paid_amount):,}) telah lunas via Midtrans.".replace(",", "."), "/bills")
+
+    elif transaction_status in ("cancel", "deny", "expire"):
+        await db.payment_orders.update_one({"order_id": order_id}, {"$set": {"status": transaction_status}})
+
+    return {"status": "ok"}
+
+
 # ============ WEBSOCKET CHAT ============
 class ConnectionManager:
     def __init__(self):
@@ -1282,12 +1676,84 @@ def _bill_stage(d: dict):
     except ValueError:
         return None
     days = (due - datetime.now(timezone.utc).date()).days
-    if 0 <= days <= 3:
+    if days > 3:
+        return None
+    if 1 <= days <= 3:
         return "due_soon"
-    if days < 0:
-        late = -days
-        return "overdue_1" if late <= 3 else ("overdue_2" if late <= 7 else "overdue_3")
-    return None
+    if days == 0:
+        return "due_today"
+    late = -days
+    if 1 <= late <= 3:
+        return "overdue_1"
+    if 4 <= late <= 7:
+        return "overdue_2"
+    return "overdue_3"
+
+
+STAGE_LABELS = {
+    "due_soon": "H-3 (Segera Jatuh Tempo)",
+    "due_today": "H-0 (Jatuh Tempo Hari Ini)",
+    "overdue_1": "H+1 (Terlambat Tahap 1)",
+    "overdue_2": "H+4 (Terlambat Tahap 2)",
+    "overdue_3": "H+7 (Peringatan Dunning Final)",
+}
+
+
+@api.get("/reminders/dunning-list")
+async def reminders_dunning_list():
+    bills = await db.bills.find({"status": {"$in": ["unpaid", "partially_paid"]}}).sort("due_date", 1).to_list(2000)
+    out = []
+    for b in bills:
+        stage = _bill_stage(b)
+        if not stage:
+            continue
+        bid = str(b["_id"])
+        tenant = await db.tenants.find_one({"_id": ObjectId(b["tenant_id"])}) if b.get("tenant_id") else None
+        room = await db.rooms.find_one({"_id": ObjectId(b["room_id"])}) if b.get("room_id") else None
+        phone_clean = to_wa_phone(tenant.get("phone", "")) if tenant else ""
+        msg = format_whatsapp_reminder(b, tenant, room, stage)
+        wa_url = f"https://wa.me/{phone_clean}?text={urllib.parse.quote(msg)}" if phone_clean else ""
+        already = await db.reminder_log.find_one({"bill_id": bid, "stage": stage})
+        
+        out.append({
+            "bill_id": bid,
+            "invoice_number": b.get("invoice_number"),
+            "tenant_id": b.get("tenant_id"),
+            "tenant_name": tenant.get("name") if tenant else "-",
+            "room_name": room.get("name") if room else "-",
+            "phone": tenant.get("phone") if tenant else None,
+            "wa_phone": phone_clean,
+            "amount": max(0, b.get("total", 0) - b.get("amount_paid", 0)),
+            "total": b.get("total", 0),
+            "due_date": b.get("due_date"),
+            "stage": stage,
+            "stage_label": STAGE_LABELS.get(stage, stage),
+            "already_sent": bool(already),
+            "whatsapp_url": wa_url,
+            "message_preview": msg,
+        })
+    return out
+
+
+@api.post("/reminders/send-whatsapp-batch")
+async def send_whatsapp_batch(user: dict = Depends(get_current_user)):
+    bills = await db.bills.find({"status": {"$in": ["unpaid", "partially_paid"]}}).to_list(2000)
+    sent_count = 0
+    for b in bills:
+        stage = _bill_stage(b)
+        if not stage:
+            continue
+        bid = str(b["_id"])
+        already = await db.reminder_log.find_one({"bill_id": bid, "stage": stage})
+        if not already:
+            await db.reminder_log.insert_one({"bill_id": bid, "stage": stage, "sent_at": now_iso(), "actor": user["email"], "channel": "whatsapp"})
+            sent_count += 1
+            if b.get("tenant_id"):
+                remaining = max(0, b.get("total", 0) - b.get("amount_paid", 0))
+                await notify_tenant(b["tenant_id"], "bill_reminder", {"stage": stage, "invoice": b.get("invoice_number"), "amount": remaining},
+                                    "Pengingat Tagihan WhatsApp", f"Tagihan {b.get('invoice_number')} (Rp {int(remaining):,}) perlu diselesaikan.".replace(",", "."), "/portal/bills")
+    await log_audit(user["email"], "REMINDER_BATCH_WA", "bill", "sweep", {"count": sent_count})
+    return {"ok": True, "count": sent_count}
 
 
 async def run_reminder_sweep(actor: str) -> int:
@@ -1755,6 +2221,7 @@ app.include_router(auth_router)
 app.include_router(api)
 app.include_router(common)
 app.include_router(portal)
+app.include_router(payment_router)
 
 _origins = [o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",")]
 if "*" in _origins:

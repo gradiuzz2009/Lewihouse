@@ -183,3 +183,25 @@ interface AppNotificationDao {
     suspend fun deleteNotification(id: String)
 }
 
+@Dao
+interface PendingMutationDao {
+    @Query("SELECT * FROM pending_mutations ORDER BY createdAt ASC")
+    fun getAllPendingMutationsFlow(): Flow<List<PendingMutationEntity>>
+
+    @Query("SELECT * FROM pending_mutations ORDER BY createdAt ASC")
+    suspend fun getAllPendingMutations(): List<PendingMutationEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMutation(mutation: PendingMutationEntity)
+
+    @Query("DELETE FROM pending_mutations WHERE id = :id")
+    suspend fun deleteMutationById(id: String)
+
+    @Query("UPDATE pending_mutations SET retryCount = retryCount + 1 WHERE id = :id")
+    suspend fun incrementRetryCount(id: String)
+
+    @Query("DELETE FROM pending_mutations")
+    suspend fun clearAll()
+}
+
+

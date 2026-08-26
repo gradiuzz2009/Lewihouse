@@ -8,6 +8,8 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.example.MainActivity
+import com.example.ui.viewmodels.AppRole
+import com.google.firebase.messaging.FirebaseMessaging
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import timber.log.Timber
@@ -22,15 +24,26 @@ class LewiHouseFCMService : FirebaseMessagingService() {
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
 
-        val isChat = remoteMessage.data["type"] == "chat" || remoteMessage.data["actionType"] == "OPEN_CHAT"
-        val title = remoteMessage.notification?.title ?: remoteMessage.data["title"] ?: if (isChat) "Pesan Chat Baru" else "Lewi House Notice"
-        val body = remoteMessage.notification?.body ?: remoteMessage.data["message"] ?: "You have a new update in Lewi House."
-        val tenantId = remoteMessage.data["tenantId"] ?: remoteMessage.data["actionPayload"]
+        val actionType = remoteMessage.data["actionType"] ?: remoteMessage.data["type"] ?: "ANNOUNCEMENT"
+        val isChat = actionType == "chat" || actionType == "OPEN_CHAT"
+        val title = remoteMessage.notification?.title
+            ?: remoteMessage.data["title"]
+            ?: if (isChat) "Pesan Chat Baru" else "Lewi House Notice"
+        val body = remoteMessage.notification?.body
+            ?: remoteMessage.data["message"]
+            ?: "You have a new update in Lewi House."
+        val targetPayload = remoteMessage.data["actionPayload"] ?: remoteMessage.data["tenantId"]
 
-        showNotification(title, body, isChat, tenantId)
+        showNotification(title, body, actionType, targetPayload)
     }
 
-    private fun showNotification(title: String, message: String, isChat: Boolean = false, tenantId: String? = null) {
+    private fun showNotification(
+        title: String,
+        message: String,
+        actionType: String,
+        actionPayload: String? = null
+    ) {
+        val isChat = actionType == "chat" || actionType == "OPEN_CHAT"
         val channelId = if (isChat) "lewi_house_chat_channel" else "lewi_house_channel"
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -50,10 +63,8 @@ class LewiHouseFCMService : FirebaseMessagingService() {
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            if (isChat) {
-                putExtra("NAVIGATE_TO", "CHAT")
-                tenantId?.let { putExtra("TARGET_TENANT_ID", it) }
-            }
+            putExtra("ACTION_TYPE", actionType)
+            actionPayload?.let { putExtra("ACTION_PAYLOAD", it) }
         }
 
         val pendingIntent = PendingIntent.getActivity(
@@ -74,5 +85,26 @@ class LewiHouseFCMService : FirebaseMessagingService() {
             .build()
 
         notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+    }
+
+    companion object {
+        fun subscribeToTopics(role: AppRole, tenantId: String?) {
+            val messaging = FirebaseMessaging.getInstance()
+            messaging.subscribeToTopic("all_announcements")
+
+            if (role == AppRole.ADMIN) {
+                messaging.subscribeToTopic("admin_alerts")
+                messaging.subscribeToTopic("admin_tickets")
+            } else if (tenantId != null) {
+                messaging.subscribeToTopic("tenant_$tenantId")
+            }
+        }
+
+        fun unsubscribeTopics() {
+            val messaging = FirebaseMessaging.getInstance()
+            messaging.unsubscribeFromTopic("all_announcements")
+            messaging.unsubscribeFromTopic("admin_alerts")
+            messaging.unsubscribeFromTopic("admin_tickets")
+        }
     }
 }

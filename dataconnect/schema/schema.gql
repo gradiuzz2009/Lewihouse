@@ -1,0 +1,104 @@
+# Firebase Data Connect Schema for Lewi House Kosan & Rental Management
+
+type Property @table {
+  id: String! @default(expr: "uuidV4()")
+  name: String!
+  address: String
+  totalRooms: Int
+  contactPhone: String
+  contactEmail: String
+  wifiSsid: String
+  updatedAt: Timestamp @default(expr: "request.time")
+}
+
+type RoomUnit @table {
+  id: String! @default(expr: "uuidV4()")
+  roomNumber: String! @unique
+  floor: String!
+  wing: String
+  roomType: String!
+  capacity: Int!
+  monthlyPrice: Float!
+  deposit: Float!
+  status: String!
+  notes: String
+  updatedAt: Timestamp @default(expr: "request.time")
+}
+
+type ResidentProfile @table {
+  id: String! @default(expr: "uuidV4()")
+  fullName: String!
+  email: String! @unique
+  phone: String!
+  roomNumber: String!
+  moveInDate: String
+  leaseEndDate: String
+  monthlyRent: Float
+  depositAmount: Float
+  status: String!
+  ktpNumber: String
+  emergencyContact: String
+  emergencyPhone: String
+  createdAt: Timestamp @default(expr: "request.time")
+}
+
+type BillingInvoice @table {
+  id: String! @default(expr: "uuidV4()")
+  residentId: String!
+  roomNumber: String!
+  invoiceNumber: String! @unique
+  amount: Float!
+  paidAmount: Float
+  period: String
+  status: String!
+  dueDate: String
+  paymentMethod: String
+  receiptRef: String
+  notes: String
+  createdAt: Timestamp @default(expr: "request.time")
+}
+
+type MaintenanceTicket @table {
+  id: String! @default(expr: "uuidV4()")
+  roomNumber: String!
+  residentId: String!
+  residentName: String!
+  title: String!
+  category: String!
+  description: String!
+  priority: String!
+  status: String!
+  reportedDate: String
+  assignedTechnician: String
+  notes: String
+  createdAt: Timestamp @default(expr: "request.time")
+}
+
+type ElectricityMeter @table {
+  id: String! @default(expr: "uuidV4()")
+  roomNumber: String! @unique
+  meterNumber: String!
+  currentKwh: Float!
+  lastUpdated: Timestamp @default(expr: "request.time")
+}
+
+type AppNotification @table {
+  id: String! @default(expr: "uuidV4()")
+  title: String!
+  body: String!
+  category: String!
+  recipientResidentId: String
+  isRead: Boolean!
+  createdAt: Timestamp @default(expr: "request.time")
+}
+
+type ChatMessage @table {
+  id: String! @default(expr: "uuidV4()")
+  tenantId: String!
+  senderId: String!
+  senderName: String!
+  senderRole: String!
+  text: String!
+  isRead: Boolean!
+  timestamp: Timestamp @default(expr: "request.time")
+}

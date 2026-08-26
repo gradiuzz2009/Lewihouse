@@ -41,7 +41,7 @@ fun LoginScreen(
 ) {
     var selectedRole by remember { mutableStateOf(AppRole.TENANT) }
     var identifier by remember { mutableStateOf("204") }
-    var password by remember { mutableStateOf("••••••••") }
+    var password by remember { mutableStateOf("lewi2026") }
     var isPasswordVisible by remember { mutableStateOf(false) }
     var rememberMe by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -131,6 +131,7 @@ fun LoginScreen(
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     selectedRole = AppRole.TENANT
                                     identifier = "204"
+                                    password = "lewi2026"
                                     errorMessage = null
                                 }
                                 .testTag("tab_tenant_login")
@@ -170,6 +171,7 @@ fun LoginScreen(
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     selectedRole = AppRole.ADMIN
                                     identifier = "admin@lewihouse.id"
+                                    password = "lewi2026"
                                     errorMessage = null
                                 }
                                 .testTag("tab_admin_login")

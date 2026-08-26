@@ -19,9 +19,10 @@ import kotlinx.coroutines.launch
         MaintenanceTicketEntity::class,
         ServiceFeedbackEntity::class,
         SatisfactionSurveyEntity::class,
-        AppNotificationEntity::class
+        AppNotificationEntity::class,
+        PendingMutationEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +35,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun serviceFeedbackDao(): ServiceFeedbackDao
     abstract fun satisfactionSurveyDao(): SatisfactionSurveyDao
     abstract fun appNotificationDao(): AppNotificationDao
+    abstract fun pendingMutationDao(): PendingMutationDao
+
 
     companion object {
         @Volatile

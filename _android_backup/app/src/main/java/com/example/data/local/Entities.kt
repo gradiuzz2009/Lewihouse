@@ -469,3 +469,14 @@ data class AppNotificationEntity(
     }
 }
 
+@Entity(tableName = "pending_mutations")
+data class PendingMutationEntity(
+    @PrimaryKey val id: String,
+    val entityType: String,
+    val action: String,
+    val payloadJson: String,
+    val createdAt: Long = System.currentTimeMillis(),
+    val retryCount: Int = 0
+)
+
+

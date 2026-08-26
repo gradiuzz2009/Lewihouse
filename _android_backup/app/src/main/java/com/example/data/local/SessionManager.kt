@@ -1,45 +1,31 @@
 package com.example.data.local
 
 import android.content.Context
-import android.content.SharedPreferences
+import com.example.data.security.EncryptedSessionManager
 import com.example.ui.viewmodels.AppRole
 
+@Deprecated("Use EncryptedSessionManager with AES256 encryption instead", ReplaceWith("EncryptedSessionManager"))
 class SessionManager(context: Context) {
 
-    private val prefs: SharedPreferences = context.getSharedPreferences("lewi_house_session", Context.MODE_PRIVATE)
-
-    companion object {
-        private const val KEY_IS_LOGGED_IN = "is_logged_in"
-        private const val KEY_USER_ROLE = "user_role"
-        private const val KEY_SELECTED_TENANT_ID = "selected_tenant_id"
-    }
+    private val encryptedManager = EncryptedSessionManager(context)
 
     var isLoggedIn: Boolean
-        get() = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
-        set(value) = prefs.edit().putBoolean(KEY_IS_LOGGED_IN, value).apply()
+        get() = encryptedManager.isLoggedIn
+        set(value) { encryptedManager.isLoggedIn = value }
 
     var userRole: AppRole
-        get() {
-            val roleStr = prefs.getString(KEY_USER_ROLE, AppRole.TENANT.name)
-            return runCatching { AppRole.valueOf(roleStr!!) }.getOrDefault(AppRole.TENANT)
-        }
-        set(value) = prefs.edit().putString(KEY_USER_ROLE, value.name).apply()
+        get() = encryptedManager.userRole
+        set(value) { encryptedManager.userRole = value }
 
     var selectedTenantId: String
-        get() = prefs.getString(KEY_SELECTED_TENANT_ID, "res_204") ?: "res_204"
-        set(value) = prefs.edit().putString(KEY_SELECTED_TENANT_ID, value).apply()
+        get() = encryptedManager.selectedTenantId
+        set(value) { encryptedManager.selectedTenantId = value }
 
     fun saveSession(role: AppRole, tenantId: String? = null) {
-        prefs.edit()
-            .putBoolean(KEY_IS_LOGGED_IN, true)
-            .putString(KEY_USER_ROLE, role.name)
-            .apply()
-        if (tenantId != null) {
-            selectedTenantId = tenantId
-        }
+        encryptedManager.saveSession(role, tenantId)
     }
 
     fun clearSession() {
-        prefs.edit().clear().apply()
+        encryptedManager.clearSession()
     }
 }

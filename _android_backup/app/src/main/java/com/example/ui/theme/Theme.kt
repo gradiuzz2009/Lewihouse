@@ -66,7 +66,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun MyApplicationTheme(
+fun LewiHouseTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = true, // Use dynamic color on supported devices
     content: @Composable () -> Unit

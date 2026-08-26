@@ -1,0 +1,102 @@
+# Mutations for Lewi House Property Management
+
+mutation CreateRoom(
+  $roomNumber: String!
+  $floor: String!
+  $wing: String
+  $roomType: String!
+  $capacity: Int!
+  $monthlyPrice: Float!
+  $deposit: Float!
+  $status: String!
+  $notes: String
+) @auth(level: USER) {
+  roomUnit_insert(
+    data: {
+      roomNumber: $roomNumber
+      floor: $floor
+      wing: $wing
+      roomType: $roomType
+      capacity: $capacity
+      monthlyPrice: $monthlyPrice
+      deposit: $deposit
+      status: $status
+      notes: $notes
+    }
+  )
+}
+
+mutation CreateResident(
+  $fullName: String!
+  $email: String!
+  $phone: String!
+  $roomNumber: String!
+  $moveInDate: String
+  $leaseEndDate: String
+  $monthlyRent: Float
+  $depositAmount: Float
+  $status: String!
+  $emergencyContact: String
+  $emergencyPhone: String
+) @auth(level: USER) {
+  residentProfile_insert(
+    data: {
+      fullName: $fullName
+      email: $email
+      phone: $phone
+      roomNumber: $roomNumber
+      moveInDate: $moveInDate
+      leaseEndDate: $leaseEndDate
+      monthlyRent: $monthlyRent
+      depositAmount: $depositAmount
+      status: $status
+      emergencyContact: $emergencyContact
+      emergencyPhone: $emergencyPhone
+    }
+  )
+}
+
+mutation CreateMaintenanceTicket(
+  $roomNumber: String!
+  $residentId: String!
+  $residentName: String!
+  $title: String!
+  $category: String!
+  $description: String!
+  $priority: String!
+  $status: String!
+  $reportedDate: String
+) @auth(level: USER) {
+  maintenanceTicket_insert(
+    data: {
+      roomNumber: $roomNumber
+      residentId: $residentId
+      residentName: $residentName
+      title: $title
+      category: $category
+      description: $description
+      priority: $priority
+      status: $status
+      reportedDate: $reportedDate
+    }
+  )
+}
+
+mutation SendChatMessage(
+  $tenantId: String!
+  $senderId: String!
+  $senderName: String!
+  $senderRole: String!
+  $text: String!
+) @auth(level: USER) {
+  chatMessage_insert(
+    data: {
+      tenantId: $tenantId
+      senderId: $senderId
+      senderName: $senderName
+      senderRole: $senderRole
+      text: $text
+      isRead: false
+    }
+  )
+}

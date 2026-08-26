@@ -1,97 +1,188 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 
-export function Sheet({ open, onClose, title, children }) {
+export function Sheet({ open, onClose, title, subtitle, children, footer, maxWidth = "sm:max-w-xl" }) {
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
   return (
     <AnimatePresence>
       {open && (
-        <>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
             data-testid="sheet-backdrop"
           />
+
+          {/* Dynamic Adaptive Dialog / Bottom Sheet */}
           <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed left-1/2 -translate-x-1/2 bottom-0 z-50 w-full max-w-md bg-surface rounded-t-3xl shadow-lifted border-t border-line max-h-[92vh] flex flex-col"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sheet-title"
+            initial={{ y: "100%", opacity: 0.8 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 28, stiffness: 320 }}
+            className={`relative z-10 w-full ${maxWidth} bg-surface rounded-t-[28px] sm:rounded-3xl shadow-lifted border-t sm:border border-line max-h-[90dvh] sm:max-h-[85vh] flex flex-col overflow-hidden`}
             data-testid="sheet"
           >
-            <div className="pt-3 pb-2 flex flex-col items-center border-b border-line">
-              <div className="w-10 h-1 rounded-full bg-line mb-2" />
+            {/* Header with Drag Indicator */}
+            <div className="pt-3 pb-3 flex flex-col border-b border-line bg-surface/90 backdrop-blur-md shrink-0">
+              <div className="w-12 h-1.5 rounded-full bg-line mx-auto mb-2 sm:hidden" />
               <div className="w-full px-6 flex items-center justify-between">
-                <h3 className="font-serif text-xl text-primary" data-testid="sheet-title">{title}</h3>
+                <div>
+                  <h3 id="sheet-title" className="font-serif text-xl sm:text-2xl text-primary leading-tight font-bold" data-testid="sheet-title">
+                    {title}
+                  </h3>
+                  {subtitle && <p className="text-xs text-subtle mt-0.5">{subtitle}</p>}
+                </div>
                 <button
+                  type="button"
                   onClick={onClose}
-                  className="w-9 h-9 grid place-items-center rounded-full hover:bg-muted active:scale-95"
+                  className="w-10 h-10 -mr-2 grid place-items-center rounded-full hover:bg-muted active:scale-95 transition-colors text-subtle hover:text-ink"
                   data-testid="sheet-close"
+                  aria-label="Tutup"
                 >
                   <X size={18} />
                 </button>
               </div>
             </div>
-            <div className="overflow-y-auto px-6 py-5 flex-1">{children}</div>
+
+            {/* Scrollable Form Body */}
+            <div className="overflow-y-auto px-6 py-5 flex-1 overscroll-contain">
+              {children}
+            </div>
+
+            {/* Optional Sticky Footer */}
+            {footer && (
+              <div className="border-t border-line bg-surface/95 backdrop-blur-md px-6 py-3.5 sticky bottom-0 z-20 flex gap-3 shrink-0">
+                {footer}
+              </div>
+            )}
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
 }
 
-export function Input({ label, testid, ...props }) {
+export function SheetFooter({ children, className = "" }) {
   return (
-    <label className="block mb-4">
-      {label && <span className="text-xs font-semibold text-subtle uppercase tracking-wider mb-1.5 block">{label}</span>}
+    <div className={`border-t border-line bg-surface/95 backdrop-blur-md px-6 py-3.5 sticky bottom-0 z-20 flex items-center justify-end gap-3 mt-auto shrink-0 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+export function FormSection({ title, subtitle, children, className = "" }) {
+  return (
+    <div className={`mb-5 ${className}`}>
+      {title && (
+        <div className="mb-2.5 pb-1 border-b border-line/60">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-secondary font-bold">{title}</p>
+          {subtitle && <p className="text-[11px] text-subtle mt-0.5">{subtitle}</p>}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+export function Input({ label, testid, error, required, helper, className = "", ...props }) {
+  return (
+    <label className={`block mb-3.5 ${className}`}>
+      {label && (
+        <span className="text-xs font-semibold text-ink uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          {label}
+          {required && <span className="text-danger">*</span>}
+        </span>
+      )}
       <input
         {...props}
+        required={required}
         data-testid={testid}
-        className="w-full bg-muted border border-transparent rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-colors"
+        className={`w-full min-h-[46px] bg-muted border rounded-xl px-4 py-2.5 text-sm text-ink transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white ${
+          error ? "border-danger focus:ring-danger" : "border-transparent hover:border-line"
+        }`}
       />
+      {helper && !error && <p className="text-[11px] text-subtle mt-1">{helper}</p>}
+      {error && <p className="text-[11px] text-danger mt-1 font-medium">{error}</p>}
     </label>
   );
 }
 
-export function Select({ label, testid, children, ...props }) {
+export function Select({ label, testid, children, error, required, helper, className = "", ...props }) {
   return (
-    <label className="block mb-4">
-      {label && <span className="text-xs font-semibold text-subtle uppercase tracking-wider mb-1.5 block">{label}</span>}
+    <label className={`block mb-3.5 ${className}`}>
+      {label && (
+        <span className="text-xs font-semibold text-ink uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          {label}
+          {required && <span className="text-danger">*</span>}
+        </span>
+      )}
       <select
         {...props}
+        required={required}
         data-testid={testid}
-        className="w-full bg-muted border border-transparent rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-colors"
+        className={`w-full min-h-[46px] bg-muted border rounded-xl px-4 py-2.5 text-sm text-ink transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white ${
+          error ? "border-danger focus:ring-danger" : "border-transparent hover:border-line"
+        }`}
       >
         {children}
       </select>
+      {helper && !error && <p className="text-[11px] text-subtle mt-1">{helper}</p>}
+      {error && <p className="text-[11px] text-danger mt-1 font-medium">{error}</p>}
     </label>
   );
 }
 
-export function Textarea({ label, testid, ...props }) {
+export function Textarea({ label, testid, error, required, helper, className = "", ...props }) {
   return (
-    <label className="block mb-4">
-      {label && <span className="text-xs font-semibold text-subtle uppercase tracking-wider mb-1.5 block">{label}</span>}
+    <label className={`block mb-3.5 ${className}`}>
+      {label && (
+        <span className="text-xs font-semibold text-ink uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          {label}
+          {required && <span className="text-danger">*</span>}
+        </span>
+      )}
       <textarea
         {...props}
+        required={required}
         data-testid={testid}
-        rows={3}
-        className="w-full bg-muted border border-transparent rounded-xl px-4 py-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-colors resize-none"
+        rows={props.rows || 3}
+        className={`w-full bg-muted border rounded-xl px-4 py-2.5 text-sm text-ink resize-none transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white ${
+          error ? "border-danger focus:ring-danger" : "border-transparent hover:border-line"
+        }`}
       />
+      {helper && !error && <p className="text-[11px] text-subtle mt-1">{helper}</p>}
+      {error && <p className="text-[11px] text-danger mt-1 font-medium">{error}</p>}
     </label>
   );
 }
 
-export function MoneyInput({ label, testid, value, onChange, ...props }) {
+export function MoneyInput({ label, testid, value, onChange, error, required, helper, className = "", ...props }) {
   const display = value ? String(Math.round(Number(value))).replace(/\B(?=(\d{3})+(?!\d))/g, ".") : "";
   return (
-    <label className="block mb-4">
-      {label && <span className="text-xs font-semibold text-subtle uppercase tracking-wider mb-1.5 block">{label}</span>}
+    <label className={`block mb-3.5 ${className}`}>
+      {label && (
+        <span className="text-xs font-semibold text-ink uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          {label}
+          {required && <span className="text-danger">*</span>}
+        </span>
+      )}
       <div className="relative">
         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-subtle font-semibold">Rp</span>
         <input
@@ -100,44 +191,50 @@ export function MoneyInput({ label, testid, value, onChange, ...props }) {
           data-testid={testid}
           value={display}
           onChange={(e) => onChange(Number(e.target.value.replace(/\D/g, "")) || 0)}
-          className="w-full bg-muted border border-transparent rounded-xl pl-11 pr-4 py-3 text-sm text-ink tnum focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white transition-colors"
+          className={`w-full min-h-[46px] bg-muted border rounded-xl pl-11 pr-4 py-2.5 text-sm text-ink tnum transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white ${
+            error ? "border-danger focus:ring-danger" : "border-transparent hover:border-line"
+          }`}
         />
       </div>
+      {helper && !error && <p className="text-[11px] text-subtle mt-1">{helper}</p>}
+      {error && <p className="text-[11px] text-danger mt-1 font-medium">{error}</p>}
     </label>
   );
 }
 
-export function Button({ children, variant = "primary", testid, className = "", ...props }) {
+export function Button({ children, variant = "primary", testid, loading = false, disabled = false, className = "", ...props }) {
   const variants = {
-    primary: "bg-primary text-white hover:bg-[#0f2a20]",
-    secondary: "bg-secondary text-primary hover:bg-[#b89665]",
+    primary: "bg-primary text-white hover:bg-[#122820] shadow-soft",
+    secondary: "bg-secondary/20 text-primary hover:bg-secondary/30",
     ghost: "bg-transparent text-primary hover:bg-muted",
-    danger: "bg-danger text-white hover:bg-[#6f2020]",
+    danger: "bg-danger text-white hover:bg-[#6f2020] shadow-soft",
     outline: "bg-transparent text-primary border border-line hover:bg-muted",
   };
   return (
     <button
       {...props}
+      disabled={disabled || loading}
       data-testid={testid}
-      className={`rounded-full px-6 py-3 text-sm font-semibold tracking-wide active:scale-95 transition-[background-color,color,transform] duration-150 ${variants[variant]} ${className}`}
+      className={`min-h-[44px] rounded-full px-6 py-2.5 text-sm font-semibold tracking-wide flex items-center justify-center gap-2 active:scale-95 transition-[background-color,color,transform] duration-150 disabled:opacity-50 disabled:pointer-events-none ${variants[variant]} ${className}`}
     >
+      {loading && <Loader2 size={16} className="animate-spin" />}
       {children}
     </button>
   );
 }
 
-export function Badge({ children, tone = "muted", testid }) {
+export function Badge({ children, tone = "muted", testid, className = "" }) {
   const tones = {
-    muted: "bg-muted text-subtle",
-    success: "bg-success/10 text-success",
-    warning: "bg-warning/15 text-[#8a6a2f]",
-    danger: "bg-danger/10 text-danger",
-    primary: "bg-primary text-white",
+    muted: "bg-muted text-subtle border-line",
+    success: "bg-success/10 text-success border-success/20",
+    warning: "bg-warning/15 text-[#8a6a2f] border-warning/30",
+    danger: "bg-danger/10 text-danger border-danger/20",
+    primary: "bg-primary text-white border-primary",
   };
   return (
     <span
       data-testid={testid}
-      className={`inline-flex items-center rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest ${tones[tone]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest border ${tones[tone]} ${className}`}
     >
       {children}
     </span>
@@ -146,15 +243,15 @@ export function Badge({ children, tone = "muted", testid }) {
 
 export function EmptyState({ icon: Icon, title, subtitle, action, testid }) {
   return (
-    <div className="text-center py-16" data-testid={testid}>
+    <div className="text-center py-12 px-4 bg-surface rounded-2xl border border-line shadow-soft" data-testid={testid}>
       {Icon && (
-        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted grid place-items-center">
-          <Icon size={26} className="text-primary/60" />
+        <div className="w-14 h-14 mx-auto mb-3.5 rounded-2xl bg-primary/10 grid place-items-center text-primary">
+          <Icon size={26} />
         </div>
       )}
-      <h3 className="font-serif text-lg text-ink mb-1">{title}</h3>
-      {subtitle && <p className="text-sm text-subtle mb-4 px-8">{subtitle}</p>}
-      {action}
+      <h3 className="font-serif text-lg text-primary font-bold mb-1">{title}</h3>
+      {subtitle && <p className="text-xs text-subtle mb-4 max-w-xs mx-auto leading-relaxed">{subtitle}</p>}
+      {action && <div className="flex justify-center">{action}</div>}
     </div>
   );
 }

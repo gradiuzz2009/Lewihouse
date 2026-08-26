@@ -8,6 +8,10 @@ import com.example.data.local.AppDatabase
 import com.example.data.local.SessionManager
 import com.example.data.model.*
 import com.example.data.repository.LewiHouseRepository
+import com.example.data.security.EncryptedSessionManager
+import com.example.data.security.AuthResult
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -42,23 +46,26 @@ enum class TenantTab {
     CHAT
 }
 
-class AppViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class AppViewModel @Inject constructor(
+    application: Application,
+    private val encryptedSessionManager: EncryptedSessionManager,
+    private val authManager: com.example.data.security.FirebaseAuthManager
+) : AndroidViewModel(application) {
 
     private val repository: LewiHouseRepository
-    private val sessionManager = SessionManager(application)
-    private val authManager = com.example.data.security.FirebaseAuthManager()
 
     // Language, Auth & Role State
     private val _currentLanguage: MutableStateFlow<AppLanguage> = MutableStateFlow(AppLanguage.EN)
     val currentLanguage: StateFlow<AppLanguage> = _currentLanguage.asStateFlow()
 
-    private val _isLoggedIn: MutableStateFlow<Boolean> = MutableStateFlow(sessionManager.isLoggedIn)
+    private val _isLoggedIn: MutableStateFlow<Boolean> = MutableStateFlow(encryptedSessionManager.isLoggedIn)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
-    private val _currentRole: MutableStateFlow<AppRole> = MutableStateFlow(sessionManager.userRole)
+    private val _currentRole: MutableStateFlow<AppRole> = MutableStateFlow(encryptedSessionManager.userRole)
     val currentRole: StateFlow<AppRole> = _currentRole.asStateFlow()
 
-    private val _selectedTenantId: MutableStateFlow<String> = MutableStateFlow(sessionManager.selectedTenantId)
+    private val _selectedTenantId: MutableStateFlow<String> = MutableStateFlow(encryptedSessionManager.selectedTenantId)
     val selectedTenantId: StateFlow<String> = _selectedTenantId.asStateFlow()
 
     private val _adminTab: MutableStateFlow<AdminTab> = MutableStateFlow(AdminTab.DASHBOARD)
@@ -77,16 +84,24 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun loginWithCredentials(identifier: String, role: AppRole, passwordInput: String = "LewiHouse2026!"): Boolean {
         return when (val result = authManager.loginWithCredentials(identifier, role, passwordInput)) {
-            is com.example.data.security.AuthResult.Success -> {
+            is AuthResult.Success -> {
                 val resident = if (role == AppRole.TENANT) repository.authenticateTenant(identifier) else null
                 val targetTenantId = resident?.id ?: result.residentId
                 _selectedTenantId.value = targetTenantId
                 _currentRole.value = result.role
                 _isLoggedIn.value = true
-                sessionManager.saveSession(result.role, targetTenantId)
+                encryptedSessionManager.saveSession(result.role, targetTenantId, result.token)
                 true
             }
-            is com.example.data.security.AuthResult.Error -> {
+            is AuthResult.InvalidCredentials -> {
+                showSnackbar("Invalid credentials provided.")
+                false
+            }
+            is AuthResult.NetworkError -> {
+                showSnackbar("Network error during login.")
+                false
+            }
+            is AuthResult.Error -> {
                 showSnackbar(result.message)
                 false
             }
@@ -96,14 +111,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun login(role: AppRole) {
         _currentRole.value = role
         _isLoggedIn.value = true
-        sessionManager.saveSession(role, _selectedTenantId.value)
+        encryptedSessionManager.saveSession(role, _selectedTenantId.value)
     }
 
     fun logout() {
         authManager.logout()
-        sessionManager.clearSession()
+        encryptedSessionManager.clearSession()
         _isLoggedIn.value = false
     }
+
 
     // Data Streams from Room
     val rooms: StateFlow<List<RoomUnit>> = repository.allRooms

@@ -1,0 +1,40 @@
+default_platform(:android)
+
+platform :android do
+  desc "Run unit tests and linter"
+  lane :test do
+    gradle(task: "testDebugUnitTest")
+    gradle(task: "lintRelease")
+  end
+
+  desc "Build release Android App Bundle"
+  lane :build_release do
+    gradle(
+      task: "bundle",
+      build_type: "Release"
+    )
+  end
+
+  desc "Deploy to Firebase App Distribution for Staging & Internal QA"
+  lane :beta do
+    build_release
+    firebase_app_distribution(
+      app: ENV["FIREBASE_APP_ID"],
+      service_credentials_file: ENV["FIREBASE_APP_DISTRIBUTION_CREDENTIALS"],
+      release_notes: "Automated Staging Release - Lewi House Android",
+      groups: "internal-testers"
+    )
+  end
+
+  desc "Deploy to Google Play Internal Testing Track"
+  lane :internal_track do
+    build_release
+    upload_to_play_store(
+      track: "internal",
+      aab: "app/build/outputs/bundle/release/app-release.aab",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true
+    )
+  end
+end

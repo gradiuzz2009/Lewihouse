@@ -1,0 +1,466 @@
+extend type Query {
+  """
+  ✨ Look up a single `AppNotification` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  appNotification(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AppNotification_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AppNotification_FirstRow
+  ): AppNotification @fdc_generated(from: "AppNotification", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `BillingInvoice` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  billingInvoice(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: BillingInvoice_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: BillingInvoice_FirstRow
+  ): BillingInvoice @fdc_generated(from: "BillingInvoice", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `ChatMessage` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  chatMessage(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: ChatMessage_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ChatMessage_FirstRow
+  ): ChatMessage @fdc_generated(from: "ChatMessage", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `ElectricityMeter` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  electricityMeter(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: ElectricityMeter_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ElectricityMeter_FirstRow
+  ): ElectricityMeter @fdc_generated(from: "ElectricityMeter", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `MaintenanceTicket` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  maintenanceTicket(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: MaintenanceTicket_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: MaintenanceTicket_FirstRow
+  ): MaintenanceTicket @fdc_generated(from: "MaintenanceTicket", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Property` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  property(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Property_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Property_FirstRow
+  ): Property @fdc_generated(from: "Property", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `ResidentProfile` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  residentProfile(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: ResidentProfile_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ResidentProfile_FirstRow
+  ): ResidentProfile @fdc_generated(from: "ResidentProfile", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `RoomUnit` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  roomUnit(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: RoomUnit_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: RoomUnit_FirstRow
+  ): RoomUnit @fdc_generated(from: "RoomUnit", purpose: QUERY_SINGLE)
+  """
+  ✨ List `AppNotification` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  appNotifications(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: AppNotification_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [AppNotification_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: AppNotification_Having
+  ): [AppNotification!]! @fdc_generated(from: "AppNotification", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `BillingInvoice` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  billingInvoices(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: BillingInvoice_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [BillingInvoice_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: BillingInvoice_Having
+  ): [BillingInvoice!]! @fdc_generated(from: "BillingInvoice", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `ChatMessage` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  chatMessages(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: ChatMessage_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [ChatMessage_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: ChatMessage_Having
+  ): [ChatMessage!]! @fdc_generated(from: "ChatMessage", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `ElectricityMeter` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  electricityMeters(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: ElectricityMeter_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [ElectricityMeter_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: ElectricityMeter_Having
+  ): [ElectricityMeter!]! @fdc_generated(from: "ElectricityMeter", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `MaintenanceTicket` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  maintenanceTickets(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: MaintenanceTicket_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [MaintenanceTicket_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: MaintenanceTicket_Having
+  ): [MaintenanceTicket!]! @fdc_generated(from: "MaintenanceTicket", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Property` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  properties(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Property_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Property_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Property_Having
+  ): [Property!]! @fdc_generated(from: "Property", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `ResidentProfile` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  residentProfiles(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: ResidentProfile_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [ResidentProfile_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: ResidentProfile_Having
+  ): [ResidentProfile!]! @fdc_generated(from: "ResidentProfile", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `RoomUnit` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  roomUnits(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: RoomUnit_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [RoomUnit_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: RoomUnit_Having
+  ): [RoomUnit!]! @fdc_generated(from: "RoomUnit", purpose: QUERY_MULTIPLE)
+}

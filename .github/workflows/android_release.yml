@@ -1,0 +1,95 @@
+name: Android Production Build & Release
+
+on:
+  push:
+    branches: [ main, release/* ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  validate_and_test:
+    name: Lint & Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x _android_backup/gradlew
+
+      - name: Run Lint
+        working-directory: _android_backup
+        run: ./gradlew lintRelease --stacktrace
+
+      - name: Run Unit & Compose Tests
+        working-directory: _android_backup
+        run: ./gradlew testDebugUnitTest --stacktrace
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: _android_backup/app/build/reports/tests/testDebugUnitTest/
+
+  build_release:
+    name: Build & Distribute Release AAB
+    needs: validate_and_test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Ruby & Fastlane
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+          working-directory: _android_backup
+
+      - name: Decode Release Keystore
+        if: env.RELEASE_KEYSTORE_BASE64 != ''
+        working-directory: _android_backup
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > my-upload-key.jks
+
+      - name: Build Release Bundle
+        working-directory: _android_backup
+        env:
+          KEYSTORE_PATH: my-upload-key.jks
+          STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew bundleRelease --stacktrace
+
+      - name: Upload Release Bundle Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-bundle
+          path: _android_backup/app/build/outputs/bundle/release/app-release.aab
+
+      - name: Distribute via Fastlane
+        if: env.FIREBASE_APP_DISTRIBUTION_CREDENTIALS != ''
+        working-directory: _android_backup
+        env:
+          FIREBASE_APP_DISTRIBUTION_CREDENTIALS: ${{ secrets.FIREBASE_APP_DISTRIBUTION_CREDENTIALS }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+        run: bundle exec fastlane beta

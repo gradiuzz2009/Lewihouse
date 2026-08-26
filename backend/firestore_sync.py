@@ -14,7 +14,7 @@ import urllib.error
 
 logger = logging.getLogger("firestore_sync")
 
-FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "lewihouse")
+FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "lewihouse-7a0d7")
 FIRESTORE_BASE_URL = f"https://firestore.googleapis.com/v1/projects/{FIREBASE_PROJECT_ID}/databases/(default)/documents"
 PROPERTY_SCOPE = "properties/lewi_house_main"
 

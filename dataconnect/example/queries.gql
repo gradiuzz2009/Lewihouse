@@ -1,0 +1,78 @@
+# Queries for Lewi House Property Management
+
+query ListRooms @auth(level: PUBLIC) {
+  roomUnits(orderBy: [{ roomNumber: ASC }]) {
+    id
+    roomNumber
+    floor
+    wing
+    roomType
+    capacity
+    monthlyPrice
+    deposit
+    status
+    notes
+    updatedAt
+  }
+}
+
+query ListResidents @auth(level: USER) {
+  residentProfiles(orderBy: [{ roomNumber: ASC }]) {
+    id
+    fullName
+    email
+    phone
+    roomNumber
+    moveInDate
+    leaseEndDate
+    monthlyRent
+    depositAmount
+    status
+    emergencyContact
+    emergencyPhone
+  }
+}
+
+query ListInvoices @auth(level: USER) {
+  billingInvoices(orderBy: [{ createdAt: DESC }]) {
+    id
+    residentId
+    roomNumber
+    invoiceNumber
+    amount
+    paidAmount
+    period
+    status
+    dueDate
+    paymentMethod
+    receiptRef
+    notes
+  }
+}
+
+query ListMaintenanceTickets @auth(level: USER) {
+  maintenanceTickets(orderBy: [{ createdAt: DESC }]) {
+    id
+    roomNumber
+    residentId
+    residentName
+    title
+    category
+    description
+    priority
+    status
+    reportedDate
+    assignedTechnician
+    notes
+  }
+}
+
+query ListElectricityMeters @auth(level: USER) {
+  electricityMeters(orderBy: [{ roomNumber: ASC }]) {
+    id
+    roomNumber
+    meterNumber
+    currentKwh
+    lastUpdated
+  }
+}

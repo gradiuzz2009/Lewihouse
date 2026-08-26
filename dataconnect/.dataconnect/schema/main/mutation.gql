@@ -1,0 +1,978 @@
+extend type Mutation {
+  """
+  ✨ Insert a single `AppNotification` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  appNotification_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: AppNotification_Data!
+  ): AppNotification_KeyOutput! @fdc_generated(from: "AppNotification", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `BillingInvoice` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  billingInvoice_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: BillingInvoice_Data!
+  ): BillingInvoice_KeyOutput! @fdc_generated(from: "BillingInvoice", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `ChatMessage` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  chatMessage_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: ChatMessage_Data!
+  ): ChatMessage_KeyOutput! @fdc_generated(from: "ChatMessage", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `ElectricityMeter` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  electricityMeter_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: ElectricityMeter_Data!
+  ): ElectricityMeter_KeyOutput! @fdc_generated(from: "ElectricityMeter", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `MaintenanceTicket` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  maintenanceTicket_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: MaintenanceTicket_Data!
+  ): MaintenanceTicket_KeyOutput! @fdc_generated(from: "MaintenanceTicket", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Property` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  property_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Property_Data!
+  ): Property_KeyOutput! @fdc_generated(from: "Property", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `ResidentProfile` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  residentProfile_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: ResidentProfile_Data!
+  ): ResidentProfile_KeyOutput! @fdc_generated(from: "ResidentProfile", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `RoomUnit` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  roomUnit_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: RoomUnit_Data!
+  ): RoomUnit_KeyOutput! @fdc_generated(from: "RoomUnit", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert `AppNotification` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  appNotification_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [AppNotification_Data!]!
+  ): [AppNotification_KeyOutput!]! @fdc_generated(from: "AppNotification", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `BillingInvoice` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  billingInvoice_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [BillingInvoice_Data!]!
+  ): [BillingInvoice_KeyOutput!]! @fdc_generated(from: "BillingInvoice", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `ChatMessage` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  chatMessage_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [ChatMessage_Data!]!
+  ): [ChatMessage_KeyOutput!]! @fdc_generated(from: "ChatMessage", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `ElectricityMeter` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  electricityMeter_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [ElectricityMeter_Data!]!
+  ): [ElectricityMeter_KeyOutput!]! @fdc_generated(from: "ElectricityMeter", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `MaintenanceTicket` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  maintenanceTicket_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [MaintenanceTicket_Data!]!
+  ): [MaintenanceTicket_KeyOutput!]! @fdc_generated(from: "MaintenanceTicket", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Property` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  property_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Property_Data!]!
+  ): [Property_KeyOutput!]! @fdc_generated(from: "Property", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `ResidentProfile` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  residentProfile_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [ResidentProfile_Data!]!
+  ): [ResidentProfile_KeyOutput!]! @fdc_generated(from: "ResidentProfile", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `RoomUnit` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  roomUnit_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [RoomUnit_Data!]!
+  ): [RoomUnit_KeyOutput!]! @fdc_generated(from: "RoomUnit", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert or update a single `AppNotification` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AppNotification`.
+  """
+  appNotification_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: AppNotification_Data!
+  ): AppNotification_KeyOutput! @fdc_generated(from: "AppNotification", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `BillingInvoice` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `BillingInvoice`.
+  """
+  billingInvoice_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: BillingInvoice_Data!
+  ): BillingInvoice_KeyOutput! @fdc_generated(from: "BillingInvoice", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `ChatMessage` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `ChatMessage`.
+  """
+  chatMessage_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: ChatMessage_Data!
+  ): ChatMessage_KeyOutput! @fdc_generated(from: "ChatMessage", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `ElectricityMeter` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `ElectricityMeter`.
+  """
+  electricityMeter_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: ElectricityMeter_Data!
+  ): ElectricityMeter_KeyOutput! @fdc_generated(from: "ElectricityMeter", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `MaintenanceTicket` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `MaintenanceTicket`.
+  """
+  maintenanceTicket_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: MaintenanceTicket_Data!
+  ): MaintenanceTicket_KeyOutput! @fdc_generated(from: "MaintenanceTicket", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Property` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Property`.
+  """
+  property_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Property_Data!
+  ): Property_KeyOutput! @fdc_generated(from: "Property", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `ResidentProfile` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `ResidentProfile`.
+  """
+  residentProfile_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: ResidentProfile_Data!
+  ): ResidentProfile_KeyOutput! @fdc_generated(from: "ResidentProfile", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `RoomUnit` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `RoomUnit`.
+  """
+  roomUnit_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: RoomUnit_Data!
+  ): RoomUnit_KeyOutput! @fdc_generated(from: "RoomUnit", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update `AppNotification` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `AppNotification`.
+  """
+  appNotification_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [AppNotification_Data!]!
+  ): [AppNotification_KeyOutput!]! @fdc_generated(from: "AppNotification", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `BillingInvoice` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `BillingInvoice`.
+  """
+  billingInvoice_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [BillingInvoice_Data!]!
+  ): [BillingInvoice_KeyOutput!]! @fdc_generated(from: "BillingInvoice", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `ChatMessage` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `ChatMessage`.
+  """
+  chatMessage_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [ChatMessage_Data!]!
+  ): [ChatMessage_KeyOutput!]! @fdc_generated(from: "ChatMessage", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `ElectricityMeter` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `ElectricityMeter`.
+  """
+  electricityMeter_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [ElectricityMeter_Data!]!
+  ): [ElectricityMeter_KeyOutput!]! @fdc_generated(from: "ElectricityMeter", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `MaintenanceTicket` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `MaintenanceTicket`.
+  """
+  maintenanceTicket_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [MaintenanceTicket_Data!]!
+  ): [MaintenanceTicket_KeyOutput!]! @fdc_generated(from: "MaintenanceTicket", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Property` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Property`.
+  """
+  property_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Property_Data!]!
+  ): [Property_KeyOutput!]! @fdc_generated(from: "Property", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `ResidentProfile` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `ResidentProfile`.
+  """
+  residentProfile_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [ResidentProfile_Data!]!
+  ): [ResidentProfile_KeyOutput!]! @fdc_generated(from: "ResidentProfile", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `RoomUnit` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `RoomUnit`.
+  """
+  roomUnit_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [RoomUnit_Data!]!
+  ): [RoomUnit_KeyOutput!]! @fdc_generated(from: "RoomUnit", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Update a single `AppNotification` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `AppNotification` or `null` if not found.
+  """
+  appNotification_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AppNotification_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AppNotification_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: AppNotification_Data!
+  ): AppNotification_KeyOutput @fdc_generated(from: "AppNotification", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `BillingInvoice` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `BillingInvoice` or `null` if not found.
+  """
+  billingInvoice_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: BillingInvoice_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: BillingInvoice_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: BillingInvoice_Data!
+  ): BillingInvoice_KeyOutput @fdc_generated(from: "BillingInvoice", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `ChatMessage` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `ChatMessage` or `null` if not found.
+  """
+  chatMessage_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: ChatMessage_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ChatMessage_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: ChatMessage_Data!
+  ): ChatMessage_KeyOutput @fdc_generated(from: "ChatMessage", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `ElectricityMeter` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `ElectricityMeter` or `null` if not found.
+  """
+  electricityMeter_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: ElectricityMeter_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ElectricityMeter_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: ElectricityMeter_Data!
+  ): ElectricityMeter_KeyOutput @fdc_generated(from: "ElectricityMeter", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `MaintenanceTicket` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `MaintenanceTicket` or `null` if not found.
+  """
+  maintenanceTicket_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: MaintenanceTicket_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: MaintenanceTicket_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: MaintenanceTicket_Data!
+  ): MaintenanceTicket_KeyOutput @fdc_generated(from: "MaintenanceTicket", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Property` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Property` or `null` if not found.
+  """
+  property_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Property_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Property_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Property_Data!
+  ): Property_KeyOutput @fdc_generated(from: "Property", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `ResidentProfile` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `ResidentProfile` or `null` if not found.
+  """
+  residentProfile_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: ResidentProfile_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ResidentProfile_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: ResidentProfile_Data!
+  ): ResidentProfile_KeyOutput @fdc_generated(from: "ResidentProfile", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `RoomUnit` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `RoomUnit` or `null` if not found.
+  """
+  roomUnit_update(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: RoomUnit_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: RoomUnit_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: RoomUnit_Data!
+  ): RoomUnit_KeyOutput @fdc_generated(from: "RoomUnit", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update `AppNotification` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  appNotification_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: AppNotification_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: AppNotification_Data!
+  ): Int! @fdc_generated(from: "AppNotification", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `BillingInvoice` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  billingInvoice_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: BillingInvoice_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: BillingInvoice_Data!
+  ): Int! @fdc_generated(from: "BillingInvoice", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `ChatMessage` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  chatMessage_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: ChatMessage_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: ChatMessage_Data!
+  ): Int! @fdc_generated(from: "ChatMessage", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `ElectricityMeter` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  electricityMeter_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: ElectricityMeter_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: ElectricityMeter_Data!
+  ): Int! @fdc_generated(from: "ElectricityMeter", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `MaintenanceTicket` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  maintenanceTicket_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: MaintenanceTicket_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: MaintenanceTicket_Data!
+  ): Int! @fdc_generated(from: "MaintenanceTicket", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Property` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  property_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Property_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Property_Data!
+  ): Int! @fdc_generated(from: "Property", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `ResidentProfile` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  residentProfile_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: ResidentProfile_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: ResidentProfile_Data!
+  ): Int! @fdc_generated(from: "ResidentProfile", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `RoomUnit` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  roomUnit_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: RoomUnit_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: RoomUnit_Data!
+  ): Int! @fdc_generated(from: "RoomUnit", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Delete a single `AppNotification` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  appNotification_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: AppNotification_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: AppNotification_FirstRow
+  ): AppNotification_KeyOutput @fdc_generated(from: "AppNotification", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `BillingInvoice` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  billingInvoice_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: BillingInvoice_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: BillingInvoice_FirstRow
+  ): BillingInvoice_KeyOutput @fdc_generated(from: "BillingInvoice", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `ChatMessage` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  chatMessage_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: ChatMessage_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ChatMessage_FirstRow
+  ): ChatMessage_KeyOutput @fdc_generated(from: "ChatMessage", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `ElectricityMeter` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  electricityMeter_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: ElectricityMeter_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ElectricityMeter_FirstRow
+  ): ElectricityMeter_KeyOutput @fdc_generated(from: "ElectricityMeter", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `MaintenanceTicket` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  maintenanceTicket_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: MaintenanceTicket_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: MaintenanceTicket_FirstRow
+  ): MaintenanceTicket_KeyOutput @fdc_generated(from: "MaintenanceTicket", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Property` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  property_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: Property_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Property_FirstRow
+  ): Property_KeyOutput @fdc_generated(from: "Property", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `ResidentProfile` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  residentProfile_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: ResidentProfile_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ResidentProfile_FirstRow
+  ): ResidentProfile_KeyOutput @fdc_generated(from: "ResidentProfile", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `RoomUnit` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  roomUnit_delete(
+    """
+    The unique ID of the object.
+    """
+    id: String
+
+    """
+    ✨ `_expr` server value variant of `id` (The unique ID of the object.)
+    """
+    id_expr: String_Expr
+
+    """
+    The key used to identify the object.
+    """
+    key: RoomUnit_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: RoomUnit_FirstRow
+  ): RoomUnit_KeyOutput @fdc_generated(from: "RoomUnit", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete `AppNotification` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  appNotification_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: AppNotification_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "AppNotification", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `BillingInvoice` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  billingInvoice_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: BillingInvoice_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "BillingInvoice", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `ChatMessage` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  chatMessage_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: ChatMessage_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "ChatMessage", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `ElectricityMeter` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  electricityMeter_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: ElectricityMeter_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "ElectricityMeter", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `MaintenanceTicket` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  maintenanceTicket_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: MaintenanceTicket_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "MaintenanceTicket", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Property` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  property_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Property_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Property", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `ResidentProfile` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  residentProfile_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: ResidentProfile_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "ResidentProfile", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `RoomUnit` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  roomUnit_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: RoomUnit_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "RoomUnit", purpose: DELETE_MULTIPLE)
+}

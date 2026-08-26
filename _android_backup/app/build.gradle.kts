@@ -1,22 +1,29 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Properties
+import java.io.FileInputStream
 
 plugins {
   alias(libs.plugins.android.application)
+  alias(libs.plugins.kotlinPluginAndroid)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
+  alias(libs.plugins.hilt)
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
   alias(libs.plugins.google.services)
+  alias(libs.plugins.firebase.crashlytics)
+  alias(libs.plugins.firebase.perf)
 }
+
 
 android {
   namespace = "com.example"
-  compileSdk { version = release(36) { minorApiLevel = 1 } }
+  compileSdk = 35
 
   defaultConfig {
-    applicationId = "com.aistudio.lewihouse.pmzkx"
-    minSdk = 24
-    targetSdk = 36
+    applicationId = "lewihouse.android"
+    minSdk = 26
+    targetSdk = 35
     versionCode = 1
     versionName = "1.0"
 
@@ -25,16 +32,27 @@ android {
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
+      val localProps = Properties()
+      val localPropsFile = rootProject.file("local.properties")
+      if (localPropsFile.exists()) {
+        localProps.load(FileInputStream(localPropsFile))
+      }
+
+      val keystorePath = localProps.getProperty("RELEASE_KEYSTORE_PATH")
+        ?: System.getenv("KEYSTORE_PATH")
+        ?: "$rootDir/my-upload-key.jks"
+
       val keystoreFile = file(keystorePath)
       if (keystoreFile.exists()) {
         storeFile = keystoreFile
-        storePassword = System.getenv("STORE_PASSWORD") ?: "android"
-        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
-        keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
+        storePassword = localProps.getProperty("RELEASE_STORE_PASSWORD") ?: System.getenv("STORE_PASSWORD") ?: "android"
+
+        keyAlias = localProps.getProperty("RELEASE_KEY_ALIAS") ?: System.getenv("KEY_ALIAS") ?: "upload"
+        keyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD") ?: System.getenv("KEY_PASSWORD") ?: "android"
       }
     }
   }
+
 
   buildTypes {
     release {
@@ -42,16 +60,19 @@ android {
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       val releaseSigning = signingConfigs.getByName("release")
-      if (releaseSigning.storeFile?.exists() == true) {
-        signingConfig = releaseSigning
+      signingConfig = if (releaseSigning.storeFile?.exists() == true) {
+        releaseSigning
       } else {
-        signingConfig = signingConfigs.getByName("debug")
+        signingConfigs.getByName("debug")
       }
     }
   }
   compileOptions {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+  }
+  kotlinOptions {
+    jvmTarget = "17"
   }
   lint {
     checkReleaseBuilds = false
@@ -106,15 +127,25 @@ dependencies {
   implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
+  implementation(libs.androidx.security.crypto)
+  implementation(libs.androidx.work.runtime.ktx)
+  implementation(libs.play.app.update)
+  implementation(libs.hilt.android)
+  implementation(libs.androidx.hilt.navigation.compose)
+  implementation(libs.androidx.hilt.work)
   // implementation(libs.coil.compose)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
   implementation(libs.firebase.firestore)
   implementation(libs.firebase.auth)
   implementation(libs.firebase.messaging)
+  implementation(libs.firebase.crashlytics)
+  implementation(libs.firebase.perf)
+  implementation(libs.firebase.appcheck.playintegrity)
+  debugImplementation(libs.firebase.appcheck.debug)
   implementation(libs.kotlinx.coroutines.play.services)
   implementation(libs.timber)
-  implementation(libs.firebase.appcheck.recaptcha)
+
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
   implementation(libs.logging.interceptor)
@@ -122,22 +153,26 @@ dependencies {
   implementation(libs.okhttp)
   // implementation(libs.play.services.location)
   implementation(libs.retrofit)
-  testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
   testImplementation(libs.junit)
   testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.turbine)
+  testImplementation(libs.mockito.core)
+  testImplementation(libs.mockito.kotlin)
   testImplementation(libs.robolectric)
+  testImplementation(libs.androidx.compose.ui.test.junit4)
+
   testImplementation(libs.roborazzi)
   testImplementation(libs.roborazzi.compose)
   testImplementation(libs.roborazzi.junit.rule)
-  androidTestImplementation(platform(libs.androidx.compose.bom))
-  androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   androidTestImplementation(libs.androidx.espresso.core)
-  androidTestImplementation(libs.androidx.junit)
   androidTestImplementation(libs.androidx.runner)
   debugImplementation(libs.androidx.compose.ui.test.manifest)
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
+  "ksp"(libs.hilt.compiler)
+  "ksp"(libs.androidx.hilt.compiler)
 }
+

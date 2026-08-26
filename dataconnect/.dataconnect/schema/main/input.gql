@@ -1,0 +1,3220 @@
+"""
+✨ `AppNotification_KeyOutput` returns the primary key fields of table type `AppNotification`.
+
+It has the same format as `AppNotification_Key`, but is only used as mutation return value.
+"""
+scalar AppNotification_KeyOutput
+"""
+✨ `BillingInvoice_KeyOutput` returns the primary key fields of table type `BillingInvoice`.
+
+It has the same format as `BillingInvoice_Key`, but is only used as mutation return value.
+"""
+scalar BillingInvoice_KeyOutput
+"""
+✨ `ChatMessage_KeyOutput` returns the primary key fields of table type `ChatMessage`.
+
+It has the same format as `ChatMessage_Key`, but is only used as mutation return value.
+"""
+scalar ChatMessage_KeyOutput
+"""
+✨ `ElectricityMeter_KeyOutput` returns the primary key fields of table type `ElectricityMeter`.
+
+It has the same format as `ElectricityMeter_Key`, but is only used as mutation return value.
+"""
+scalar ElectricityMeter_KeyOutput
+"""
+✨ `MaintenanceTicket_KeyOutput` returns the primary key fields of table type `MaintenanceTicket`.
+
+It has the same format as `MaintenanceTicket_Key`, but is only used as mutation return value.
+"""
+scalar MaintenanceTicket_KeyOutput
+"""
+✨ `Property_KeyOutput` returns the primary key fields of table type `Property`.
+
+It has the same format as `Property_Key`, but is only used as mutation return value.
+"""
+scalar Property_KeyOutput
+"""
+✨ `ResidentProfile_KeyOutput` returns the primary key fields of table type `ResidentProfile`.
+
+It has the same format as `ResidentProfile_Key`, but is only used as mutation return value.
+"""
+scalar ResidentProfile_KeyOutput
+"""
+✨ `RoomUnit_KeyOutput` returns the primary key fields of table type `RoomUnit`.
+
+It has the same format as `RoomUnit_Key`, but is only used as mutation return value.
+"""
+scalar RoomUnit_KeyOutput
+"""
+✨ Generated data input type for table 'AppNotification'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input AppNotification_Data {
+  """
+  ✨ Generated from Field `AppNotification`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AppNotification`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `AppNotification`.`body` of type `String!`
+  """
+  body: String
+  """
+  ✨ `_expr` server value variant of `body` (✨ Generated from Field `AppNotification`.`body` of type `String!`)
+  """
+  body_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `AppNotification`.`category` of type `String!`
+  """
+  category: String
+  """
+  ✨ `_expr` server value variant of `category` (✨ Generated from Field `AppNotification`.`category` of type `String!`)
+  """
+  category_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `AppNotification`.`createdAt` of type `Timestamp`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `AppNotification`.`createdAt` of type `Timestamp`)
+  """
+  createdAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `AppNotification`.`createdAt` of type `Timestamp`)
+  """
+  createdAt_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `AppNotification`.`createdAt` of type `Timestamp`)
+  """
+  createdAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `AppNotification`.`isRead` of type `Boolean!`
+  """
+  isRead: Boolean
+  """
+  ✨ `_expr` server value variant of `isRead` (✨ Generated from Field `AppNotification`.`isRead` of type `Boolean!`)
+  """
+  isRead_expr: Boolean_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `AppNotification`.`recipientResidentId` of type `String`
+  """
+  recipientResidentId: String
+  """
+  ✨ `_expr` server value variant of `recipientResidentId` (✨ Generated from Field `AppNotification`.`recipientResidentId` of type `String`)
+  """
+  recipientResidentId_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `AppNotification`.`title` of type `String!`
+  """
+  title: String
+  """
+  ✨ `_expr` server value variant of `title` (✨ Generated from Field `AppNotification`.`title` of type `String!`)
+  """
+  title_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'AppNotification'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AppNotification_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [AppNotification_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: AppNotification_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [AppNotification_Filter!]
+  """
+  ✨ Generated from Field `AppNotification`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`body` of type `String!`
+  """
+  body: String_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`category` of type `String!`
+  """
+  category: String_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`createdAt` of type `Timestamp`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`isRead` of type `Boolean!`
+  """
+  isRead: Boolean_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`recipientResidentId` of type `String`
+  """
+  recipientResidentId: String_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`title` of type `String!`
+  """
+  title: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'AppNotification'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input AppNotification_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [AppNotification_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: AppNotification_Filter
+}
+"""
+✨ Generated having input type for table 'AppNotification'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input AppNotification_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [AppNotification_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: AppNotification_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [AppNotification_Having!]
+  """
+  ✨ Generated from Field `AppNotification`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`body_count` of type `Int!`
+  """
+  body_count: Int_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`category_count` of type `Int!`
+  """
+  category_count: Int_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`isRead_count` of type `Int!`
+  """
+  isRead_count: Int_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`recipientResidentId_count` of type `Int!`
+  """
+  recipientResidentId_count: Int_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`title_count` of type `Int!`
+  """
+  title_count: Int_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `AppNotification`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'AppNotification'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input AppNotification_Key {
+  """
+  ✨ Generated from Field `AppNotification`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `AppNotification`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'AppNotification'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input AppNotification_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: AppNotification_Filter
+}
+"""
+✨ Generated order input type for table 'AppNotification'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input AppNotification_Order {
+  """
+  ✨ Generated from Field `AppNotification`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`body` of type `String!`
+  """
+  body: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`category` of type `String!`
+  """
+  category: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`createdAt` of type `Timestamp`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`isRead` of type `Boolean!`
+  """
+  isRead: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`recipientResidentId` of type `String`
+  """
+  recipientResidentId: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`title` of type `String!`
+  """
+  title: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`body_count` of type `Int!`
+  """
+  body_count: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`category_count` of type `Int!`
+  """
+  category_count: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`isRead_count` of type `Int!`
+  """
+  isRead_count: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`recipientResidentId_count` of type `Int!`
+  """
+  recipientResidentId_count: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`title_count` of type `Int!`
+  """
+  title_count: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `AppNotification`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'BillingInvoice'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input BillingInvoice_Data {
+  """
+  ✨ Generated from Field `BillingInvoice`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `BillingInvoice`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount` of type `Float!`
+  """
+  amount: Float
+  """
+  ✨ `_expr` server value variant of `amount` (✨ Generated from Field `BillingInvoice`.`amount` of type `Float!`)
+  """
+  amount_expr: Float_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `amount` (✨ Generated from Field `BillingInvoice`.`amount` of type `Float!`)
+  """
+  amount_update: [Float_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `BillingInvoice`.`createdAt` of type `Timestamp`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `BillingInvoice`.`createdAt` of type `Timestamp`)
+  """
+  createdAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `BillingInvoice`.`createdAt` of type `Timestamp`)
+  """
+  createdAt_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `BillingInvoice`.`createdAt` of type `Timestamp`)
+  """
+  createdAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `BillingInvoice`.`dueDate` of type `String`
+  """
+  dueDate: String
+  """
+  ✨ `_expr` server value variant of `dueDate` (✨ Generated from Field `BillingInvoice`.`dueDate` of type `String`)
+  """
+  dueDate_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `BillingInvoice`.`invoiceNumber` of type `String!`
+  """
+  invoiceNumber: String
+  """
+  ✨ `_expr` server value variant of `invoiceNumber` (✨ Generated from Field `BillingInvoice`.`invoiceNumber` of type `String!`)
+  """
+  invoiceNumber_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `BillingInvoice`.`notes` of type `String`
+  """
+  notes: String
+  """
+  ✨ `_expr` server value variant of `notes` (✨ Generated from Field `BillingInvoice`.`notes` of type `String`)
+  """
+  notes_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount` of type `Float`
+  """
+  paidAmount: Float
+  """
+  ✨ `_expr` server value variant of `paidAmount` (✨ Generated from Field `BillingInvoice`.`paidAmount` of type `Float`)
+  """
+  paidAmount_expr: Float_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `paidAmount` (✨ Generated from Field `BillingInvoice`.`paidAmount` of type `Float`)
+  """
+  paidAmount_update: [Float_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `BillingInvoice`.`paymentMethod` of type `String`
+  """
+  paymentMethod: String
+  """
+  ✨ `_expr` server value variant of `paymentMethod` (✨ Generated from Field `BillingInvoice`.`paymentMethod` of type `String`)
+  """
+  paymentMethod_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `BillingInvoice`.`period` of type `String`
+  """
+  period: String
+  """
+  ✨ `_expr` server value variant of `period` (✨ Generated from Field `BillingInvoice`.`period` of type `String`)
+  """
+  period_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `BillingInvoice`.`receiptRef` of type `String`
+  """
+  receiptRef: String
+  """
+  ✨ `_expr` server value variant of `receiptRef` (✨ Generated from Field `BillingInvoice`.`receiptRef` of type `String`)
+  """
+  receiptRef_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `BillingInvoice`.`residentId` of type `String!`
+  """
+  residentId: String
+  """
+  ✨ `_expr` server value variant of `residentId` (✨ Generated from Field `BillingInvoice`.`residentId` of type `String!`)
+  """
+  residentId_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `BillingInvoice`.`roomNumber` of type `String!`
+  """
+  roomNumber: String
+  """
+  ✨ `_expr` server value variant of `roomNumber` (✨ Generated from Field `BillingInvoice`.`roomNumber` of type `String!`)
+  """
+  roomNumber_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `BillingInvoice`.`status` of type `String!`
+  """
+  status: String
+  """
+  ✨ `_expr` server value variant of `status` (✨ Generated from Field `BillingInvoice`.`status` of type `String!`)
+  """
+  status_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'BillingInvoice'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input BillingInvoice_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [BillingInvoice_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: BillingInvoice_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [BillingInvoice_Filter!]
+  """
+  ✨ Generated from Field `BillingInvoice`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount` of type `Float!`
+  """
+  amount: Float_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`createdAt` of type `Timestamp`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`dueDate` of type `String`
+  """
+  dueDate: String_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`invoiceNumber` of type `String!`
+  """
+  invoiceNumber: String_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`notes` of type `String`
+  """
+  notes: String_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount` of type `Float`
+  """
+  paidAmount: Float_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`paymentMethod` of type `String`
+  """
+  paymentMethod: String_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`period` of type `String`
+  """
+  period: String_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`receiptRef` of type `String`
+  """
+  receiptRef: String_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`residentId` of type `String!`
+  """
+  residentId: String_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`roomNumber` of type `String!`
+  """
+  roomNumber: String_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`status` of type `String!`
+  """
+  status: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'BillingInvoice'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input BillingInvoice_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [BillingInvoice_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: BillingInvoice_Filter
+}
+"""
+✨ Generated having input type for table 'BillingInvoice'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input BillingInvoice_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [BillingInvoice_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: BillingInvoice_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [BillingInvoice_Having!]
+  """
+  ✨ Generated from Field `BillingInvoice`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount_count` of type `Int!`
+  """
+  amount_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`dueDate_count` of type `Int!`
+  """
+  dueDate_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`invoiceNumber_count` of type `Int!`
+  """
+  invoiceNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`notes_count` of type `Int!`
+  """
+  notes_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount_count` of type `Int!`
+  """
+  paidAmount_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`paymentMethod_count` of type `Int!`
+  """
+  paymentMethod_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`period_count` of type `Int!`
+  """
+  period_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`receiptRef_count` of type `Int!`
+  """
+  receiptRef_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`residentId_count` of type `Int!`
+  """
+  residentId_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`roomNumber_count` of type `Int!`
+  """
+  roomNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`status_count` of type `Int!`
+  """
+  status_count: Int_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount_sum` of type `Float`
+  """
+  amount_sum: Float_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount_sum` of type `Float`
+  """
+  paidAmount_sum: Float_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount_avg` of type `Float`
+  """
+  amount_avg: Float_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount_avg` of type `Float`
+  """
+  paidAmount_avg: Float_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount_min` of type `Float`
+  """
+  amount_min: Float_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount_min` of type `Float`
+  """
+  paidAmount_min: Float_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount_max` of type `Float`
+  """
+  amount_max: Float_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount_max` of type `Float`
+  """
+  paidAmount_max: Float_Filter
+}
+"""
+✨ Generated key input type for table 'BillingInvoice'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input BillingInvoice_Key {
+  """
+  ✨ Generated from Field `BillingInvoice`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `BillingInvoice`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'BillingInvoice'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input BillingInvoice_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: BillingInvoice_Filter
+}
+"""
+✨ Generated order input type for table 'BillingInvoice'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input BillingInvoice_Order {
+  """
+  ✨ Generated from Field `BillingInvoice`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount` of type `Float!`
+  """
+  amount: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`createdAt` of type `Timestamp`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`dueDate` of type `String`
+  """
+  dueDate: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`invoiceNumber` of type `String!`
+  """
+  invoiceNumber: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`notes` of type `String`
+  """
+  notes: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount` of type `Float`
+  """
+  paidAmount: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`paymentMethod` of type `String`
+  """
+  paymentMethod: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`period` of type `String`
+  """
+  period: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`receiptRef` of type `String`
+  """
+  receiptRef: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`residentId` of type `String!`
+  """
+  residentId: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`roomNumber` of type `String!`
+  """
+  roomNumber: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`status` of type `String!`
+  """
+  status: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount_count` of type `Int!`
+  """
+  amount_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`dueDate_count` of type `Int!`
+  """
+  dueDate_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`invoiceNumber_count` of type `Int!`
+  """
+  invoiceNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`notes_count` of type `Int!`
+  """
+  notes_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount_count` of type `Int!`
+  """
+  paidAmount_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`paymentMethod_count` of type `Int!`
+  """
+  paymentMethod_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`period_count` of type `Int!`
+  """
+  period_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`receiptRef_count` of type `Int!`
+  """
+  receiptRef_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`residentId_count` of type `Int!`
+  """
+  residentId_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`roomNumber_count` of type `Int!`
+  """
+  roomNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`status_count` of type `Int!`
+  """
+  status_count: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount_sum` of type `Float`
+  """
+  amount_sum: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount_sum` of type `Float`
+  """
+  paidAmount_sum: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount_avg` of type `Float`
+  """
+  amount_avg: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount_avg` of type `Float`
+  """
+  paidAmount_avg: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount_min` of type `Float`
+  """
+  amount_min: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount_min` of type `Float`
+  """
+  paidAmount_min: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`amount_max` of type `Float`
+  """
+  amount_max: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `BillingInvoice`.`paidAmount_max` of type `Float`
+  """
+  paidAmount_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'ChatMessage'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input ChatMessage_Data {
+  """
+  ✨ Generated from Field `ChatMessage`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `ChatMessage`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ChatMessage`.`isRead` of type `Boolean!`
+  """
+  isRead: Boolean
+  """
+  ✨ `_expr` server value variant of `isRead` (✨ Generated from Field `ChatMessage`.`isRead` of type `Boolean!`)
+  """
+  isRead_expr: Boolean_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ChatMessage`.`senderId` of type `String!`
+  """
+  senderId: String
+  """
+  ✨ `_expr` server value variant of `senderId` (✨ Generated from Field `ChatMessage`.`senderId` of type `String!`)
+  """
+  senderId_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ChatMessage`.`senderName` of type `String!`
+  """
+  senderName: String
+  """
+  ✨ `_expr` server value variant of `senderName` (✨ Generated from Field `ChatMessage`.`senderName` of type `String!`)
+  """
+  senderName_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ChatMessage`.`senderRole` of type `String!`
+  """
+  senderRole: String
+  """
+  ✨ `_expr` server value variant of `senderRole` (✨ Generated from Field `ChatMessage`.`senderRole` of type `String!`)
+  """
+  senderRole_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ChatMessage`.`tenantId` of type `String!`
+  """
+  tenantId: String
+  """
+  ✨ `_expr` server value variant of `tenantId` (✨ Generated from Field `ChatMessage`.`tenantId` of type `String!`)
+  """
+  tenantId_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ChatMessage`.`text` of type `String!`
+  """
+  text: String
+  """
+  ✨ `_expr` server value variant of `text` (✨ Generated from Field `ChatMessage`.`text` of type `String!`)
+  """
+  text_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ChatMessage`.`timestamp` of type `Timestamp`
+  """
+  timestamp: Timestamp
+  """
+  ✨ `_expr` server value variant of `timestamp` (✨ Generated from Field `ChatMessage`.`timestamp` of type `Timestamp`)
+  """
+  timestamp_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `timestamp` (✨ Generated from Field `ChatMessage`.`timestamp` of type `Timestamp`)
+  """
+  timestamp_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `timestamp` (✨ Generated from Field `ChatMessage`.`timestamp` of type `Timestamp`)
+  """
+  timestamp_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'ChatMessage'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input ChatMessage_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [ChatMessage_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: ChatMessage_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [ChatMessage_Filter!]
+  """
+  ✨ Generated from Field `ChatMessage`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`isRead` of type `Boolean!`
+  """
+  isRead: Boolean_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`senderId` of type `String!`
+  """
+  senderId: String_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`senderName` of type `String!`
+  """
+  senderName: String_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`senderRole` of type `String!`
+  """
+  senderRole: String_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`tenantId` of type `String!`
+  """
+  tenantId: String_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`text` of type `String!`
+  """
+  text: String_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`timestamp` of type `Timestamp`
+  """
+  timestamp: Timestamp_Filter
+}
+"""
+✨ Generated first-row input type for table 'ChatMessage'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input ChatMessage_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [ChatMessage_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: ChatMessage_Filter
+}
+"""
+✨ Generated having input type for table 'ChatMessage'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input ChatMessage_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [ChatMessage_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: ChatMessage_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [ChatMessage_Having!]
+  """
+  ✨ Generated from Field `ChatMessage`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`isRead_count` of type `Int!`
+  """
+  isRead_count: Int_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`senderId_count` of type `Int!`
+  """
+  senderId_count: Int_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`senderName_count` of type `Int!`
+  """
+  senderName_count: Int_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`senderRole_count` of type `Int!`
+  """
+  senderRole_count: Int_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`tenantId_count` of type `Int!`
+  """
+  tenantId_count: Int_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`text_count` of type `Int!`
+  """
+  text_count: Int_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`timestamp_count` of type `Int!`
+  """
+  timestamp_count: Int_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`timestamp_min` of type `Timestamp`
+  """
+  timestamp_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `ChatMessage`.`timestamp_max` of type `Timestamp`
+  """
+  timestamp_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'ChatMessage'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input ChatMessage_Key {
+  """
+  ✨ Generated from Field `ChatMessage`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `ChatMessage`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'ChatMessage'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input ChatMessage_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: ChatMessage_Filter
+}
+"""
+✨ Generated order input type for table 'ChatMessage'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input ChatMessage_Order {
+  """
+  ✨ Generated from Field `ChatMessage`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`isRead` of type `Boolean!`
+  """
+  isRead: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`senderId` of type `String!`
+  """
+  senderId: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`senderName` of type `String!`
+  """
+  senderName: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`senderRole` of type `String!`
+  """
+  senderRole: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`tenantId` of type `String!`
+  """
+  tenantId: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`text` of type `String!`
+  """
+  text: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`timestamp` of type `Timestamp`
+  """
+  timestamp: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`isRead_count` of type `Int!`
+  """
+  isRead_count: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`senderId_count` of type `Int!`
+  """
+  senderId_count: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`senderName_count` of type `Int!`
+  """
+  senderName_count: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`senderRole_count` of type `Int!`
+  """
+  senderRole_count: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`tenantId_count` of type `Int!`
+  """
+  tenantId_count: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`text_count` of type `Int!`
+  """
+  text_count: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`timestamp_count` of type `Int!`
+  """
+  timestamp_count: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`timestamp_min` of type `Timestamp`
+  """
+  timestamp_min: OrderDirection
+  """
+  ✨ Generated from Field `ChatMessage`.`timestamp_max` of type `Timestamp`
+  """
+  timestamp_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'ElectricityMeter'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input ElectricityMeter_Data {
+  """
+  ✨ Generated from Field `ElectricityMeter`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `ElectricityMeter`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh` of type `Float!`
+  """
+  currentKwh: Float
+  """
+  ✨ `_expr` server value variant of `currentKwh` (✨ Generated from Field `ElectricityMeter`.`currentKwh` of type `Float!`)
+  """
+  currentKwh_expr: Float_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `currentKwh` (✨ Generated from Field `ElectricityMeter`.`currentKwh` of type `Float!`)
+  """
+  currentKwh_update: [Float_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ElectricityMeter`.`lastUpdated` of type `Timestamp`
+  """
+  lastUpdated: Timestamp
+  """
+  ✨ `_expr` server value variant of `lastUpdated` (✨ Generated from Field `ElectricityMeter`.`lastUpdated` of type `Timestamp`)
+  """
+  lastUpdated_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `lastUpdated` (✨ Generated from Field `ElectricityMeter`.`lastUpdated` of type `Timestamp`)
+  """
+  lastUpdated_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `lastUpdated` (✨ Generated from Field `ElectricityMeter`.`lastUpdated` of type `Timestamp`)
+  """
+  lastUpdated_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ElectricityMeter`.`meterNumber` of type `String!`
+  """
+  meterNumber: String
+  """
+  ✨ `_expr` server value variant of `meterNumber` (✨ Generated from Field `ElectricityMeter`.`meterNumber` of type `String!`)
+  """
+  meterNumber_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ElectricityMeter`.`roomNumber` of type `String!`
+  """
+  roomNumber: String
+  """
+  ✨ `_expr` server value variant of `roomNumber` (✨ Generated from Field `ElectricityMeter`.`roomNumber` of type `String!`)
+  """
+  roomNumber_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'ElectricityMeter'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input ElectricityMeter_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [ElectricityMeter_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: ElectricityMeter_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [ElectricityMeter_Filter!]
+  """
+  ✨ Generated from Field `ElectricityMeter`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh` of type `Float!`
+  """
+  currentKwh: Float_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`lastUpdated` of type `Timestamp`
+  """
+  lastUpdated: Timestamp_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`meterNumber` of type `String!`
+  """
+  meterNumber: String_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`roomNumber` of type `String!`
+  """
+  roomNumber: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'ElectricityMeter'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input ElectricityMeter_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [ElectricityMeter_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: ElectricityMeter_Filter
+}
+"""
+✨ Generated having input type for table 'ElectricityMeter'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input ElectricityMeter_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [ElectricityMeter_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: ElectricityMeter_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [ElectricityMeter_Having!]
+  """
+  ✨ Generated from Field `ElectricityMeter`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh_count` of type `Int!`
+  """
+  currentKwh_count: Int_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`lastUpdated_count` of type `Int!`
+  """
+  lastUpdated_count: Int_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`meterNumber_count` of type `Int!`
+  """
+  meterNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`roomNumber_count` of type `Int!`
+  """
+  roomNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh_sum` of type `Float`
+  """
+  currentKwh_sum: Float_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh_avg` of type `Float`
+  """
+  currentKwh_avg: Float_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh_min` of type `Float`
+  """
+  currentKwh_min: Float_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`lastUpdated_min` of type `Timestamp`
+  """
+  lastUpdated_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh_max` of type `Float`
+  """
+  currentKwh_max: Float_Filter
+  """
+  ✨ Generated from Field `ElectricityMeter`.`lastUpdated_max` of type `Timestamp`
+  """
+  lastUpdated_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'ElectricityMeter'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input ElectricityMeter_Key {
+  """
+  ✨ Generated from Field `ElectricityMeter`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `ElectricityMeter`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'ElectricityMeter'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input ElectricityMeter_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: ElectricityMeter_Filter
+}
+"""
+✨ Generated order input type for table 'ElectricityMeter'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input ElectricityMeter_Order {
+  """
+  ✨ Generated from Field `ElectricityMeter`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh` of type `Float!`
+  """
+  currentKwh: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`lastUpdated` of type `Timestamp`
+  """
+  lastUpdated: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`meterNumber` of type `String!`
+  """
+  meterNumber: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`roomNumber` of type `String!`
+  """
+  roomNumber: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh_count` of type `Int!`
+  """
+  currentKwh_count: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`lastUpdated_count` of type `Int!`
+  """
+  lastUpdated_count: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`meterNumber_count` of type `Int!`
+  """
+  meterNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`roomNumber_count` of type `Int!`
+  """
+  roomNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh_sum` of type `Float`
+  """
+  currentKwh_sum: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh_avg` of type `Float`
+  """
+  currentKwh_avg: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh_min` of type `Float`
+  """
+  currentKwh_min: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`lastUpdated_min` of type `Timestamp`
+  """
+  lastUpdated_min: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`currentKwh_max` of type `Float`
+  """
+  currentKwh_max: OrderDirection
+  """
+  ✨ Generated from Field `ElectricityMeter`.`lastUpdated_max` of type `Timestamp`
+  """
+  lastUpdated_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'MaintenanceTicket'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input MaintenanceTicket_Data {
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `MaintenanceTicket`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`assignedTechnician` of type `String`
+  """
+  assignedTechnician: String
+  """
+  ✨ `_expr` server value variant of `assignedTechnician` (✨ Generated from Field `MaintenanceTicket`.`assignedTechnician` of type `String`)
+  """
+  assignedTechnician_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`category` of type `String!`
+  """
+  category: String
+  """
+  ✨ `_expr` server value variant of `category` (✨ Generated from Field `MaintenanceTicket`.`category` of type `String!`)
+  """
+  category_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`createdAt` of type `Timestamp`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `MaintenanceTicket`.`createdAt` of type `Timestamp`)
+  """
+  createdAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `MaintenanceTicket`.`createdAt` of type `Timestamp`)
+  """
+  createdAt_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `MaintenanceTicket`.`createdAt` of type `Timestamp`)
+  """
+  createdAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`description` of type `String!`
+  """
+  description: String
+  """
+  ✨ `_expr` server value variant of `description` (✨ Generated from Field `MaintenanceTicket`.`description` of type `String!`)
+  """
+  description_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`notes` of type `String`
+  """
+  notes: String
+  """
+  ✨ `_expr` server value variant of `notes` (✨ Generated from Field `MaintenanceTicket`.`notes` of type `String`)
+  """
+  notes_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`priority` of type `String!`
+  """
+  priority: String
+  """
+  ✨ `_expr` server value variant of `priority` (✨ Generated from Field `MaintenanceTicket`.`priority` of type `String!`)
+  """
+  priority_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`reportedDate` of type `String`
+  """
+  reportedDate: String
+  """
+  ✨ `_expr` server value variant of `reportedDate` (✨ Generated from Field `MaintenanceTicket`.`reportedDate` of type `String`)
+  """
+  reportedDate_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`residentId` of type `String!`
+  """
+  residentId: String
+  """
+  ✨ `_expr` server value variant of `residentId` (✨ Generated from Field `MaintenanceTicket`.`residentId` of type `String!`)
+  """
+  residentId_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`residentName` of type `String!`
+  """
+  residentName: String
+  """
+  ✨ `_expr` server value variant of `residentName` (✨ Generated from Field `MaintenanceTicket`.`residentName` of type `String!`)
+  """
+  residentName_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`roomNumber` of type `String!`
+  """
+  roomNumber: String
+  """
+  ✨ `_expr` server value variant of `roomNumber` (✨ Generated from Field `MaintenanceTicket`.`roomNumber` of type `String!`)
+  """
+  roomNumber_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`status` of type `String!`
+  """
+  status: String
+  """
+  ✨ `_expr` server value variant of `status` (✨ Generated from Field `MaintenanceTicket`.`status` of type `String!`)
+  """
+  status_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`title` of type `String!`
+  """
+  title: String
+  """
+  ✨ `_expr` server value variant of `title` (✨ Generated from Field `MaintenanceTicket`.`title` of type `String!`)
+  """
+  title_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'MaintenanceTicket'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input MaintenanceTicket_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [MaintenanceTicket_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: MaintenanceTicket_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [MaintenanceTicket_Filter!]
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`assignedTechnician` of type `String`
+  """
+  assignedTechnician: String_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`category` of type `String!`
+  """
+  category: String_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`createdAt` of type `Timestamp`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`description` of type `String!`
+  """
+  description: String_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`notes` of type `String`
+  """
+  notes: String_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`priority` of type `String!`
+  """
+  priority: String_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`reportedDate` of type `String`
+  """
+  reportedDate: String_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`residentId` of type `String!`
+  """
+  residentId: String_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`residentName` of type `String!`
+  """
+  residentName: String_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`roomNumber` of type `String!`
+  """
+  roomNumber: String_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`status` of type `String!`
+  """
+  status: String_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`title` of type `String!`
+  """
+  title: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'MaintenanceTicket'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input MaintenanceTicket_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [MaintenanceTicket_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: MaintenanceTicket_Filter
+}
+"""
+✨ Generated having input type for table 'MaintenanceTicket'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input MaintenanceTicket_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [MaintenanceTicket_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: MaintenanceTicket_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [MaintenanceTicket_Having!]
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`assignedTechnician_count` of type `Int!`
+  """
+  assignedTechnician_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`category_count` of type `Int!`
+  """
+  category_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`description_count` of type `Int!`
+  """
+  description_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`notes_count` of type `Int!`
+  """
+  notes_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`priority_count` of type `Int!`
+  """
+  priority_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`reportedDate_count` of type `Int!`
+  """
+  reportedDate_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`residentId_count` of type `Int!`
+  """
+  residentId_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`residentName_count` of type `Int!`
+  """
+  residentName_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`roomNumber_count` of type `Int!`
+  """
+  roomNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`status_count` of type `Int!`
+  """
+  status_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`title_count` of type `Int!`
+  """
+  title_count: Int_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'MaintenanceTicket'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input MaintenanceTicket_Key {
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `MaintenanceTicket`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'MaintenanceTicket'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input MaintenanceTicket_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: MaintenanceTicket_Filter
+}
+"""
+✨ Generated order input type for table 'MaintenanceTicket'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input MaintenanceTicket_Order {
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`assignedTechnician` of type `String`
+  """
+  assignedTechnician: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`category` of type `String!`
+  """
+  category: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`createdAt` of type `Timestamp`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`description` of type `String!`
+  """
+  description: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`notes` of type `String`
+  """
+  notes: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`priority` of type `String!`
+  """
+  priority: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`reportedDate` of type `String`
+  """
+  reportedDate: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`residentId` of type `String!`
+  """
+  residentId: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`residentName` of type `String!`
+  """
+  residentName: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`roomNumber` of type `String!`
+  """
+  roomNumber: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`status` of type `String!`
+  """
+  status: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`title` of type `String!`
+  """
+  title: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`assignedTechnician_count` of type `Int!`
+  """
+  assignedTechnician_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`category_count` of type `Int!`
+  """
+  category_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`description_count` of type `Int!`
+  """
+  description_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`notes_count` of type `Int!`
+  """
+  notes_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`priority_count` of type `Int!`
+  """
+  priority_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`reportedDate_count` of type `Int!`
+  """
+  reportedDate_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`residentId_count` of type `Int!`
+  """
+  residentId_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`residentName_count` of type `Int!`
+  """
+  residentName_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`roomNumber_count` of type `Int!`
+  """
+  roomNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`status_count` of type `Int!`
+  """
+  status_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`title_count` of type `Int!`
+  """
+  title_count: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `MaintenanceTicket`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Property'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Property_Data {
+  """
+  ✨ Generated from Field `Property`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Property`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Property`.`address` of type `String`
+  """
+  address: String
+  """
+  ✨ `_expr` server value variant of `address` (✨ Generated from Field `Property`.`address` of type `String`)
+  """
+  address_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Property`.`contactEmail` of type `String`
+  """
+  contactEmail: String
+  """
+  ✨ `_expr` server value variant of `contactEmail` (✨ Generated from Field `Property`.`contactEmail` of type `String`)
+  """
+  contactEmail_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Property`.`contactPhone` of type `String`
+  """
+  contactPhone: String
+  """
+  ✨ `_expr` server value variant of `contactPhone` (✨ Generated from Field `Property`.`contactPhone` of type `String`)
+  """
+  contactPhone_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Property`.`name` of type `String!`
+  """
+  name: String
+  """
+  ✨ `_expr` server value variant of `name` (✨ Generated from Field `Property`.`name` of type `String!`)
+  """
+  name_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Property`.`totalRooms` of type `Int`
+  """
+  totalRooms: Int
+  """
+  ✨ `_expr` server value variant of `totalRooms` (✨ Generated from Field `Property`.`totalRooms` of type `Int`)
+  """
+  totalRooms_expr: Int_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `totalRooms` (✨ Generated from Field `Property`.`totalRooms` of type `Int`)
+  """
+  totalRooms_update: [Int_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Property`.`updatedAt` of type `Timestamp`
+  """
+  updatedAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `updatedAt` (✨ Generated from Field `Property`.`updatedAt` of type `Timestamp`)
+  """
+  updatedAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `updatedAt` (✨ Generated from Field `Property`.`updatedAt` of type `Timestamp`)
+  """
+  updatedAt_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `updatedAt` (✨ Generated from Field `Property`.`updatedAt` of type `Timestamp`)
+  """
+  updatedAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Property`.`wifiSsid` of type `String`
+  """
+  wifiSsid: String
+  """
+  ✨ `_expr` server value variant of `wifiSsid` (✨ Generated from Field `Property`.`wifiSsid` of type `String`)
+  """
+  wifiSsid_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'Property'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Property_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Property_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Property_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Property_Filter!]
+  """
+  ✨ Generated from Field `Property`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `Property`.`address` of type `String`
+  """
+  address: String_Filter
+  """
+  ✨ Generated from Field `Property`.`contactEmail` of type `String`
+  """
+  contactEmail: String_Filter
+  """
+  ✨ Generated from Field `Property`.`contactPhone` of type `String`
+  """
+  contactPhone: String_Filter
+  """
+  ✨ Generated from Field `Property`.`name` of type `String!`
+  """
+  name: String_Filter
+  """
+  ✨ Generated from Field `Property`.`totalRooms` of type `Int`
+  """
+  totalRooms: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`updatedAt` of type `Timestamp`
+  """
+  updatedAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Property`.`wifiSsid` of type `String`
+  """
+  wifiSsid: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'Property'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Property_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Property_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Property_Filter
+}
+"""
+✨ Generated having input type for table 'Property'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Property_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Property_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Property_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Property_Having!]
+  """
+  ✨ Generated from Field `Property`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`address_count` of type `Int!`
+  """
+  address_count: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`contactEmail_count` of type `Int!`
+  """
+  contactEmail_count: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`contactPhone_count` of type `Int!`
+  """
+  contactPhone_count: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`name_count` of type `Int!`
+  """
+  name_count: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`totalRooms_count` of type `Int!`
+  """
+  totalRooms_count: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`wifiSsid_count` of type `Int!`
+  """
+  wifiSsid_count: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`totalRooms_sum` of type `Int`
+  """
+  totalRooms_sum: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`totalRooms_avg` of type `Float`
+  """
+  totalRooms_avg: Float_Filter
+  """
+  ✨ Generated from Field `Property`.`totalRooms_min` of type `Int`
+  """
+  totalRooms_min: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Property`.`totalRooms_max` of type `Int`
+  """
+  totalRooms_max: Int_Filter
+  """
+  ✨ Generated from Field `Property`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Property'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Property_Key {
+  """
+  ✨ Generated from Field `Property`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Property`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'Property'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Property_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Property_Filter
+}
+"""
+✨ Generated order input type for table 'Property'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Property_Order {
+  """
+  ✨ Generated from Field `Property`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`address` of type `String`
+  """
+  address: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`contactEmail` of type `String`
+  """
+  contactEmail: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`contactPhone` of type `String`
+  """
+  contactPhone: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`name` of type `String!`
+  """
+  name: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`totalRooms` of type `Int`
+  """
+  totalRooms: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`updatedAt` of type `Timestamp`
+  """
+  updatedAt: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`wifiSsid` of type `String`
+  """
+  wifiSsid: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`address_count` of type `Int!`
+  """
+  address_count: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`contactEmail_count` of type `Int!`
+  """
+  contactEmail_count: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`contactPhone_count` of type `Int!`
+  """
+  contactPhone_count: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`name_count` of type `Int!`
+  """
+  name_count: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`totalRooms_count` of type `Int!`
+  """
+  totalRooms_count: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`wifiSsid_count` of type `Int!`
+  """
+  wifiSsid_count: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`totalRooms_sum` of type `Int`
+  """
+  totalRooms_sum: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`totalRooms_avg` of type `Float`
+  """
+  totalRooms_avg: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`totalRooms_min` of type `Int`
+  """
+  totalRooms_min: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`totalRooms_max` of type `Int`
+  """
+  totalRooms_max: OrderDirection
+  """
+  ✨ Generated from Field `Property`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'ResidentProfile'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input ResidentProfile_Data {
+  """
+  ✨ Generated from Field `ResidentProfile`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `ResidentProfile`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`createdAt` of type `Timestamp`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `ResidentProfile`.`createdAt` of type `Timestamp`)
+  """
+  createdAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `ResidentProfile`.`createdAt` of type `Timestamp`)
+  """
+  createdAt_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `ResidentProfile`.`createdAt` of type `Timestamp`)
+  """
+  createdAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount` of type `Float`
+  """
+  depositAmount: Float
+  """
+  ✨ `_expr` server value variant of `depositAmount` (✨ Generated from Field `ResidentProfile`.`depositAmount` of type `Float`)
+  """
+  depositAmount_expr: Float_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `depositAmount` (✨ Generated from Field `ResidentProfile`.`depositAmount` of type `Float`)
+  """
+  depositAmount_update: [Float_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`email` of type `String!`
+  """
+  email: String
+  """
+  ✨ `_expr` server value variant of `email` (✨ Generated from Field `ResidentProfile`.`email` of type `String!`)
+  """
+  email_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`emergencyContact` of type `String`
+  """
+  emergencyContact: String
+  """
+  ✨ `_expr` server value variant of `emergencyContact` (✨ Generated from Field `ResidentProfile`.`emergencyContact` of type `String`)
+  """
+  emergencyContact_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`emergencyPhone` of type `String`
+  """
+  emergencyPhone: String
+  """
+  ✨ `_expr` server value variant of `emergencyPhone` (✨ Generated from Field `ResidentProfile`.`emergencyPhone` of type `String`)
+  """
+  emergencyPhone_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`fullName` of type `String!`
+  """
+  fullName: String
+  """
+  ✨ `_expr` server value variant of `fullName` (✨ Generated from Field `ResidentProfile`.`fullName` of type `String!`)
+  """
+  fullName_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`ktpNumber` of type `String`
+  """
+  ktpNumber: String
+  """
+  ✨ `_expr` server value variant of `ktpNumber` (✨ Generated from Field `ResidentProfile`.`ktpNumber` of type `String`)
+  """
+  ktpNumber_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`leaseEndDate` of type `String`
+  """
+  leaseEndDate: String
+  """
+  ✨ `_expr` server value variant of `leaseEndDate` (✨ Generated from Field `ResidentProfile`.`leaseEndDate` of type `String`)
+  """
+  leaseEndDate_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent` of type `Float`
+  """
+  monthlyRent: Float
+  """
+  ✨ `_expr` server value variant of `monthlyRent` (✨ Generated from Field `ResidentProfile`.`monthlyRent` of type `Float`)
+  """
+  monthlyRent_expr: Float_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `monthlyRent` (✨ Generated from Field `ResidentProfile`.`monthlyRent` of type `Float`)
+  """
+  monthlyRent_update: [Float_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`moveInDate` of type `String`
+  """
+  moveInDate: String
+  """
+  ✨ `_expr` server value variant of `moveInDate` (✨ Generated from Field `ResidentProfile`.`moveInDate` of type `String`)
+  """
+  moveInDate_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`phone` of type `String!`
+  """
+  phone: String
+  """
+  ✨ `_expr` server value variant of `phone` (✨ Generated from Field `ResidentProfile`.`phone` of type `String!`)
+  """
+  phone_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`roomNumber` of type `String!`
+  """
+  roomNumber: String
+  """
+  ✨ `_expr` server value variant of `roomNumber` (✨ Generated from Field `ResidentProfile`.`roomNumber` of type `String!`)
+  """
+  roomNumber_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ResidentProfile`.`status` of type `String!`
+  """
+  status: String
+  """
+  ✨ `_expr` server value variant of `status` (✨ Generated from Field `ResidentProfile`.`status` of type `String!`)
+  """
+  status_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'ResidentProfile'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input ResidentProfile_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [ResidentProfile_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: ResidentProfile_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [ResidentProfile_Filter!]
+  """
+  ✨ Generated from Field `ResidentProfile`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`createdAt` of type `Timestamp`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount` of type `Float`
+  """
+  depositAmount: Float_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`email` of type `String!`
+  """
+  email: String_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`emergencyContact` of type `String`
+  """
+  emergencyContact: String_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`emergencyPhone` of type `String`
+  """
+  emergencyPhone: String_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`fullName` of type `String!`
+  """
+  fullName: String_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`ktpNumber` of type `String`
+  """
+  ktpNumber: String_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`leaseEndDate` of type `String`
+  """
+  leaseEndDate: String_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent` of type `Float`
+  """
+  monthlyRent: Float_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`moveInDate` of type `String`
+  """
+  moveInDate: String_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`phone` of type `String!`
+  """
+  phone: String_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`roomNumber` of type `String!`
+  """
+  roomNumber: String_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`status` of type `String!`
+  """
+  status: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'ResidentProfile'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input ResidentProfile_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [ResidentProfile_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: ResidentProfile_Filter
+}
+"""
+✨ Generated having input type for table 'ResidentProfile'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input ResidentProfile_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [ResidentProfile_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: ResidentProfile_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [ResidentProfile_Having!]
+  """
+  ✨ Generated from Field `ResidentProfile`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount_count` of type `Int!`
+  """
+  depositAmount_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`email_count` of type `Int!`
+  """
+  email_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`emergencyContact_count` of type `Int!`
+  """
+  emergencyContact_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`emergencyPhone_count` of type `Int!`
+  """
+  emergencyPhone_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`fullName_count` of type `Int!`
+  """
+  fullName_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`ktpNumber_count` of type `Int!`
+  """
+  ktpNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`leaseEndDate_count` of type `Int!`
+  """
+  leaseEndDate_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent_count` of type `Int!`
+  """
+  monthlyRent_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`moveInDate_count` of type `Int!`
+  """
+  moveInDate_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`phone_count` of type `Int!`
+  """
+  phone_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`roomNumber_count` of type `Int!`
+  """
+  roomNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`status_count` of type `Int!`
+  """
+  status_count: Int_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount_sum` of type `Float`
+  """
+  depositAmount_sum: Float_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent_sum` of type `Float`
+  """
+  monthlyRent_sum: Float_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount_avg` of type `Float`
+  """
+  depositAmount_avg: Float_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent_avg` of type `Float`
+  """
+  monthlyRent_avg: Float_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount_min` of type `Float`
+  """
+  depositAmount_min: Float_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent_min` of type `Float`
+  """
+  monthlyRent_min: Float_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount_max` of type `Float`
+  """
+  depositAmount_max: Float_Filter
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent_max` of type `Float`
+  """
+  monthlyRent_max: Float_Filter
+}
+"""
+✨ Generated key input type for table 'ResidentProfile'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input ResidentProfile_Key {
+  """
+  ✨ Generated from Field `ResidentProfile`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `ResidentProfile`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'ResidentProfile'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input ResidentProfile_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: ResidentProfile_Filter
+}
+"""
+✨ Generated order input type for table 'ResidentProfile'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input ResidentProfile_Order {
+  """
+  ✨ Generated from Field `ResidentProfile`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`createdAt` of type `Timestamp`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount` of type `Float`
+  """
+  depositAmount: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`email` of type `String!`
+  """
+  email: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`emergencyContact` of type `String`
+  """
+  emergencyContact: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`emergencyPhone` of type `String`
+  """
+  emergencyPhone: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`fullName` of type `String!`
+  """
+  fullName: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`ktpNumber` of type `String`
+  """
+  ktpNumber: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`leaseEndDate` of type `String`
+  """
+  leaseEndDate: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent` of type `Float`
+  """
+  monthlyRent: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`moveInDate` of type `String`
+  """
+  moveInDate: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`phone` of type `String!`
+  """
+  phone: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`roomNumber` of type `String!`
+  """
+  roomNumber: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`status` of type `String!`
+  """
+  status: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount_count` of type `Int!`
+  """
+  depositAmount_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`email_count` of type `Int!`
+  """
+  email_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`emergencyContact_count` of type `Int!`
+  """
+  emergencyContact_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`emergencyPhone_count` of type `Int!`
+  """
+  emergencyPhone_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`fullName_count` of type `Int!`
+  """
+  fullName_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`ktpNumber_count` of type `Int!`
+  """
+  ktpNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`leaseEndDate_count` of type `Int!`
+  """
+  leaseEndDate_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent_count` of type `Int!`
+  """
+  monthlyRent_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`moveInDate_count` of type `Int!`
+  """
+  moveInDate_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`phone_count` of type `Int!`
+  """
+  phone_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`roomNumber_count` of type `Int!`
+  """
+  roomNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`status_count` of type `Int!`
+  """
+  status_count: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount_sum` of type `Float`
+  """
+  depositAmount_sum: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent_sum` of type `Float`
+  """
+  monthlyRent_sum: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount_avg` of type `Float`
+  """
+  depositAmount_avg: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent_avg` of type `Float`
+  """
+  monthlyRent_avg: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount_min` of type `Float`
+  """
+  depositAmount_min: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent_min` of type `Float`
+  """
+  monthlyRent_min: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`depositAmount_max` of type `Float`
+  """
+  depositAmount_max: OrderDirection
+  """
+  ✨ Generated from Field `ResidentProfile`.`monthlyRent_max` of type `Float`
+  """
+  monthlyRent_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'RoomUnit'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input RoomUnit_Data {
+  """
+  ✨ Generated from Field `RoomUnit`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `RoomUnit`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity` of type `Int!`
+  """
+  capacity: Int
+  """
+  ✨ `_expr` server value variant of `capacity` (✨ Generated from Field `RoomUnit`.`capacity` of type `Int!`)
+  """
+  capacity_expr: Int_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `capacity` (✨ Generated from Field `RoomUnit`.`capacity` of type `Int!`)
+  """
+  capacity_update: [Int_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit` of type `Float!`
+  """
+  deposit: Float
+  """
+  ✨ `_expr` server value variant of `deposit` (✨ Generated from Field `RoomUnit`.`deposit` of type `Float!`)
+  """
+  deposit_expr: Float_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `deposit` (✨ Generated from Field `RoomUnit`.`deposit` of type `Float!`)
+  """
+  deposit_update: [Float_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `RoomUnit`.`floor` of type `String!`
+  """
+  floor: String
+  """
+  ✨ `_expr` server value variant of `floor` (✨ Generated from Field `RoomUnit`.`floor` of type `String!`)
+  """
+  floor_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice` of type `Float!`
+  """
+  monthlyPrice: Float
+  """
+  ✨ `_expr` server value variant of `monthlyPrice` (✨ Generated from Field `RoomUnit`.`monthlyPrice` of type `Float!`)
+  """
+  monthlyPrice_expr: Float_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `monthlyPrice` (✨ Generated from Field `RoomUnit`.`monthlyPrice` of type `Float!`)
+  """
+  monthlyPrice_update: [Float_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `RoomUnit`.`notes` of type `String`
+  """
+  notes: String
+  """
+  ✨ `_expr` server value variant of `notes` (✨ Generated from Field `RoomUnit`.`notes` of type `String`)
+  """
+  notes_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `RoomUnit`.`roomNumber` of type `String!`
+  """
+  roomNumber: String
+  """
+  ✨ `_expr` server value variant of `roomNumber` (✨ Generated from Field `RoomUnit`.`roomNumber` of type `String!`)
+  """
+  roomNumber_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `RoomUnit`.`roomType` of type `String!`
+  """
+  roomType: String
+  """
+  ✨ `_expr` server value variant of `roomType` (✨ Generated from Field `RoomUnit`.`roomType` of type `String!`)
+  """
+  roomType_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `RoomUnit`.`status` of type `String!`
+  """
+  status: String
+  """
+  ✨ `_expr` server value variant of `status` (✨ Generated from Field `RoomUnit`.`status` of type `String!`)
+  """
+  status_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `RoomUnit`.`updatedAt` of type `Timestamp`
+  """
+  updatedAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `updatedAt` (✨ Generated from Field `RoomUnit`.`updatedAt` of type `Timestamp`)
+  """
+  updatedAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `updatedAt` (✨ Generated from Field `RoomUnit`.`updatedAt` of type `Timestamp`)
+  """
+  updatedAt_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `updatedAt` (✨ Generated from Field `RoomUnit`.`updatedAt` of type `Timestamp`)
+  """
+  updatedAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `RoomUnit`.`wing` of type `String`
+  """
+  wing: String
+  """
+  ✨ `_expr` server value variant of `wing` (✨ Generated from Field `RoomUnit`.`wing` of type `String`)
+  """
+  wing_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'RoomUnit'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input RoomUnit_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [RoomUnit_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: RoomUnit_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [RoomUnit_Filter!]
+  """
+  ✨ Generated from Field `RoomUnit`.`id` of type `String!`
+  """
+  id: String_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity` of type `Int!`
+  """
+  capacity: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit` of type `Float!`
+  """
+  deposit: Float_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`floor` of type `String!`
+  """
+  floor: String_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice` of type `Float!`
+  """
+  monthlyPrice: Float_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`notes` of type `String`
+  """
+  notes: String_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`roomNumber` of type `String!`
+  """
+  roomNumber: String_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`roomType` of type `String!`
+  """
+  roomType: String_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`status` of type `String!`
+  """
+  status: String_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`updatedAt` of type `Timestamp`
+  """
+  updatedAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`wing` of type `String`
+  """
+  wing: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'RoomUnit'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input RoomUnit_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [RoomUnit_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: RoomUnit_Filter
+}
+"""
+✨ Generated having input type for table 'RoomUnit'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input RoomUnit_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [RoomUnit_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: RoomUnit_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [RoomUnit_Having!]
+  """
+  ✨ Generated from Field `RoomUnit`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity_count` of type `Int!`
+  """
+  capacity_count: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit_count` of type `Int!`
+  """
+  deposit_count: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`floor_count` of type `Int!`
+  """
+  floor_count: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice_count` of type `Int!`
+  """
+  monthlyPrice_count: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`notes_count` of type `Int!`
+  """
+  notes_count: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`roomNumber_count` of type `Int!`
+  """
+  roomNumber_count: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`roomType_count` of type `Int!`
+  """
+  roomType_count: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`status_count` of type `Int!`
+  """
+  status_count: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`wing_count` of type `Int!`
+  """
+  wing_count: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity_sum` of type `Int`
+  """
+  capacity_sum: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit_sum` of type `Float`
+  """
+  deposit_sum: Float_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice_sum` of type `Float`
+  """
+  monthlyPrice_sum: Float_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity_avg` of type `Float`
+  """
+  capacity_avg: Float_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit_avg` of type `Float`
+  """
+  deposit_avg: Float_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice_avg` of type `Float`
+  """
+  monthlyPrice_avg: Float_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity_min` of type `Int`
+  """
+  capacity_min: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit_min` of type `Float`
+  """
+  deposit_min: Float_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice_min` of type `Float`
+  """
+  monthlyPrice_min: Float_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity_max` of type `Int`
+  """
+  capacity_max: Int_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit_max` of type `Float`
+  """
+  deposit_max: Float_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice_max` of type `Float`
+  """
+  monthlyPrice_max: Float_Filter
+  """
+  ✨ Generated from Field `RoomUnit`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'RoomUnit'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input RoomUnit_Key {
+  """
+  ✨ Generated from Field `RoomUnit`.`id` of type `String!`
+  """
+  id: String
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `RoomUnit`.`id` of type `String!`)
+  """
+  id_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'RoomUnit'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input RoomUnit_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: RoomUnit_Filter
+}
+"""
+✨ Generated order input type for table 'RoomUnit'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input RoomUnit_Order {
+  """
+  ✨ Generated from Field `RoomUnit`.`id` of type `String!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity` of type `Int!`
+  """
+  capacity: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit` of type `Float!`
+  """
+  deposit: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`floor` of type `String!`
+  """
+  floor: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice` of type `Float!`
+  """
+  monthlyPrice: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`notes` of type `String`
+  """
+  notes: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`roomNumber` of type `String!`
+  """
+  roomNumber: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`roomType` of type `String!`
+  """
+  roomType: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`status` of type `String!`
+  """
+  status: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`updatedAt` of type `Timestamp`
+  """
+  updatedAt: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`wing` of type `String`
+  """
+  wing: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity_count` of type `Int!`
+  """
+  capacity_count: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit_count` of type `Int!`
+  """
+  deposit_count: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`floor_count` of type `Int!`
+  """
+  floor_count: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice_count` of type `Int!`
+  """
+  monthlyPrice_count: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`notes_count` of type `Int!`
+  """
+  notes_count: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`roomNumber_count` of type `Int!`
+  """
+  roomNumber_count: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`roomType_count` of type `Int!`
+  """
+  roomType_count: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`status_count` of type `Int!`
+  """
+  status_count: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`wing_count` of type `Int!`
+  """
+  wing_count: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity_sum` of type `Int`
+  """
+  capacity_sum: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit_sum` of type `Float`
+  """
+  deposit_sum: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice_sum` of type `Float`
+  """
+  monthlyPrice_sum: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity_avg` of type `Float`
+  """
+  capacity_avg: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit_avg` of type `Float`
+  """
+  deposit_avg: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice_avg` of type `Float`
+  """
+  monthlyPrice_avg: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity_min` of type `Int`
+  """
+  capacity_min: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit_min` of type `Float`
+  """
+  deposit_min: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice_min` of type `Float`
+  """
+  monthlyPrice_min: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`capacity_max` of type `Int`
+  """
+  capacity_max: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`deposit_max` of type `Float`
+  """
+  deposit_max: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`monthlyPrice_max` of type `Float`
+  """
+  monthlyPrice_max: OrderDirection
+  """
+  ✨ Generated from Field `RoomUnit`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: OrderDirection
+}

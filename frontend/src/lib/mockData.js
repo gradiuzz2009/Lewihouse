@@ -219,7 +219,7 @@ const DEFAULT_STAFF = [
   {
     id: "st_1",
     name: "Admin Lewi House",
-    email: "admin@lewihouse.com",
+    email: "fauziealiakhmad@gmail.com",
     phone: "081200001111",
     role: "owner",
     is_active: true,
@@ -293,9 +293,9 @@ const DEFAULT_TOKENS = [
 ];
 
 const DEFAULT_AUDIT = [
-  { id: "a_1", actor: "admin@lewihouse.com", action: "LOGIN", entity: "user", entity_id: "usr_owner_1", at: new Date().toISOString(), detail: { name: "Admin Lewi House" } },
-  { id: "a_2", actor: "admin@lewihouse.com", action: "PAYMENT", entity: "bill", entity_id: "b_101", at: "2026-08-05T10:30:00Z", detail: { invoice: "INV-202608-K101", amount: 1950000 } },
-  { id: "a_3", actor: "admin@lewihouse.com", action: "MOVE_IN", entity: "tenant", entity_id: "t_204", at: "2026-01-01T00:00:00Z", detail: { name: "Budi Santoso", label: "K-204" } },
+  { id: "a_1", actor: "fauziealiakhmad@gmail.com", action: "LOGIN", entity: "user", entity_id: "usr_owner_1", at: new Date().toISOString(), detail: { name: "Admin Lewi House" } },
+  { id: "a_2", actor: "fauziealiakhmad@gmail.com", action: "PAYMENT", entity: "bill", entity_id: "b_101", at: "2026-08-05T10:30:00Z", detail: { invoice: "INV-202608-K101", amount: 1950000 } },
+  { id: "a_3", actor: "fauziealiakhmad@gmail.com", action: "MOVE_IN", entity: "tenant", entity_id: "t_204", at: "2026-01-01T00:00:00Z", detail: { name: "Budi Santoso", label: "K-204" } },
 ];
 
 function getStored(key, def) {
@@ -344,7 +344,7 @@ export function handleMockApi(method, url, data) {
     // Default admin / owner
     const user = {
       id: "usr_owner_1",
-      email: ident || "admin@lewihouse.com",
+      email: ident || "fauziealiakhmad@gmail.com",
       phone: "081200001111",
       name: "Admin Lewi House",
       role: "owner",
@@ -366,7 +366,7 @@ export function handleMockApi(method, url, data) {
     }
     return {
       id: "usr_owner_1",
-      email: "admin@lewihouse.com",
+      email: "fauziealiakhmad@gmail.com",
       name: "Admin Lewi House",
       role: "owner",
     };
@@ -704,6 +704,7 @@ export function handleMockApi(method, url, data) {
     return { id: "m_" + Date.now(), sender_role: "admin", text: data?.text, created_at: new Date().toISOString() };
   }
 
+
   if (cleanUrl.startsWith("push/vapid-key")) {
     return { public_key: "BMockPublicKeyForLewiHousePushNotifications2026" };
   }
@@ -713,3 +714,4 @@ export function handleMockApi(method, url, data) {
 
   return { ok: true };
 }
+
