@@ -34,8 +34,10 @@ export default function NotificationBell() {
     const fetchCount = async () => {
       try {
         const { data } = await api.get("/notifications/unread-count");
-        setUnread(data.total || 0);
-      } catch {}
+        setUnread(Number(data?.total || data?.unread || 0));
+      } catch {
+        setUnread(0);
+      }
     };
     fetchCount();
     const iv = setInterval(fetchCount, 20000);
@@ -48,8 +50,10 @@ export default function NotificationBell() {
     const fetch = async () => {
       try {
         const { data } = await api.get("/notifications");
-        setNotifications(data);
-      } catch {}
+        setNotifications(Array.isArray(data) ? data : []);
+      } catch {
+        setNotifications([]);
+      }
     };
     fetch();
   }, [open]);

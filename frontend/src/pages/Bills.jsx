@@ -476,7 +476,7 @@ export default function Bills() {
       </div>
 
       {/* ─── 3. STATUS FILTER PILLS WITH LIVE WORKLOAD COUNTS ─────────── */}
-      <div className="px-5 sm:px-6 mt-4 flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+      <div className="px-5 sm:px-6 mt-4 chip-scroll-container pb-1">
         {[
           { key: "all", label: "Semua", count: metrics.allCount },
           { key: "overdue", label: "Terlambat", count: metrics.overdueCount, alert: metrics.overdueCount > 0 },

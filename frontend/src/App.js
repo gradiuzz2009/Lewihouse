@@ -14,9 +14,10 @@ import Staff from "./pages/Staff";
 import Login from "./pages/Login";
 import TenantPortal from "./pages/TenantPortal";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { RouteErrorBoundary } from "./components/ErrorBoundary";
 import "./App.css";
 
-function AdminProtected({ children }) {
+function AdminProtected({ children, title }) {
   const { user } = useAuth();
   if (user === null)
     return (
@@ -26,10 +27,10 @@ function AdminProtected({ children }) {
     );
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === "tenant") return <Navigate to="/portal" replace />;
-  return children;
+  return <RouteErrorBoundary title={title}>{children}</RouteErrorBoundary>;
 }
 
-function TenantProtected({ children }) {
+function TenantProtected({ children, title }) {
   const { user } = useAuth();
   if (user === null)
     return (
@@ -39,7 +40,7 @@ function TenantProtected({ children }) {
     );
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== "tenant") return <Navigate to="/" replace />;
-  return children;
+  return <RouteErrorBoundary title={title}>{children}</RouteErrorBoundary>;
 }
 
 function PostLoginRedirect() {
@@ -52,7 +53,7 @@ function PostLoginRedirect() {
     );
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === "tenant") return <Navigate to="/portal" replace />;
-  return <Dashboard />;
+  return <RouteErrorBoundary title="Dashboard"><Dashboard /></RouteErrorBoundary>;
 }
 
 function Shell() {
@@ -64,22 +65,22 @@ function Shell() {
 
   return (
     <div
-      className={`${isPortal ? "" : "max-w-md"} mx-auto min-h-screen bg-bg relative ${showAdminNav ? "pb-24" : ""} shadow-lifted overflow-x-hidden`}
+      className={`${isPortal ? "" : "max-w-md"} mx-auto min-h-screen bg-bg relative ${showAdminNav ? "main-content-scroll" : ""} shadow-lifted overflow-x-hidden`}
       data-testid="app-shell"
     >
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<PostLoginRedirect />} />
-        <Route path="/rooms" element={<AdminProtected><Rooms /></AdminProtected>} />
-        <Route path="/tenants" element={<AdminProtected><Tenants /></AdminProtected>} />
-        <Route path="/bills" element={<AdminProtected><Bills /></AdminProtected>} />
-        <Route path="/complaints" element={<AdminProtected><Complaints /></AdminProtected>} />
-        <Route path="/access" element={<AdminProtected><Access /></AdminProtected>} />
-        <Route path="/activity" element={<AdminProtected><Activity /></AdminProtected>} />
-        <Route path="/chat" element={<AdminProtected><Chat /></AdminProtected>} />
-        <Route path="/staff" element={<AdminProtected><Staff /></AdminProtected>} />
-        <Route path="/portal" element={<TenantProtected><TenantPortal /></TenantProtected>} />
-        <Route path="/portal/*" element={<TenantProtected><TenantPortal /></TenantProtected>} />
+        <Route path="/rooms" element={<AdminProtected title="Kamar"><Rooms /></AdminProtected>} />
+        <Route path="/tenants" element={<AdminProtected title="Penghuni"><Tenants /></AdminProtected>} />
+        <Route path="/bills" element={<AdminProtected title="Tagihan"><Bills /></AdminProtected>} />
+        <Route path="/complaints" element={<AdminProtected title="Perbaikan"><Complaints /></AdminProtected>} />
+        <Route path="/access" element={<AdminProtected title="Akses & Token"><Access /></AdminProtected>} />
+        <Route path="/activity" element={<AdminProtected title="Riwayat Aktivitas"><Activity /></AdminProtected>} />
+        <Route path="/chat" element={<AdminProtected title="Chat Penghuni"><Chat /></AdminProtected>} />
+        <Route path="/staff" element={<AdminProtected title="Manajemen Staff"><Staff /></AdminProtected>} />
+        <Route path="/portal" element={<TenantProtected title="Portal Penghuni"><TenantPortal /></TenantProtected>} />
+        <Route path="/portal/*" element={<TenantProtected title="Portal Penghuni"><TenantPortal /></TenantProtected>} />
       </Routes>
       {showAdminNav && <BottomNav />}
       <Toaster

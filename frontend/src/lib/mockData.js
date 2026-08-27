@@ -688,7 +688,30 @@ export function handleMockApi(method, url, data) {
     return { ok: true, last_sync_at: new Date().toISOString() };
   }
 
+  // NOTIFICATIONS
+  if (cleanUrl.startsWith("notifications/unread-count")) {
+    return { total: 1, unread: 1 };
+  }
+  if (cleanUrl.startsWith("notifications/read-all")) {
+    return { ok: true };
+  }
+  if (cleanUrl.startsWith("notifications")) {
+    return [
+      {
+        id: "notif_1",
+        title: "Selamat Datang di Lewi House",
+        body: "Sistem manajemen kosan Lewi House kini aktif.",
+        type: "welcome",
+        read: false,
+        created_at: new Date().toISOString(),
+      },
+    ];
+  }
+
   // CHAT
+  if (cleanUrl.startsWith("chat/unread-count")) {
+    return { unread: 1 };
+  }
   if (cleanUrl.startsWith("chat/threads")) {
     return [
       { tenant_id: "t_204", tenant_name: "Budi Santoso", room_name: "K-204", unread: 1, last_message: "Terima kasih pak" },
@@ -703,7 +726,6 @@ export function handleMockApi(method, url, data) {
     }
     return { id: "m_" + Date.now(), sender_role: "admin", text: data?.text, created_at: new Date().toISOString() };
   }
-
 
   if (cleanUrl.startsWith("push/vapid-key")) {
     return { public_key: "BMockPublicKeyForLewiHousePushNotifications2026" };

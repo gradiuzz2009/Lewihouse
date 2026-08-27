@@ -19,9 +19,9 @@ export function PageHeader({ title, subtitle, onBack, action, testid = "page-hea
             <ChevronLeft size={18} className="text-ink" />
           </button>
         )}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] uppercase tracking-[0.25em] text-secondary font-bold">Lewi House</p>
-          <h1 className="font-serif text-2xl sm:text-3xl text-primary leading-tight font-bold truncate">{title}</h1>
+          <h1 className="font-serif text-2xl sm:text-3xl text-primary leading-tight font-bold">{title}</h1>
           {subtitle && <p className="text-xs text-subtle mt-0.5">{subtitle}</p>}
         </div>
       </div>

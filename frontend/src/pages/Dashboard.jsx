@@ -133,12 +133,12 @@ export default function Dashboard() {
 
         {/* Room state row */}
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <MiniStat label="Terisi" value={s?.rooms_occupied ?? 0} dot="bg-success" />
-          <MiniStat label="Tersedia" value={s?.rooms_available ?? 0} dot="bg-secondary" />
-          <MiniStat label="Dipesan" value={s?.rooms_reserved ?? 0} dot="bg-primary" />
-          <MiniStat label="Dibersihkan" value={s?.rooms_cleaning ?? 0} dot="bg-warning" />
-          <MiniStat label="Perbaikan" value={s?.rooms_maintenance ?? 0} dot="bg-danger" />
-          <MiniStat label="Token Aktif" value={s?.active_tokens ?? 0} dot="bg-primary/50" />
+          <MiniStat label="Terisi" value={s?.rooms_occupied ?? 0} dot="bg-blue-600" icon="■" />
+          <MiniStat label="Tersedia" value={s?.rooms_available ?? 0} dot="bg-emerald-600" icon="●" />
+          <MiniStat label="Dipesan" value={s?.rooms_reserved ?? 0} dot="bg-amber-600" icon="▲" />
+          <MiniStat label="Dibersihkan" value={s?.rooms_cleaning ?? 0} dot="bg-teal-600" icon="◆" />
+          <MiniStat label="Perbaikan" value={s?.rooms_maintenance ?? 0} dot="bg-rose-600" icon="✕" />
+          <MiniStat label="Token Aktif" value={s?.active_tokens ?? 0} dot="bg-[#1A362B]" icon="★" />
         </div>
 
         {/* Revenue chart */}
@@ -265,13 +265,19 @@ function MetricCard({ title, value, sub, danger, compact, testid }) {
   );
 }
 
-function MiniStat({ label, value, dot }) {
+function MiniStat({ label, value, dot, icon = "●" }) {
   return (
-    <div className="bg-surface rounded-xl px-3 py-2.5 border border-line flex items-center gap-2">
-      <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+    <div
+      role="status"
+      aria-label={`${label}: ${value}`}
+      className="bg-surface rounded-xl px-3 py-2.5 border border-line flex items-center gap-2"
+    >
+      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dot} grid place-items-center text-[7px] text-white font-bold`} aria-hidden="true">
+        {icon}
+      </span>
       <div className="min-w-0">
-        <p className="text-[9px] uppercase tracking-widest text-subtle truncate">{label}</p>
-        <p className="text-sm font-semibold text-ink tnum leading-tight">{value}</p>
+        <p className="text-[9px] uppercase tracking-widest text-subtle truncate font-semibold">{label}</p>
+        <p className="text-sm font-bold text-ink tnum leading-tight">{value}</p>
       </div>
     </div>
   );

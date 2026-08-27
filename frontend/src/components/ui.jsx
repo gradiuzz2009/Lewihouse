@@ -2,6 +2,28 @@ import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 
+export const STATUS_CONFIG = {
+  available: { label: "Tersedia", badgeClass: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20", icon: "●", aria: "Kamar Tersedia" },
+  reserved: { label: "Dipesan", badgeClass: "bg-amber-500/10 text-amber-700 border-amber-500/20", icon: "▲", aria: "Kamar Dipesan" },
+  occupied: { label: "Terisi", badgeClass: "bg-blue-500/10 text-blue-700 border-blue-500/20", icon: "■", aria: "Kamar Terisi" },
+  cleaning: { label: "Dibersihkan", badgeClass: "bg-teal-500/10 text-teal-700 border-teal-500/20", icon: "◆", aria: "Kamar Dibersihkan" },
+  maintenance: { label: "Perbaikan", badgeClass: "bg-rose-500/10 text-rose-700 border-rose-500/20", icon: "✕", aria: "Kamar Perbaikan" },
+};
+
+export function RoomStatusBadge({ status, className = "" }) {
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.available;
+  return (
+    <span
+      role="status"
+      aria-label={config.aria}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${config.badgeClass} ${className}`}
+    >
+      <span aria-hidden="true" className="text-[10px]">{config.icon}</span>
+      <span>{config.label}</span>
+    </span>
+  );
+}
+
 export function Sheet({ open, onClose, title, subtitle, children, footer, maxWidth = "sm:max-w-xl" }) {
   useEffect(() => {
     if (!open) return;
@@ -23,7 +45,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, maxWid
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
             data-testid="sheet-backdrop"
           />
 
@@ -36,11 +58,11 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, maxWid
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className={`relative z-10 w-full ${maxWidth} bg-surface rounded-t-[28px] sm:rounded-3xl shadow-lifted border-t sm:border border-line max-h-[90dvh] sm:max-h-[85vh] flex flex-col overflow-hidden`}
+            className={`relative z-50 w-full ${maxWidth} bg-surface rounded-t-[28px] sm:rounded-3xl shadow-lifted border-t sm:border border-line max-h-[85dvh] sm:max-h-[85vh] flex flex-col overflow-hidden`}
             data-testid="sheet"
           >
             {/* Header with Drag Indicator */}
-            <div className="pt-3 pb-3 flex flex-col border-b border-line bg-surface/90 backdrop-blur-md shrink-0">
+            <div className="pt-3 pb-3 flex flex-col border-b border-line bg-surface/95 backdrop-blur-md shrink-0">
               <div className="w-12 h-1.5 rounded-full bg-line mx-auto mb-2 sm:hidden" />
               <div className="w-full px-6 flex items-center justify-between">
                 <div>
@@ -54,7 +76,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, maxWid
                   onClick={onClose}
                   className="w-10 h-10 -mr-2 grid place-items-center rounded-full hover:bg-muted active:scale-95 transition-colors text-subtle hover:text-ink"
                   data-testid="sheet-close"
-                  aria-label="Tutup"
+                  aria-label="Tutup dialog"
                 >
                   <X size={18} />
                 </button>
@@ -66,9 +88,9 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, maxWid
               {children}
             </div>
 
-            {/* Optional Sticky Footer */}
+            {/* Pinned Sticky Action Footer */}
             {footer && (
-              <div className="border-t border-line bg-surface/95 backdrop-blur-md px-6 py-3.5 sticky bottom-0 z-20 flex gap-3 shrink-0">
+              <div className="border-t border-line bg-surface/95 backdrop-blur-md px-6 py-3.5 sticky bottom-0 z-20 flex items-center justify-end gap-3 shrink-0 rounded-b-3xl">
                 {footer}
               </div>
             )}

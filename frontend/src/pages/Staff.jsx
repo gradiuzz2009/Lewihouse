@@ -64,7 +64,7 @@ export default function Staff() {
         api.get("/staff"),
         api.get("/sync/status").catch(() => ({ data: { status: "connected", last_sync_at: null } })),
       ]);
-      setStaffList(staffRes.data || []);
+      setStaffList(Array.isArray(staffRes.data) ? staffRes.data : []);
       setSyncStatus(syncRes.data || null);
     } catch (e) {
       if (e.response?.status !== 401) toast.error(t("common.loadFail"));
@@ -336,7 +336,7 @@ export default function Staff() {
         </div>
 
         {/* Role Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1 text-xs scrollbar-none">
+        <div className="chip-scroll-container pb-1 text-xs" data-testid="staff-role-filters">
           {["all", "owner", "admin", "staff"].map((r) => (
             <button
               key={r}

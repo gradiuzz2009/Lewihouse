@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { api, fmtIDR } from "../lib/api";
 import { PageHeader, AddButton } from "../components/PageHeader";
-import { Badge, Button, Input, Select, Sheet, Textarea, MoneyInput, EmptyState } from "../components/ui";
+import { Badge, Button, Input, Select, Sheet, Textarea, MoneyInput, EmptyState, RoomStatusBadge, FormSection } from "../components/ui";
 import { DoorOpen, Trash2, CheckCircle2, UserCheck, Wrench, Sparkles, ShieldAlert } from "lucide-react";
 
 const empty = {
@@ -116,7 +116,7 @@ export default function Rooms() {
         action={<AddButton onClick={openNew} testid="add-room-btn" />}
       />
 
-      <div className="px-6 flex gap-2 overflow-x-auto pb-2" data-testid="room-filters">
+      <div className="px-6 chip-scroll-container pb-2" data-testid="room-filters">
         {[{ k: "all", l: "Semua" }, ...Object.entries(roomStatusMap).map(([k, v]) => ({ k, l: v.label }))].map((f) => (
           <button
             key={f.k}
@@ -172,10 +172,7 @@ export default function Rooms() {
                         Lantai {r.floor}{r.wing ? ` · Sayap ${r.wing}` : ""} · {typeLabels[r.room_type] || r.room_type}
                       </p>
                     </div>
-                    <span className="flex items-center gap-1">
-                      <SIcon size={13} className={s.tone === "danger" ? "text-danger" : s.tone === "success" ? "text-success" : "text-primary"} />
-                      <Badge tone={s.tone} testid={`badge-${r.name}`}>{s.label}</Badge>
-                    </span>
+                    <RoomStatusBadge status={r.status} />
                   </div>
                   <div className="flex items-end justify-between mt-3">
                     <p className="text-sm font-semibold text-ink tnum">
@@ -198,11 +195,11 @@ export default function Rooms() {
                 <div className="border-t border-line px-4 py-2.5 flex gap-2" onClick={(e) => e.stopPropagation()}>
                   {r.status === "cleaning" && (
                     <button
-                      onClick={() => transition(r.id, "available", "Kamar siap dihuni")}
-                      className="rounded-full bg-success/10 text-success px-3 py-1.5 text-[11px] font-semibold flex items-center gap-1 active:scale-95"
-                      data-testid={`room-ready-${r.name}`}
+                      onClick={() => transition(r.id, "available", "Pembersihan selesai, kamar siap")}
+                      className="rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 px-3 py-1.5 text-[11px] font-semibold flex items-center gap-1 active:scale-95"
+                      data-testid={`room-cleaned-${r.name}`}
                     >
-                      <CheckCircle2 size={12} /> Selesai Bersih
+                      <Sparkles size={12} /> Selesai Bersih
                     </button>
                   )}
                   {r.status === "maintenance" && (
@@ -230,48 +227,79 @@ export default function Rooms() {
         })}
       </div>
 
-      <Sheet open={openSheet} onClose={() => setOpenSheet(false)} title={editing ? "Edit Kamar" : "Kamar Baru"}>
-        <form onSubmit={submit}>
-          <Input
-            label="Nama / Nomor Kamar"
-            testid="input-room-name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-            placeholder="K-101"
-          />
-          <div className="grid grid-cols-3 gap-3">
-            <Input label="Lantai" testid="input-room-floor" value={form.floor} onChange={(e) => setForm({ ...form, floor: e.target.value })} />
-            <Input label="Sayap" testid="input-room-wing" value={form.wing} onChange={(e) => setForm({ ...form, wing: e.target.value })} placeholder="A" />
-            <Input label="Kapasitas" testid="input-room-capacity" type="number" min="1" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Select label="Tipe" testid="input-room-type" value={form.room_type} onChange={(e) => setForm({ ...form, room_type: e.target.value })}>
-              <option value="standard">Standard</option>
-              <option value="deluxe">Deluxe</option>
-              <option value="vip">VIP</option>
-              <option value="studio">Studio</option>
-            </Select>
-            <Select label="Status" testid="input-room-status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-              {Object.entries(roomStatusMap).map(([k, v]) => (
-                <option key={k} value={k}>{v.label}</option>
-              ))}
-            </Select>
-          </div>
-          <MoneyInput label="Harga / Bulan" testid="input-room-price" value={form.price} onChange={(v) => setForm({ ...form, price: v })} required />
-          <MoneyInput label="Deposit" testid="input-room-deposit" value={form.deposit} onChange={(v) => setForm({ ...form, deposit: v })} />
-          <Input
-            label="Fasilitas (pisahkan dengan koma)"
-            testid="input-room-facilities"
-            value={form.facilities}
-            onChange={(e) => setForm({ ...form, facilities: e.target.value })}
-            placeholder="AC, WiFi, Kamar Mandi Dalam"
-          />
-          <Input label="URL Foto" testid="input-room-photo" value={form.photo_url || ""} onChange={(e) => setForm({ ...form, photo_url: e.target.value })} placeholder="https://..." />
-          <Textarea label="Catatan" testid="input-room-notes" value={form.notes || ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-          <Button testid="submit-room" className="w-full mt-2" type="submit">
-            {editing ? "Simpan Perubahan" : "Tambah Kamar"}
-          </Button>
+      <Sheet
+        open={openSheet}
+        onClose={() => setOpenSheet(false)}
+        title={editing ? "Edit Kamar" : "Kamar Baru"}
+        subtitle="Konfigurasi unit kamar, tarif sewa & fasilitas"
+        maxWidth="sm:max-w-lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpenSheet(false)}
+              className="flex-1"
+            >
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              form="room-form"
+              testid="submit-room"
+              className="flex-1"
+            >
+              {editing ? "Simpan Perubahan" : "Tambah Kamar"}
+            </Button>
+          </>
+        }
+      >
+        <form id="room-form" onSubmit={submit} className="space-y-1">
+          <FormSection title="Informasi Kamar">
+            <Input
+              label="Nama / Nomor Kamar"
+              testid="input-room-name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+              placeholder="K-101"
+            />
+            <div className="grid grid-cols-3 gap-3">
+              <Input label="Lantai" testid="input-room-floor" value={form.floor} onChange={(e) => setForm({ ...form, floor: e.target.value })} />
+              <Input label="Sayap" testid="input-room-wing" value={form.wing} onChange={(e) => setForm({ ...form, wing: e.target.value })} placeholder="A" />
+              <Input label="Kapasitas" testid="input-room-capacity" type="number" min="1" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Select label="Tipe" testid="input-room-type" value={form.room_type} onChange={(e) => setForm({ ...form, room_type: e.target.value })}>
+                <option value="standard">Standard</option>
+                <option value="deluxe">Deluxe</option>
+                <option value="vip">VIP</option>
+                <option value="studio">Studio</option>
+              </Select>
+              <Select label="Status" testid="input-room-status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                {Object.entries(roomStatusMap).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </Select>
+            </div>
+          </FormSection>
+
+          <FormSection title="Biaya Sewa & Deposit">
+            <MoneyInput label="Harga / Bulan" testid="input-room-price" value={form.price} onChange={(v) => setForm({ ...form, price: v })} required />
+            <MoneyInput label="Deposit" testid="input-room-deposit" value={form.deposit} onChange={(v) => setForm({ ...form, deposit: v })} />
+          </FormSection>
+
+          <FormSection title="Fasilitas & Catatan">
+            <Input
+              label="Fasilitas (pisahkan dengan koma)"
+              testid="input-room-facilities"
+              value={form.facilities}
+              onChange={(e) => setForm({ ...form, facilities: e.target.value })}
+              placeholder="AC, WiFi, Kamar Mandi Dalam"
+            />
+            <Input label="URL Foto" testid="input-room-photo" value={form.photo_url || ""} onChange={(e) => setForm({ ...form, photo_url: e.target.value })} placeholder="https://..." />
+            <Textarea label="Catatan" testid="input-room-notes" value={form.notes || ""} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+          </FormSection>
         </form>
       </Sheet>
     </div>

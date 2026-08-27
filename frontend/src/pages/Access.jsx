@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { api, fmtDate } from "../lib/api";
+import { api, fmtDate, formatTokenValidity } from "../lib/api";
 import { PageHeader, AddButton } from "../components/PageHeader";
 import { Badge, Button, Input, Select, Sheet, EmptyState, FormSection } from "../components/ui";
 import { KeyRound, ShieldOff, Eye, EyeOff } from "lucide-react";
@@ -131,11 +131,9 @@ export default function Access() {
                   <p className="text-xs text-subtle mt-0.5">
                     {[tenantName(tk.tenant_id), roomName(tk.room_id) ? `Kamar ${roomName(tk.room_id)}` : null].filter(Boolean).join(" · ") || "Pintu Utama / Umum"}
                   </p>
-                  {(tk.valid_from || tk.valid_until) && (
-                    <p className="text-[11px] text-subtle mt-1 font-mono">
-                      Masa Berlaku: {fmtDate(tk.valid_from)} — {fmtDate(tk.valid_until)}
-                    </p>
-                  )}
+                  <p className="text-[11px] text-subtle mt-1 font-mono">
+                    {formatTokenValidity(tk.valid_from, tk.valid_until)}
+                  </p>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <Badge tone={st.tone} testid={`token-status-${tk.id}`}>{st.label}</Badge>

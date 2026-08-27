@@ -237,7 +237,7 @@ export default function Complaints() {
       />
 
       {/* Filter Tabs with Quantities */}
-      <div className="px-5 sm:px-6 mt-2 flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+      <div className="px-5 sm:px-6 mt-2 chip-scroll-container pb-1">
         {[
           { key: "all", label: "Semua", count: items.length },
           { key: "pending", label: "Menunggu", count: items.filter((c) => c.status === "pending").length, alert: items.filter((c) => c.status === "pending").length > 0 },

@@ -64,9 +64,38 @@ export const fmtDate = (iso) => {
   if (!iso) return "-";
   try {
     const d = typeof iso === "string" && iso.length === 10 ? new Date(iso + "T00:00:00") : new Date(iso);
+    if (isNaN(d.getTime())) return "-";
     return d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
   } catch {
-    return iso;
+    return "-";
+  }
+};
+
+export const formatTokenValidity = (startDate, endDate) => {
+  if (!endDate && !startDate) return "Masa Berlaku: Selamanya (Permanen)";
+  const formatter = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  try {
+    const end = endDate ? (typeof endDate === "string" && endDate.length === 10 ? new Date(endDate + "T00:00:00") : new Date(endDate)) : null;
+    const start = startDate ? (typeof startDate === "string" && startDate.length === 10 ? new Date(startDate + "T00:00:00") : new Date(startDate)) : null;
+    const isStartValid = start && !isNaN(start.getTime());
+    const isEndValid = end && !isNaN(end.getTime());
+
+    if (isStartValid && isEndValid) {
+      return `Masa Berlaku: ${formatter.format(start)} – ${formatter.format(end)}`;
+    }
+    if (isEndValid) {
+      return `Masa Berlaku s.d. ${formatter.format(end)}`;
+    }
+    if (isStartValid) {
+      return `Masa Berlaku mulai ${formatter.format(start)}`;
+    }
+    return "Masa Berlaku: Selamanya";
+  } catch {
+    return "Masa Berlaku: Selamanya";
   }
 };
 
