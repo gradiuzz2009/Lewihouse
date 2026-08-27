@@ -1,63 +1,46 @@
-import { useState, useEffect, useCallback } from "react";
-import { api } from "../lib/api";
+import { doc, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { db, PROPERTY_PATH } from "../lib/firebase";
+import { useFirestoreCollection } from "./useFirestoreCollection";
 import { toast } from "sonner";
 
 export function useComplaints() {
-  const [complaints, setComplaints] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const fetchComplaints = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await api.get("/complaints");
-      setComplaints(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      const msg = err.response?.data?.detail || err.message || "Failed to load complaints";
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchComplaints();
-  }, [fetchComplaints]);
+  const { data: complaints, loading, error } = useFirestoreCollection(`${PROPERTY_PATH}/maintenance_tickets`);
 
   const updateTicketStatus = async (ticketId, status) => {
     try {
-      await api.post(`/complaints/${ticketId}/status`, { status });
-      setComplaints((prev) =>
-        prev.map((c) => (c.id === ticketId ? { ...c, status } : c))
-      );
-      toast.success(`Ticket status set to ${status}`);
+      const docRef = doc(db, `${PROPERTY_PATH}/maintenance_tickets`, ticketId);
+      await updateDoc(docRef, {
+        status: status.toUpperCase(),
+        resolvedAt: status === "RESOLVED" ? serverTimestamp() : null,
+        updatedAt: serverTimestamp(),
+      });
+      toast.success(`Status tiket diubah ke ${status}`);
       return true;
     } catch (err) {
-      toast.error("Failed to update ticket status");
+      toast.error("Gagal mengupdate tiket: " + err.message);
       return false;
     }
   };
 
   const createTicket = async (ticketData) => {
     try {
-      const res = await api.post("/complaints", ticketData);
-      setComplaints((prev) => [res.data, ...prev]);
-      toast.success("Maintenance ticket submitted");
+      const ticketId = `ticket_${Date.now()}`;
+      const docRef = doc(db, `${PROPERTY_PATH}/maintenance_tickets`, ticketId);
+      await setDoc(docRef, {
+        ...ticketData,
+        status: "SUBMITTED",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      toast.success("Tiket keluhan terkirim");
       return true;
     } catch (err) {
-      toast.error("Failed to submit ticket");
+      toast.error("Gagal mengirim tiket: " + err.message);
       return false;
     }
   };
 
-  return {
-    complaints,
-    loading,
-    error,
-    refresh: fetchComplaints,
-    updateTicketStatus,
-    createTicket,
-  };
+  return { complaints, loading, error, updateTicketStatus, createTicket };
 }
+
+export default useComplaints;

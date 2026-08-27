@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Chat Attachments Vault
+    match /chat_attachments/{threadId}/{fileName} {
+      allow read: if true;
+
+      // 1. Path restricted to /chat_attachments/{threadId}/{fileName}
+      // 2. Max size < 10MB (10,485,760 bytes)
+      // 3. MIME type checks: image/* or application/pdf
+      allow create: if request.resource.size < 10 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf');
+
+      allow update, delete: if true;
+    }
+  }
+}

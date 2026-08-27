@@ -172,14 +172,14 @@ async function main() {
 
     // 2. Kosan Rooms
     const rooms = [
-      { id: 'room_101', roomNumber: '101', floor: '1', roomType: 'deluxe', capacity: 1, monthlyPrice: 1500000, deposit: 500000, status: 'OCCUPIED', facilities: ['AC', 'Kamar Mandi Dalam', 'WiFi', 'Kasur Queen', 'Lemari'], updatedAt: now },
-      { id: 'room_102', roomNumber: '102', floor: '1', roomType: 'deluxe', capacity: 1, monthlyPrice: 1500000, deposit: 500000, status: 'AVAILABLE', facilities: ['AC', 'Kamar Mandi Dalam', 'WiFi', 'Kasur Queen', 'Lemari'], updatedAt: now },
-      { id: 'room_103', roomNumber: '103', floor: '1', roomType: 'standard', capacity: 1, monthlyPrice: 1200000, deposit: 500000, status: 'AVAILABLE', facilities: ['Kipas Angin', 'Kamar Mandi Luar', 'WiFi', 'Kasur Single'], updatedAt: now },
-      { id: 'room_104', roomNumber: '104', floor: '1', roomType: 'standard', capacity: 1, monthlyPrice: 1200000, deposit: 500000, status: 'AVAILABLE', facilities: ['Kipas Angin', 'Kamar Mandi Luar', 'WiFi', 'Kasur Single'], updatedAt: now },
-      { id: 'room_201', roomNumber: '201', floor: '2', roomType: 'vip', capacity: 2, monthlyPrice: 2000000, deposit: 1000000, status: 'AVAILABLE', facilities: ['AC', 'Kamar Mandi Dalam', 'Water Heater', 'Balkon', 'WiFi', 'Smart TV'], updatedAt: now },
-      { id: 'room_202', roomNumber: '202', floor: '2', roomType: 'vip', capacity: 2, monthlyPrice: 2000000, deposit: 1000000, status: 'AVAILABLE', facilities: ['AC', 'Kamar Mandi Dalam', 'Water Heater', 'Balkon', 'WiFi', 'Smart TV'], updatedAt: now },
-      { id: 'room_203', roomNumber: '203', floor: '2', roomType: 'standard', capacity: 1, monthlyPrice: 1200000, deposit: 500000, status: 'AVAILABLE', facilities: ['Kipas Angin', 'Kamar Mandi Dalam', 'WiFi'], updatedAt: now },
-      { id: 'room_204', roomNumber: '204', floor: '2', roomType: 'standard', capacity: 1, monthlyPrice: 1200000, deposit: 500000, status: 'AVAILABLE', facilities: ['Kipas Angin', 'Kamar Mandi Dalam', 'WiFi'], updatedAt: now },
+      { id: 'room_101', roomNumber: '101', floor: '1', roomType: 'deluxe', capacity: 1, monthlyPrice: 1500000, deposit: 500000, status: 'OCCUPIED', photoUrl: '/gallery/agoda/agoda-10-deluxe-bed.webp', facilities: ['AC', 'Kamar Mandi Dalam', 'WiFi', 'Kasur Queen', 'Lemari'], updatedAt: now },
+      { id: 'room_102', roomNumber: '102', floor: '1', roomType: 'deluxe', capacity: 1, monthlyPrice: 1500000, deposit: 500000, status: 'AVAILABLE', photoUrl: '/gallery/agoda/agoda-14-deluxe-bedroom.webp', facilities: ['AC', 'Kamar Mandi Dalam', 'WiFi', 'Kasur Queen', 'Lemari'], updatedAt: now },
+      { id: 'room_103', roomNumber: '103', floor: '1', roomType: 'standard', capacity: 1, monthlyPrice: 1200000, deposit: 500000, status: 'AVAILABLE', photoUrl: '/gallery/agoda/agoda-11-standard-single.webp', facilities: ['Kipas Angin', 'Kamar Mandi Luar', 'WiFi', 'Kasur Single'], updatedAt: now },
+      { id: 'room_104', roomNumber: '104', floor: '1', roomType: 'standard', capacity: 1, monthlyPrice: 1200000, deposit: 500000, status: 'AVAILABLE', photoUrl: '/gallery/agoda/agoda-13-standard-single.webp', facilities: ['Kipas Angin', 'Kamar Mandi Luar', 'WiFi', 'Kasur Single'], updatedAt: now },
+      { id: 'room_201', roomNumber: '201', floor: '2', roomType: 'vip', capacity: 2, monthlyPrice: 2000000, deposit: 1000000, status: 'AVAILABLE', photoUrl: '/gallery/agoda/agoda-02-suite-bedroom.webp', facilities: ['AC', 'Kamar Mandi Dalam', 'Water Heater', 'Balkon', 'WiFi', 'Smart TV'], updatedAt: now },
+      { id: 'room_202', roomNumber: '202', floor: '2', roomType: 'vip', capacity: 2, monthlyPrice: 2000000, deposit: 1000000, status: 'AVAILABLE', photoUrl: '/gallery/agoda/agoda-09-suite-bedroom.webp', facilities: ['AC', 'Kamar Mandi Dalam', 'Water Heater', 'Balkon', 'WiFi', 'Smart TV'], updatedAt: now },
+      { id: 'room_203', roomNumber: '203', floor: '2', roomType: 'standard', capacity: 1, monthlyPrice: 1200000, deposit: 500000, status: 'AVAILABLE', photoUrl: '/gallery/agoda/agoda-12-superior-single.webp', facilities: ['Kipas Angin', 'Kamar Mandi Dalam', 'WiFi'], updatedAt: now },
+      { id: 'room_204', roomNumber: '204', floor: '2', roomType: 'standard', capacity: 1, monthlyPrice: 1200000, deposit: 500000, status: 'AVAILABLE', photoUrl: '/gallery/agoda/agoda-15-superior-double.webp', facilities: ['Kipas Angin', 'Kamar Mandi Dalam', 'WiFi'], updatedAt: now },
     ];
 
     for (const r of rooms) {

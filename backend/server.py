@@ -7,6 +7,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 import os
+import re
 import secrets
 import random
 import json
@@ -149,7 +150,7 @@ def set_auth_cookies(response: Response, access: str, refresh: str):
 async def login(payload: LoginPayload, request: Request, response: Response):
     ident = (payload.identifier or payload.email or "").strip().lower()
     if not ident:
-        raise HTTPException(status_code=400, detail="Email / No. HP wajib diisi")
+        raise HTTPException(status_code=400, detail="Username / Nomor Unit / Email / No. HP wajib diisi")
     identifier = ident
     attempt = await db.login_attempts.find_one({"identifier": identifier})
     if attempt and attempt.get("count", 0) >= 5:
@@ -157,27 +158,59 @@ async def login(payload: LoginPayload, request: Request, response: Response):
         if datetime.now(timezone.utc) - locked_at < timedelta(minutes=15):
             raise HTTPException(status_code=429, detail="Terlalu banyak percobaan. Coba lagi 15 menit.")
         await db.login_attempts.delete_one({"identifier": identifier})
+    
+    user = None
     if "@" in ident:
         user = await db.users.find_one({"email": ident})
     else:
-        user = await db.users.find_one({"phone": norm_phone(ident)})
+        # 1. Match by username (e.g. "204_ali")
+        user = await db.users.find_one({"username": {"$regex": f"^{re.escape(ident)}$", "$options": "i"}})
+        if not user:
+            # 2. Match by normalized phone
+            clean_phone = norm_phone(ident)
+            if clean_phone:
+                user = await db.users.find_one({"phone": clean_phone})
+        if not user:
+            # 3. Match by room name / unit number (e.g. "204" or "A-12")
+            room = await db.rooms.find_one({"name": {"$regex": f"^{re.escape(ident)}$", "$options": "i"}})
+            if room:
+                room_id = str(room["_id"])
+                tenant = await db.tenants.find_one({"room_id": room_id, "status": "active"})
+                if not tenant:
+                    tenant = await db.tenants.find_one({"room_id": room_id})
+                if tenant:
+                    user = await db.users.find_one({"tenant_id": str(tenant["_id"])})
+
     if not user or not verify_password(payload.password, user["password_hash"]):
         await db.login_attempts.update_one(
             {"identifier": identifier},
             {"$inc": {"count": 1}, "$set": {"last_at": now_iso()}},
             upsert=True,
         )
-        raise HTTPException(status_code=401, detail="Email/No. HP atau password salah")
+        raise HTTPException(status_code=401, detail="Kredensial login atau password salah")
     await db.login_attempts.delete_one({"identifier": identifier})
     uid = str(user["_id"])
     role = user.get("role", "admin")
-    access = create_access_token(uid, user.get("email") or user.get("phone", ""), role)
+    access = create_access_token(uid, user.get("email") or user.get("phone", "") or user.get("username", ""), role)
     refresh = create_refresh_token(uid)
     set_auth_cookies(response, access, refresh)
     await log_audit("system", "LOGIN", "user", uid, {"identifier": ident, "role": role})
-    return {"user": {"id": uid, "email": user.get("email"), "phone": user.get("phone"),
-                     "name": user.get("name"), "role": role, "tenant_id": user.get("tenant_id")},
-            "access_token": access}
+    return {
+        "user": {
+            "id": uid,
+            "username": user.get("username"),
+            "email": user.get("email"),
+            "phone": user.get("phone"),
+            "name": user.get("name"),
+            "role": role,
+            "tenant_id": user.get("tenant_id"),
+            "room_name": user.get("room_name"),
+            "is_temporary_password": bool(user.get("is_temporary_password")),
+            "creation_source": user.get("creation_source", "ADMIN_MANUAL"),
+            "password_updated_at": user.get("password_updated_at"),
+        },
+        "access_token": access,
+    }
 
 
 @auth_router.post("/logout")
@@ -242,10 +275,11 @@ class RoomBase(BaseModel):
     name: str
     floor: Optional[str] = "1"
     wing: Optional[str] = None
-    room_type: str = "standard"  # standard | deluxe | vip | studio
+    room_type: str = "standard"  # standard | deluxe | vip | studio | suite
     capacity: int = 1
     price: float
     deposit: float = 0
+    meter_id: Optional[str] = ""
     status: str = "available"
     facilities: List[str] = []
     photo_url: Optional[str] = None
@@ -260,10 +294,27 @@ class Room(RoomBase):
     id: str
     tenant_id: Optional[str] = None
     created_at: str
+    updated_at: Optional[str] = None
+
+
+class RoomTransferPayload(BaseModel):
+    tenant_id: str
+    from_room_id: str
+    to_room_id: str
+    transfer_date: Optional[str] = None
+    old_room_final_meter: Optional[float] = 0
+    old_room_electricity_charge: Optional[float] = 0
+    prorata_credit_old: Optional[float] = 0
+    prorata_charge_new: Optional[float] = 0
+    net_adjustment_amount: Optional[float] = 0
+    old_room_status: Optional[str] = "cleaning"  # cleaning | available
+    create_adjustment_invoice: Optional[bool] = True
+    notes: Optional[str] = None
 
 
 class TenantBase(BaseModel):
     name: str
+    username: Optional[str] = None
     phone: str
     nik: Optional[str] = None
     email: Optional[str] = None
@@ -289,41 +340,71 @@ class Tenant(TenantBase):
     status: str = "pending_assignment"  # pending_assignment | active | former
     deposit_settlement: Optional[dict] = None
     portal_password: Optional[str] = None
+    is_temporary_password: Optional[bool] = True
+    creation_source: Optional[str] = "ADMIN_MANUAL"
+    password_updated_at: Optional[str] = None
+    password_history: Optional[List[dict]] = []
     created_at: str
 
 
 class Payment(BaseModel):
     amount: float
-    method: str  # qris | bank_transfer | cash
+    method: str  # qris | bank_transfer | cash | midtrans
     reference: Optional[str] = None
     paid_at: Optional[str] = None
+
+
+class BillItem(BaseModel):
+    name: str
+    amount: float
+    category: Optional[str] = "rent"  # rent | electricity | water | add_on | penalty | deposit | prorata | other
+    notes: Optional[str] = None
+
+
+class PaymentDetails(BaseModel):
+    method: Optional[str] = "BANK_TRANSFER"  # BANK_TRANSFER | QRIS | CASH | MIDTRANS
+    proof_image_url: Optional[str] = None
+    paid_at: Optional[str] = None
+    verified_by: Optional[str] = None
+    verified_at: Optional[str] = None
+    rejection_reason: Optional[str] = None
+    bank_name: Optional[str] = None
+    sender_name: Optional[str] = None
+    note: Optional[str] = None
+    status: Optional[str] = None  # pending_verification | approved | rejected
 
 
 class BillBase(BaseModel):
     tenant_id: str
     room_id: Optional[str] = None
     period: str
+    due_date: Optional[str] = None
+    status: str = "UNPAID"  # UNPAID | VERIFYING | PAID | OVERDUE | CANCELLED | PARTIAL_PAID
+    notes: Optional[str] = None
+    items: List[BillItem] = []
+    # Backward compatibility flat fields
     rent: float = 0
     electricity: float = 0
     water: float = 0
     other: float = 0
     other_label: Optional[str] = None
     late_fee: float = 0
-    due_date: Optional[str] = None
-    status: str = "unpaid"  # unpaid | partially_paid | paid
-    notes: Optional[str] = None
 
 
 class BillCreate(BillBase):
-    pass
+    payment_details: Optional[PaymentDetails] = None
 
 
 class Bill(BillBase):
     id: str
     invoice_number: Optional[str] = None
+    room_unit: Optional[str] = None
+    resident_name: Optional[str] = None
     total: float
+    total_amount: Optional[float] = None
     amount_paid: float = 0
     payments: List[Payment] = []
+    payment_details: Optional[PaymentDetails] = None
     paid_at: Optional[str] = None
     payment_method: Optional[str] = None
     dunning_stage: int = 0
@@ -371,8 +452,33 @@ def gen_pin() -> str:
     return f"{random.SystemRandom().randint(0, 999999):06d}"
 
 
+def sync_bill_items(d: dict) -> List[dict]:
+    items = d.get("items") or []
+    if not items:
+        new_items = []
+        if float(d.get("rent", 0)) > 0:
+            new_items.append({"name": "Sewa Kamar Pokok", "amount": float(d["rent"]), "category": "rent"})
+        if float(d.get("electricity", 0)) > 0:
+            new_items.append({"name": "Listrik / Utilitas", "amount": float(d["electricity"]), "category": "electricity"})
+        if float(d.get("water", 0)) > 0:
+            new_items.append({"name": "Air / PDAM", "amount": float(d["water"]), "category": "water"})
+        if float(d.get("other", 0)) > 0:
+            new_items.append({"name": d.get("other_label") or "Biaya Tambahan / Layanan", "amount": float(d["other"]), "category": "add_on"})
+        if float(d.get("late_fee", 0)) > 0:
+            new_items.append({"name": "Denda Keterlambatan", "amount": float(d["late_fee"]), "category": "penalty"})
+        if not new_items and float(d.get("total", 0)) > 0:
+            new_items.append({"name": "Tagihan Sewa Kamar", "amount": float(d["total"]), "category": "rent"})
+        return new_items
+    return items
+
+
 def bill_total(d: dict) -> float:
-    return d.get("rent", 0) + d.get("electricity", 0) + d.get("water", 0) + d.get("other", 0) + d.get("late_fee", 0)
+    items = d.get("items")
+    if items:
+        tot = sum(float(item.get("amount", 0)) for item in items)
+        if tot > 0:
+            return tot
+    return float(d.get("rent", 0)) + float(d.get("electricity", 0)) + float(d.get("water", 0)) + float(d.get("other", 0)) + float(d.get("late_fee", 0))
 
 
 def derive_bill(d: dict) -> dict:
@@ -382,23 +488,64 @@ def derive_bill(d: dict) -> dict:
     d.setdefault("late_fee", 0)
     d.setdefault("dunning_stage", 0)
     d.setdefault("payment_method", None)
-    d["is_overdue"] = False
-    if d.get("status") != "paid" and d.get("due_date"):
-        today = datetime.now(timezone.utc).date()
-        try:
-            due = date.fromisoformat(d["due_date"])
-            days_late = (today - due).days
-            if days_late > 0:
-                d["is_overdue"] = True
-                d["dunning_stage"] = 1 if days_late <= 3 else (2 if days_late <= 7 else 3)
-        except ValueError:
-            pass
+    d.setdefault("payment_details", None)
+    
+    # Sync and compute items & totals
+    items = sync_bill_items(d)
+    d["items"] = items
+    calculated_total = bill_total(d)
+    d["total"] = calculated_total
+    d["total_amount"] = calculated_total
+    
+    raw_status = str(d.get("status") or "UNPAID").upper()
+    if raw_status in ("PAID", "LUNAS"):
+        d["status"] = "PAID"
+        d["is_overdue"] = False
+    elif raw_status in ("VERIFYING", "MENUNGGU_VERIFIKASI"):
+        d["status"] = "VERIFYING"
+        d["is_overdue"] = False
+    elif raw_status in ("CANCELLED", "BATAL"):
+        d["status"] = "CANCELLED"
+        d["is_overdue"] = False
+    else:
+        d["is_overdue"] = False
+        if d.get("due_date"):
+            today = datetime.now(timezone.utc).date()
+            try:
+                due = date.fromisoformat(str(d["due_date"])[:10])
+                days_late = (today - due).days
+                if days_late > 0:
+                    d["is_overdue"] = True
+                    d["dunning_stage"] = 1 if days_late <= 3 else (2 if days_late <= 7 else 3)
+                    d["status"] = "OVERDUE"
+                else:
+                    d["status"] = "PARTIAL_PAID" if (0 < float(d.get("amount_paid", 0)) < calculated_total) else "UNPAID"
+            except ValueError:
+                d["status"] = "UNPAID"
+        else:
+            d["status"] = "PARTIAL_PAID" if (0 < float(d.get("amount_paid", 0)) < calculated_total) else "UNPAID"
+            
     return d
 
 
+async def generate_invoice_number(period: str, room_name: Optional[str] = None) -> str:
+    # Format PRD: INV/YYYYMM/UNIT/XXXX
+    period_clean = period.replace("-", "").replace("/", "")[:6]
+    unit_clean = (room_name or "GEN").replace(" ", "").replace("-", "").upper()
+    prefix = f"INV/{period_clean}/{unit_clean}/"
+    count = await db.bills.count_documents({
+        "invoice_number": {"$regex": f"^INV/{period_clean}/{unit_clean}/"}
+    })
+    seq = count + 1
+    while await db.bills.find_one({"invoice_number": f"{prefix}{seq:04d}"}):
+        seq += 1
+    return f"{prefix}{seq:04d}"
+
+
 def invoice_number_for(period: str, room_name: Optional[str]) -> str:
-    suffix = (room_name or "GEN").replace("-", "").replace(" ", "").upper()
-    return f"INV-{period.replace('-', '')}-{suffix}"
+    period_clean = period.replace("-", "").replace("/", "")[:6]
+    unit_clean = (room_name or "GEN").replace(" ", "").replace("-", "").upper()
+    return f"INV/{period_clean}/{unit_clean}/0001"
 
 
 # ============ ROOMS ============
@@ -417,6 +564,7 @@ async def create_room(payload: RoomCreate, user: dict = Depends(get_current_user
         raise HTTPException(400, "Nomor kamar sudah dipakai")
     doc = payload.model_dump()
     doc["created_at"] = now_iso()
+    doc["updated_at"] = now_iso()
     doc["tenant_id"] = None
     r = await db.rooms.insert_one(doc)
     await log_audit(user["email"], "CREATE", "room", str(r.inserted_id), {"name": doc["name"]})
@@ -438,7 +586,9 @@ async def update_room(room_id: str, payload: RoomCreate, user: dict = Depends(ge
     dup = await db.rooms.find_one({"name": payload.name, "_id": {"$ne": oid(room_id)}})
     if dup:
         raise HTTPException(400, "Nomor kamar sudah dipakai")
-    await db.rooms.update_one({"_id": oid(room_id)}, {"$set": payload.model_dump()})
+    update_data = payload.model_dump()
+    update_data["updated_at"] = now_iso()
+    await db.rooms.update_one({"_id": oid(room_id)}, {"$set": update_data})
     d = await db.rooms.find_one({"_id": oid(room_id)})
     if not d:
         raise HTTPException(404, "Room not found")
@@ -460,10 +610,116 @@ async def transition_room(room_id: str, payload: StatusPayload, user: dict = Dep
         raise HTTPException(400, "Status tidak valid")
     if new != cur and new not in ROOM_TRANSITIONS.get(cur, set()):
         raise HTTPException(400, f"Transisi {cur} → {new} tidak diizinkan")
-    await db.rooms.update_one({"_id": oid(room_id)}, {"$set": {"status": new}})
+    await db.rooms.update_one({"_id": oid(room_id)}, {"$set": {"status": new, "updated_at": now_iso()}})
     await log_audit(user["email"], "ROOM_STATUS", "room", room_id, {"from": cur, "to": new, "name": d.get("name")})
     d["status"] = new
+    d["updated_at"] = now_iso()
     return doc_to(Room, d)
+
+
+@api.post("/rooms/transfer")
+async def transfer_room(payload: RoomTransferPayload, user: dict = Depends(get_current_user)):
+    tenant = await db.tenants.find_one({"_id": oid(payload.tenant_id)})
+    if not tenant:
+        raise HTTPException(404, "Penghuni tidak ditemukan")
+    
+    from_room = await db.rooms.find_one({"_id": oid(payload.from_room_id)})
+    if not from_room:
+        raise HTTPException(404, "Kamar asal tidak ditemukan")
+        
+    to_room = await db.rooms.find_one({"_id": oid(payload.to_room_id)})
+    if not to_room:
+        raise HTTPException(404, "Kamar tujuan tidak ditemukan")
+        
+    if to_room.get("status") != "available":
+        raise HTTPException(400, "Kamar tujuan tidak berstatus Tersedia (AVAILABLE)")
+        
+    ts = now_iso()
+    old_status = payload.old_room_status if payload.old_room_status in ["cleaning", "available"] else "cleaning"
+    
+    # 1. Update Old Room
+    await db.rooms.update_one(
+        {"_id": oid(payload.from_room_id)},
+        {"$set": {"status": old_status, "tenant_id": None, "updated_at": ts}}
+    )
+    
+    # 2. Update New Room
+    await db.rooms.update_one(
+        {"_id": oid(payload.to_room_id)},
+        {"$set": {"status": "occupied", "tenant_id": payload.tenant_id, "updated_at": ts}}
+    )
+    
+    # 3. Update Tenant
+    await db.tenants.update_one(
+        {"_id": oid(payload.tenant_id)},
+        {"$set": {
+            "room_id": payload.to_room_id,
+            "monthly_rent": to_room.get("price", tenant.get("monthly_rent", 0)),
+            "deposit": to_room.get("deposit", tenant.get("deposit", 0)),
+        }}
+    )
+    
+    # 4. Update Portal User room name
+    await db.users.update_many(
+        {"tenant_id": payload.tenant_id},
+        {"$set": {"room_name": to_room.get("name")}}
+    )
+    
+    # 5. Generate adjustment invoice if enabled and net adjustment != 0
+    invoice_doc = None
+    if payload.create_adjustment_invoice and payload.net_adjustment_amount != 0:
+        inv_no = await generate_invoice_number(datetime.now().strftime("%Y-%m"), to_room.get("name"))
+        items = []
+        if (payload.prorata_charge_new or 0) > 0:
+            items.append({"name": f"Prorata Sewa Kamar Baru ({to_room.get('name')})", "amount": float(payload.prorata_charge_new), "category": "rent"})
+        if (payload.prorata_credit_old or 0) > 0:
+            items.append({"name": f"Kredit Prorata Kamar Lama ({from_room.get('name')})", "amount": -float(payload.prorata_credit_old), "category": "prorata"})
+        if (payload.old_room_electricity_charge or 0) > 0:
+            meter_label = f" (Meter: {from_room.get('meter_id')})" if from_room.get('meter_id') else ""
+            items.append({"name": f"Listrik Akhir Kamar Lama {from_room.get('name')}{meter_label}", "amount": float(payload.old_room_electricity_charge), "category": "electricity"})
+        
+        calculated_total = sum(i["amount"] for i in items) if items else float(payload.net_adjustment_amount)
+        invoice_doc = {
+            "tenant_id": payload.tenant_id,
+            "room_id": payload.to_room_id,
+            "period": datetime.now().strftime("%Y-%m"),
+            "due_date": (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d"),
+            "status": "UNPAID",
+            "invoice_number": inv_no,
+            "room_unit": to_room.get("name"),
+            "resident_name": tenant.get("name"),
+            "items": items,
+            "rent": max(0, float((payload.prorata_charge_new or 0) - (payload.prorata_credit_old or 0))),
+            "electricity": float(payload.old_room_electricity_charge or 0),
+            "water": 0,
+            "other": 0,
+            "late_fee": 0,
+            "total": calculated_total,
+            "total_amount": calculated_total,
+            "amount_paid": 0,
+            "payments": [],
+            "notes": f"Penyesuaian pindah kamar {from_room.get('name')} ke {to_room.get('name')}. {payload.notes or ''}".strip(),
+            "created_at": ts,
+        }
+        await db.bills.insert_one(invoice_doc)
+        
+    await log_audit(user["email"], "ROOM_TRANSFER", "room", payload.to_room_id, {
+        "tenant_id": payload.tenant_id,
+        "tenant_name": tenant.get("name"),
+        "from_room": from_room.get("name"),
+        "to_room": to_room.get("name"),
+        "net_adjustment": payload.net_adjustment_amount,
+        "created_invoice": bool(invoice_doc),
+    })
+    
+    return {
+        "ok": True,
+        "message": f"Berhasil memindahkan {tenant.get('name')} dari unit {from_room.get('name')} ke unit {to_room.get('name')}",
+        "tenant_id": payload.tenant_id,
+        "from_room_id": payload.from_room_id,
+        "to_room_id": payload.to_room_id,
+        "invoice_number": invoice_doc.get("invoice_number") if invoice_doc else None,
+    }
 
 
 @api.delete("/rooms/{room_id}")
@@ -560,7 +816,7 @@ async def move_in(tenant_id: str, user: dict = Depends(get_current_user)):
         "status": "active", "created_at": now_iso(), "revoked_at": None,
     })
     await log_audit(user["email"], "MOVE_IN", "tenant", tenant_id, {"name": d["name"], "pin_issued": True})
-    portal_pw = await create_portal_account(tenant_id, d)
+    portal_pw = await create_portal_account(tenant_id, d, creation_source="LEASE_ACTIVATION")
     await notify_tenant(tenant_id, "welcome", {"name": d["name"]},
                         "Selamat datang di Lewi House", "Akun portal Anda aktif. Cek tagihan & ajukan tiket di sini.")
     d["status"] = "active"
@@ -618,34 +874,140 @@ async def delete_tenant(tenant_id: str, user: dict = Depends(get_current_user)):
 
 
 # ============ BILLS ============
+class VerifyPaymentPayload(BaseModel):
+    action: str  # approve | reject
+    rejection_reason: Optional[str] = None
+    paid_amount: Optional[float] = None
+    method: Optional[str] = "BANK_TRANSFER"
+    notes: Optional[str] = None
+
+
+class ProrataTransferPayload(BaseModel):
+    tenant_id: str
+    old_room_id: str
+    new_room_id: str
+    transfer_date: str  # YYYY-MM-DD
+    period: str  # YYYY-MM
+    days_in_month: Optional[int] = 30
+
+
+@api.get("/bills/metrics")
+async def get_billing_metrics(period: Optional[str] = None):
+    q = {}
+    if period:
+        q["period"] = period
+    docs = await db.bills.find(q).to_list(10000)
+    derived = [derive_bill(d) for d in docs]
+    
+    total_invoices = len(derived)
+    total_billed = sum(d.get("total", 0) for d in derived if d.get("status") != "CANCELLED")
+    total_collected = sum(d.get("amount_paid", 0) for d in derived if d.get("status") != "CANCELLED")
+    total_outstanding = max(0, total_billed - total_collected)
+    
+    total_verifying = sum(1 for d in derived if d.get("status") == "VERIFYING")
+    total_overdue = sum(1 for d in derived if d.get("status") == "OVERDUE" or d.get("is_overdue"))
+    total_unpaid = sum(1 for d in derived if d.get("status") == "UNPAID")
+    total_paid = sum(1 for d in derived if d.get("status") == "PAID")
+    total_cancelled = sum(1 for d in derived if d.get("status") == "CANCELLED")
+    
+    return {
+        "total_invoices": total_invoices,
+        "total_billed": total_billed,
+        "total_collected": total_collected,
+        "total_outstanding": total_outstanding,
+        "total_verifying": total_verifying,
+        "total_overdue": total_overdue,
+        "total_unpaid": total_unpaid,
+        "total_paid": total_paid,
+        "total_cancelled": total_cancelled,
+    }
+
+
 @api.get("/bills", response_model=List[Bill])
-async def list_bills(status: Optional[str] = None, tenant_id: Optional[str] = None):
+async def list_bills(
+    status: Optional[str] = None,
+    tenant_id: Optional[str] = None,
+    period: Optional[str] = None,
+    search: Optional[str] = None,
+):
     q = {}
     if tenant_id:
         q["tenant_id"] = tenant_id
-    docs = await db.bills.find(q).sort("created_at", -1).to_list(2000)
-    docs = [derive_bill(d) for d in docs]
-    if status == "overdue":
-        docs = [d for d in docs if d.get("is_overdue")]
-    elif status:
-        docs = [d for d in docs if d.get("status") == status]
-    return [doc_to(Bill, d) for d in docs]
+    if period:
+        q["period"] = period
+        
+    docs = await db.bills.find(q).sort("created_at", -1).to_list(5000)
+    
+    tenant_map = {str(t["_id"]): t.get("name") for t in await db.tenants.find().to_list(5000)}
+    room_map = {str(r["_id"]): r.get("name") for r in await db.rooms.find().to_list(1000)}
+    
+    enriched = []
+    for d in docs:
+        b = derive_bill(d)
+        tid = b.get("tenant_id")
+        rid = b.get("room_id")
+        b["resident_name"] = tenant_map.get(tid, "-")
+        b["room_unit"] = room_map.get(rid, "-")
+        enriched.append(b)
+        
+    if status:
+        st_norm = status.upper()
+        if st_norm == "OVERDUE":
+            enriched = [d for d in enriched if d.get("is_overdue") or d.get("status") == "OVERDUE"]
+        elif st_norm == "VERIFYING":
+            enriched = [d for d in enriched if d.get("status") == "VERIFYING"]
+        elif st_norm == "PAID":
+            enriched = [d for d in enriched if d.get("status") == "PAID"]
+        elif st_norm == "UNPAID":
+            enriched = [d for d in enriched if d.get("status") in ("UNPAID", "PARTIAL_PAID") and not d.get("is_overdue")]
+        elif st_norm == "CANCELLED":
+            enriched = [d for d in enriched if d.get("status") == "CANCELLED"]
+        elif st_norm != "ALL":
+            enriched = [d for d in enriched if d.get("status") == st_norm or d.get("status") == status]
+            
+    if search:
+        s = search.lower()
+        enriched = [
+            d for d in enriched
+            if s in (d.get("invoice_number") or "").lower()
+            or s in (d.get("resident_name") or "").lower()
+            or s in (d.get("room_unit") or "").lower()
+            or s in (d.get("period") or "").lower()
+        ]
+        
+    return [doc_to(Bill, d) for d in enriched]
 
 
 @api.post("/bills", response_model=Bill)
 async def create_bill(payload: BillCreate, user: dict = Depends(get_current_user)):
     doc = payload.model_dump()
-    doc["total"] = bill_total(doc)
     room = await db.rooms.find_one({"_id": oid(doc["room_id"])}) if doc.get("room_id") else None
-    doc["invoice_number"] = invoice_number_for(doc["period"], room.get("name") if room else None)
+    room_name = room.get("name") if room else None
+    
+    doc["invoice_number"] = await generate_invoice_number(doc["period"], room_name)
+    doc["items"] = sync_bill_items(doc)
+    doc["total"] = bill_total(doc)
+    doc["total_amount"] = doc["total"]
     doc["amount_paid"] = 0
     doc["payments"] = []
     doc["paid_at"] = None
     doc["payment_method"] = None
     doc["created_at"] = now_iso()
+    doc["status"] = doc.get("status") or "UNPAID"
+    
     r = await db.bills.insert_one(doc)
-    await log_audit(user["email"], "CREATE", "bill", str(r.inserted_id), {"invoice": doc["invoice_number"]})
-    return doc_to(Bill, derive_bill({**doc, "_id": r.inserted_id}))
+    await log_audit(user["email"], "CREATE", "bill", str(r.inserted_id), {"invoice": doc["invoice_number"], "total": doc["total"]})
+    
+    if doc.get("tenant_id"):
+        await notify_tenant(
+            doc["tenant_id"], "bill_new",
+            {"invoice": doc["invoice_number"], "total": doc["total"]},
+            "Tagihan Baru Diterbitkan",
+            f"Tagihan {doc['invoice_number']} periode {doc['period']} sebesar Rp {int(doc['total']):,} telah diterbitkan.".replace(",", "."),
+            "/portal/bills"
+        )
+        
+    return doc_to(Bill, derive_bill({**doc, "_id": r.inserted_id, "room_unit": room_name}))
 
 
 class GeneratePayload(BaseModel):
@@ -663,19 +1025,55 @@ async def generate_bills(payload: GeneratePayload, user: dict = Depends(get_curr
         if existing:
             continue
         room = await db.rooms.find_one({"_id": ObjectId(t["room_id"])}) if t.get("room_id") else None
+        room_name = room.get("name") if room else None
+        
+        inv_num = await generate_invoice_number(payload.period, room_name)
+        monthly_rent = float(t.get("monthly_rent") or (room.get("price") if room else 0) or 0)
+        items = [{"name": "Sewa Kamar Pokok", "amount": monthly_rent, "category": "rent"}]
+        
+        due_day = payload.due_day
+        if t.get("lease_start"):
+            try:
+                due_day = int(t["lease_start"].split("-")[2])
+            except Exception:
+                due_day = payload.due_day
+        due_date_str = f"{payload.period}-{min(28, max(1, due_day)):02d}"
+        
         doc = {
-            "tenant_id": tid, "room_id": t.get("room_id"), "period": payload.period,
-            "rent": t.get("monthly_rent", 0), "electricity": 0, "water": 0, "other": 0,
-            "other_label": None, "late_fee": 0,
-            "due_date": f"{payload.period}-{payload.due_day:02d}",
-            "status": "unpaid", "notes": None,
-            "invoice_number": invoice_number_for(payload.period, room.get("name") if room else None),
-            "amount_paid": 0, "payments": [], "paid_at": None, "payment_method": None,
+            "tenant_id": tid,
+            "room_id": t.get("room_id"),
+            "period": payload.period,
+            "items": items,
+            "rent": monthly_rent,
+            "electricity": 0,
+            "water": 0,
+            "other": 0,
+            "other_label": None,
+            "late_fee": 0,
+            "due_date": due_date_str,
+            "status": "UNPAID",
+            "notes": None,
+            "invoice_number": inv_num,
+            "total": monthly_rent,
+            "total_amount": monthly_rent,
+            "amount_paid": 0,
+            "payments": [],
+            "paid_at": None,
+            "payment_method": None,
+            "payment_details": None,
             "created_at": now_iso(),
         }
-        doc["total"] = bill_total(doc)
         await db.bills.insert_one(doc)
         created += 1
+        
+        await notify_tenant(
+            tid, "bill_new",
+            {"invoice": inv_num, "total": monthly_rent},
+            "Tagihan Sewa Baru",
+            f"Tagihan {inv_num} periode {payload.period} sebesar Rp {int(monthly_rent):,} telah siap.".replace(",", "."),
+            "/portal/bills"
+        )
+        
     await log_audit(user["email"], "BILL_RUN", "bill", payload.period, {"created": created})
     return {"ok": True, "created": created, "period": payload.period}
 
@@ -683,16 +1081,239 @@ async def generate_bills(payload: GeneratePayload, user: dict = Depends(get_curr
 @api.put("/bills/{bill_id}", response_model=Bill)
 async def update_bill(bill_id: str, payload: BillCreate, user: dict = Depends(get_current_user)):
     upd = payload.model_dump()
+    upd["items"] = sync_bill_items(upd)
     upd["total"] = bill_total(upd)
+    upd["total_amount"] = upd["total"]
+    
     await db.bills.update_one({"_id": oid(bill_id)}, {"$set": upd})
     d = await db.bills.find_one({"_id": oid(bill_id)})
     if not d:
         raise HTTPException(404, "Bill not found")
-    if d.get("amount_paid", 0) >= d["total"] and d["total"] > 0:
-        await db.bills.update_one({"_id": oid(bill_id)}, {"$set": {"status": "paid"}})
-        d["status"] = "paid"
+        
+    if d.get("amount_paid", 0) >= d["total"] and d["total"] > 0 and d.get("status") != "PAID":
+        await db.bills.update_one({"_id": oid(bill_id)}, {"$set": {"status": "PAID", "paid_at": now_iso()}})
+        d["status"] = "PAID"
+        d["paid_at"] = now_iso()
+        
     await log_audit(user["email"], "UPDATE", "bill", bill_id, {"invoice": d.get("invoice_number")})
     return doc_to(Bill, derive_bill(d))
+
+
+@api.post("/bills/{bill_id}/verify-payment")
+async def verify_bill_payment(bill_id: str, payload: VerifyPaymentPayload, user: dict = Depends(get_current_user)):
+    d = await db.bills.find_one({"_id": oid(bill_id)})
+    if not d:
+        raise HTTPException(404, "Bill not found")
+        
+    admin_name = user.get("name") or user.get("email") or "Admin"
+    current_details = d.get("payment_details") or {}
+    
+    if payload.action.lower() == "approve":
+        paid_amt = float(payload.paid_amount or d.get("total") or bill_total(d))
+        current_details.update({
+            "verified_by": admin_name,
+            "verified_at": now_iso(),
+            "status": "approved",
+            "rejection_reason": None,
+            "method": payload.method or current_details.get("method") or "BANK_TRANSFER"
+        })
+        
+        payment_entry = {
+            "amount": paid_amt,
+            "method": current_details.get("method", "BANK_TRANSFER"),
+            "reference": f"VERIFY-{d.get('invoice_number', 'INV')}",
+            "paid_at": now_iso()
+        }
+        
+        upd = {
+            "status": "PAID",
+            "amount_paid": paid_amt,
+            "paid_at": now_iso(),
+            "payment_method": current_details.get("method", "BANK_TRANSFER"),
+            "payment_details": current_details,
+        }
+        
+        await db.bills.update_one(
+            {"_id": oid(bill_id)},
+            {"$set": upd, "$push": {"payments": payment_entry}}
+        )
+        
+        await log_audit(user["email"], "VERIFY_PAYMENT_APPROVE", "bill", bill_id, {
+            "invoice": d.get("invoice_number"),
+            "amount": paid_amt,
+            "verified_by": admin_name
+        })
+        
+        if d.get("tenant_id"):
+            await notify_tenant(
+                d["tenant_id"], "payment_approved",
+                {"invoice": d.get("invoice_number"), "amount": paid_amt},
+                "Pembayaran Berhasil Diverifikasi ✅",
+                f"Bukti transfer untuk invoice {d.get('invoice_number')} telah diverifikasi oleh admin. Status: LUNAS.",
+                "/portal/bills"
+            )
+            
+        return {"ok": True, "status": "PAID", "message": "Pembayaran berhasil diverifikasi dan disetujui"}
+        
+    elif payload.action.lower() == "reject":
+        reason = payload.rejection_reason or "Bukti transfer tidak jelas / nominal tidak sesuai"
+        current_details.update({
+            "verified_by": admin_name,
+            "verified_at": now_iso(),
+            "status": "rejected",
+            "rejection_reason": reason
+        })
+        
+        upd = {
+            "status": "UNPAID",
+            "payment_details": current_details,
+        }
+        
+        await db.bills.update_one({"_id": oid(bill_id)}, {"$set": upd})
+        
+        await log_audit(user["email"], "VERIFY_PAYMENT_REJECT", "bill", bill_id, {
+            "invoice": d.get("invoice_number"),
+            "reason": reason,
+            "verified_by": admin_name
+        })
+        
+        if d.get("tenant_id"):
+            await notify_tenant(
+                d["tenant_id"], "payment_rejected",
+                {"invoice": d.get("invoice_number"), "reason": reason},
+                "Bukti Pembayaran Ditolak ⚠️",
+                f"Bukti transfer untuk invoice {d.get('invoice_number')} ditolak: {reason}. Silakan unggah ulang bukti yang valid.",
+                "/portal/bills"
+            )
+            
+        return {"ok": True, "status": "UNPAID", "message": "Bukti pembayaran ditolak"}
+        
+    else:
+        raise HTTPException(400, "Action harus 'approve' atau 'reject'")
+
+
+@api.post("/bills/prorata-transfer", response_model=Bill)
+async def create_prorata_transfer_bill(payload: ProrataTransferPayload, user: dict = Depends(get_current_user)):
+    tenant = await db.tenants.find_one({"_id": oid(payload.tenant_id)})
+    if not tenant:
+        raise HTTPException(404, "Tenant tidak ditemukan")
+        
+    old_room = await db.rooms.find_one({"_id": oid(payload.old_room_id)})
+    new_room = await db.rooms.find_one({"_id": oid(payload.new_room_id)})
+    if not old_room or not new_room:
+        raise HTTPException(404, "Kamar lama atau baru tidak ditemukan")
+        
+    try:
+        t_date = date.fromisoformat(payload.transfer_date)
+        day_of_transfer = t_date.day
+    except Exception:
+        day_of_transfer = 15
+        
+    days_in_month = payload.days_in_month or 30
+    days_old = max(1, min(days_in_month, day_of_transfer - 1))
+    days_new = max(0, days_in_month - days_old)
+    
+    price_old = float(old_room.get("price", 0))
+    price_new = float(new_room.get("price", 0))
+    
+    prorata_old = round((price_old / days_in_month) * days_old)
+    prorata_new = round((price_new / days_in_month) * days_new)
+    
+    items = [
+        {"name": f"Prorata Kamar Lama ({old_room.get('name')}) - {days_old} Hari", "amount": prorata_old, "category": "prorata"},
+        {"name": f"Prorata Kamar Baru ({new_room.get('name')}) - {days_new} Hari", "amount": prorata_new, "category": "prorata"},
+    ]
+    
+    inv_num = await generate_invoice_number(payload.period, new_room.get("name"))
+    total_prorata = prorata_old + prorata_new
+    
+    doc = {
+        "tenant_id": payload.tenant_id,
+        "room_id": payload.new_room_id,
+        "period": payload.period,
+        "items": items,
+        "rent": total_prorata,
+        "electricity": 0,
+        "water": 0,
+        "other": 0,
+        "other_label": None,
+        "late_fee": 0,
+        "due_date": payload.transfer_date,
+        "status": "UNPAID",
+        "notes": f"Penyesuaian pindah kamar dari {old_room.get('name')} ke {new_room.get('name')} per tanggal {payload.transfer_date}.",
+        "invoice_number": inv_num,
+        "total": total_prorata,
+        "total_amount": total_prorata,
+        "amount_paid": 0,
+        "payments": [],
+        "paid_at": None,
+        "payment_method": None,
+        "payment_details": None,
+        "created_at": now_iso(),
+    }
+    
+    r = await db.bills.insert_one(doc)
+    await log_audit(user["email"], "PRORATA_TRANSFER_BILL", "bill", str(r.inserted_id), {
+        "invoice": inv_num,
+        "old_room": old_room.get("name"),
+        "new_room": new_room.get("name"),
+        "total": total_prorata
+    })
+    
+    return doc_to(Bill, derive_bill({**doc, "_id": r.inserted_id, "room_unit": new_room.get("name"), "resident_name": tenant.get("name")}))
+
+
+@api.post("/bills/{bill_id}/cancel")
+async def cancel_bill(bill_id: str, user: dict = Depends(get_current_user)):
+    d = await db.bills.find_one({"_id": oid(bill_id)})
+    if not d:
+        raise HTTPException(404, "Bill not found")
+    await db.bills.update_one({"_id": oid(bill_id)}, {"$set": {"status": "CANCELLED"}})
+    await log_audit(user["email"], "CANCEL", "bill", bill_id, {"invoice": d.get("invoice_number")})
+    return {"ok": True, "status": "CANCELLED"}
+
+
+@api.get("/bills/{bill_id}/receipt")
+async def get_bill_receipt(bill_id: str):
+    d = await db.bills.find_one({"_id": oid(bill_id)})
+    if not d:
+        raise HTTPException(404, "Bill not found")
+    bill = derive_bill(d)
+    tenant = await db.tenants.find_one({"_id": ObjectId(bill["tenant_id"])}) if bill.get("tenant_id") else None
+    room = await db.rooms.find_one({"_id": ObjectId(bill["room_id"])}) if bill.get("room_id") else None
+    
+    period_clean = (bill.get("period") or "").replace("-", "")
+    receipt_no = f"REC/{period_clean}/{(bill.get('invoice_number') or '0001')[-4:]}"
+    
+    return {
+        "receipt_number": receipt_no,
+        "invoice_number": bill.get("invoice_number"),
+        "issued_at": bill.get("paid_at") or now_iso(),
+        "status": bill.get("status"),
+        "is_paid": bill.get("status") == "PAID",
+        "tenant": {
+            "name": tenant.get("name") if tenant else "-",
+            "phone": tenant.get("phone") if tenant else "-",
+            "email": tenant.get("email") if tenant else "-",
+        },
+        "room": {
+            "name": room.get("name") if room else "-",
+            "type": room.get("room_type") if room else "Standard",
+        },
+        "period": bill.get("period"),
+        "items": bill.get("items", []),
+        "total_amount": bill.get("total", 0),
+        "amount_paid": bill.get("amount_paid", 0),
+        "payment_method": bill.get("payment_method") or (bill.get("payment_details") or {}).get("method") or "Transfer Bank",
+        "verified_by": (bill.get("payment_details") or {}).get("verified_by") or "Lewi House Finance",
+        "verified_at": (bill.get("payment_details") or {}).get("verified_at") or bill.get("paid_at"),
+        "company": {
+            "name": "Lewi House Boutique Living",
+            "address": "Bandung, Jawa Barat, Indonesia",
+            "contact": "support@lewihouse.com | +62 812-3456-7890",
+            "tagline": "Exclusive Living & Boarding Experience"
+        }
+    }
 
 
 class PaymentPayload(BaseModel):
@@ -712,9 +1333,9 @@ async def record_payment(bill_id: str, payload: PaymentPayload, user: dict = Dep
                "reference": payload.reference, "paid_at": now_iso()}
     amount_paid = d.get("amount_paid", 0) + payload.amount
     total = d.get("total", bill_total(d))
-    new_status = "paid" if amount_paid >= total else "partially_paid"
+    new_status = "PAID" if amount_paid >= total else "PARTIAL_PAID"
     upd = {"amount_paid": amount_paid, "status": new_status, "payment_method": payload.method}
-    if new_status == "paid":
+    if new_status == "PAID":
         upd["paid_at"] = now_iso()
     await db.bills.update_one({"_id": oid(bill_id)}, {"$set": upd, "$push": {"payments": payment}})
     await log_audit(user["email"], "PAYMENT", "bill", bill_id,
@@ -759,11 +1380,15 @@ def format_whatsapp_reminder(bill: dict, tenant: dict, room: dict, stage: str = 
         intro = f"Berikut adalah rincian tagihan sewa kamar *{rname}*:"
 
     rincian = []
-    if bill.get("rent"): rincian.append(f"• Sewa Kamar: Rp {int(bill['rent']):,}".replace(",", "."))
-    if bill.get("electricity"): rincian.append(f"• Listrik / PLN: Rp {int(bill['electricity']):,}".replace(",", "."))
-    if bill.get("water"): rincian.append(f"• Air / PDAM: Rp {int(bill['water']):,}".replace(",", "."))
-    if bill.get("other"): rincian.append(f"• {bill.get('other_label') or 'Biaya Lain'}: Rp {int(bill['other']):,}".replace(",", "."))
-    if bill.get("late_fee"): rincian.append(f"• Denda Keterlambatan: Rp {int(bill['late_fee']):,}".replace(",", "."))
+    if bill.get("items"):
+        for it in bill["items"]:
+            rincian.append(f"• {it.get('name')}: Rp {int(it.get('amount', 0)):,}".replace(",", "."))
+    else:
+        if bill.get("rent"): rincian.append(f"• Sewa Kamar: Rp {int(bill['rent']):,}".replace(",", "."))
+        if bill.get("electricity"): rincian.append(f"• Listrik / PLN: Rp {int(bill['electricity']):,}".replace(",", "."))
+        if bill.get("water"): rincian.append(f"• Air / PDAM: Rp {int(bill['water']):,}".replace(",", "."))
+        if bill.get("other"): rincian.append(f"• {bill.get('other_label') or 'Biaya Lain'}: Rp {int(bill['other']):,}".replace(",", "."))
+        if bill.get("late_fee"): rincian.append(f"• Denda Keterlambatan: Rp {int(bill['late_fee']):,}".replace(",", "."))
     rincian_str = "\n".join(rincian) if rincian else "• Sewa Kamar Standar"
 
     total_fmt = f"Rp {int(total):,}".replace(",", ".")
@@ -975,51 +1600,123 @@ async def revoke_access_token(token_id: str, user: dict = Depends(get_current_us
 
 
 # ============ PORTAL ACCOUNTS ============
-async def create_portal_account(tenant_id: str, tenant: dict) -> str:
+def generate_tenant_username(room_name: Optional[str], full_name: Optional[str], existing_usernames: List[str] = []) -> str:
+    unit = "000"
+    if room_name and isinstance(room_name, str) and room_name.strip():
+        clean_room = "".join(ch for ch in room_name if ch.isalnum()).lower()
+        if clean_room:
+            unit = clean_room
+    
+    first_name = "penghuni"
+    if full_name and isinstance(full_name, str) and full_name.strip():
+        raw_first = full_name.strip().split()[0]
+        clean_first = "".join(ch for ch in raw_first if ch.isalnum()).lower()
+        if clean_first:
+            first_name = clean_first
+            
+    base_username = f"{unit}_{first_name}"
+    candidate = base_username
+    counter = 2
+    username_set = set((u or "").lower() for u in existing_usernames if u)
+    while candidate in username_set:
+        candidate = f"{base_username}_{counter}"
+        counter += 1
+    return candidate
+
+
+def generate_temporary_password(room_name: Optional[str], nik: Optional[str]) -> str:
+    clean_room = "000"
+    if room_name and isinstance(room_name, str) and room_name.strip():
+        alphanumeric = "".join(ch for ch in room_name if ch.isalnum()).upper()
+        if alphanumeric:
+            clean_room = alphanumeric
+    suffix = "123"
+    if nik:
+        nik_digits = "".join(ch for ch in str(nik) if ch.isdigit())
+        if len(nik_digits) >= 3:
+            suffix = nik_digits[-3:]
+    return f"{clean_room}{suffix}"
+
+
+async def create_portal_account(tenant_id: str, tenant: dict, creation_source: str = "ADMIN_MANUAL") -> str:
     phone = norm_phone(tenant.get("phone", ""))
     email = (tenant.get("email") or "").strip().lower()
     
+    room = await db.rooms.find_one({"_id": oid(tenant["room_id"])}) if tenant.get("room_id") else None
+    room_name = room.get("name") if room else tenant.get("room_name")
+
+    # Fetch existing usernames to prevent collisions
+    existing_users_docs = await db.users.find({}, {"username": 1}).to_list(2000)
+    existing_usernames = [u.get("username") for u in existing_users_docs if u.get("username")]
+
+    username = tenant.get("username") or generate_tenant_username(room_name, tenant.get("name"), existing_usernames)
+
     if tenant.get("portal_password"):
         pw = tenant["portal_password"]
-    elif phone and len(phone) >= 4:
-        pw = "lewi" + phone[-4:]
     else:
-        pw = f"lewi{random.SystemRandom().randint(1000, 9999)}"
+        pw = generate_temporary_password(room_name, tenant.get("nik"))
         
     pw_hash = hash_password(pw)
+    now = now_iso()
+    history_entry = {"hash": pw_hash, "created_at": now}
     
     query_cond = [{"tenant_id": tenant_id, "role": "tenant"}]
     if phone:
         query_cond.append({"phone": phone, "role": "tenant"})
     if email:
         query_cond.append({"email": email, "role": "tenant"})
+    if username:
+        query_cond.append({"username": username, "role": "tenant"})
     existing = await db.users.find_one({"$or": query_cond})
     
     if existing:
+        existing_history = existing.get("password_history", [])
+        if not any(h.get("hash") == pw_hash for h in existing_history):
+            existing_history = (existing_history + [history_entry])[-5:]
         await db.users.update_one(
             {"_id": existing["_id"]},
             {"$set": {
                 "tenant_id": tenant_id,
+                "username": username,
                 "name": tenant.get("name", "Penghuni"),
                 "phone": phone or existing.get("phone"),
                 "email": email or existing.get("email"),
+                "room_name": room_name or existing.get("room_name"),
                 "password_hash": pw_hash,
+                "is_temporary_password": True,
+                "creation_source": creation_source,
+                "password_history": existing_history,
                 "role": "tenant",
                 "is_active": True,
             }}
         )
     else:
         await db.users.insert_one({
+            "username": username,
             "phone": phone or None,
             "email": email or None,
             "name": tenant.get("name", "Penghuni"),
             "role": "tenant",
             "tenant_id": tenant_id,
+            "room_name": room_name,
             "password_hash": pw_hash,
+            "is_temporary_password": True,
+            "creation_source": creation_source,
+            "password_history": [history_entry],
             "is_active": True,
-            "created_at": now_iso(),
+            "created_at": now,
         })
-    await db.tenants.update_one({"_id": ObjectId(tenant_id)}, {"$set": {"portal_password": pw}})
+    await db.tenants.update_one(
+        {"_id": ObjectId(tenant_id)},
+        {"$set": {
+            "username": username,
+            "portal_password": pw,
+            "password_hash": pw_hash,
+            "is_temporary_password": True,
+            "creation_source": creation_source,
+            "password_history": [history_entry],
+        }}
+    )
     return pw
 
 
@@ -1037,18 +1734,62 @@ async def reset_portal_password(tenant_id: str, user: dict = Depends(get_current
     if not d:
         raise HTTPException(404, "Tenant not found")
     phone = norm_phone(d.get("phone", ""))
+    room = await db.rooms.find_one({"_id": oid(d["room_id"])}) if d.get("room_id") else None
+    room_name = room.get("name") if room else d.get("room_name")
+    
+    # Check or generate username
+    existing_users_docs = await db.users.find({}, {"username": 1}).to_list(2000)
+    existing_usernames = [u.get("username") for u in existing_users_docs if u.get("username")]
+    username = d.get("username") or generate_tenant_username(room_name, d.get("name"), existing_usernames)
+
+    pw = generate_temporary_password(room_name, d.get("nik"))
+    pw_hash = hash_password(pw)
+    now = now_iso()
+    history_entry = {"hash": pw_hash, "created_at": now}
+    
     acct = await db.users.find_one({"tenant_id": tenant_id, "role": "tenant"})
-    if not acct and d.get("status") != "active":
-        raise HTTPException(400, "Penghuni belum aktif")
-    pw = f"{random.SystemRandom().randint(0, 999999):06d}"
     if acct:
-        await db.users.update_one({"_id": acct["_id"]}, {"$set": {"password_hash": hash_password(pw), "phone": phone}})
+        existing_history = (acct.get("password_history", []) + [history_entry])[-5:]
+        await db.users.update_one(
+            {"_id": acct["_id"]},
+            {"$set": {
+                "username": username,
+                "password_hash": pw_hash,
+                "is_temporary_password": True,
+                "creation_source": "ADMIN_MANUAL",
+                "password_history": existing_history,
+                "phone": phone,
+                "room_name": room_name,
+            }}
+        )
     else:
-        await db.users.insert_one({"phone": phone, "email": d.get("email"), "name": d["name"], "role": "tenant",
-                                   "tenant_id": tenant_id, "password_hash": hash_password(pw), "created_at": now_iso()})
-    await db.tenants.update_one({"_id": oid(tenant_id)}, {"$set": {"portal_password": pw}})
-    await log_audit(user["email"], "PORTAL_RESET", "tenant", tenant_id, {"name": d["name"]})
-    return {"ok": True, "portal_password": pw, "phone": phone}
+        await db.users.insert_one({
+            "username": username,
+            "phone": phone,
+            "email": d.get("email"),
+            "name": d["name"],
+            "role": "tenant",
+            "tenant_id": tenant_id,
+            "room_name": room_name,
+            "password_hash": pw_hash,
+            "is_temporary_password": True,
+            "creation_source": "ADMIN_MANUAL",
+            "password_history": [history_entry],
+            "created_at": now,
+        })
+    await db.tenants.update_one(
+        {"_id": oid(tenant_id)},
+        {"$set": {
+            "username": username,
+            "portal_password": pw,
+            "password_hash": pw_hash,
+            "is_temporary_password": True,
+            "creation_source": "ADMIN_MANUAL",
+            "password_history": [history_entry],
+        }}
+    )
+    await log_audit(user["email"], "PORTAL_RESET", "tenant", tenant_id, {"name": d["name"], "username": username, "creation_source": "ADMIN_MANUAL"})
+    return {"ok": True, "portal_password": pw, "username": username, "phone": phone, "room_name": room_name}
 
 
 # ============ PUSH NOTIFICATIONS ============
@@ -1245,10 +1986,241 @@ async def portal_me(user: dict = Depends(require_tenant)):
     return {"tenant": t, "room": room}
 
 
+class ChangePasswordPayload(BaseModel):
+    new_password: str
+    temporary_password: Optional[str] = None
+
+
+class InAppChangePasswordPayload(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_password: Optional[str] = None
+
+
+@portal.post("/change-password")
+async def portal_change_password(payload: ChangePasswordPayload, user: dict = Depends(require_tenant)):
+    new_pw = payload.new_password
+    if not new_pw or len(new_pw) < 8:
+        raise HTTPException(status_code=400, detail="Password baru minimal 8 karakter")
+    if not any(ch.isdigit() for ch in new_pw):
+        raise HTTPException(status_code=400, detail="Password baru wajib mengandung minimal 1 angka (0-9)")
+    
+    tenant_id = user.get("tenant_id")
+    acct = await db.users.find_one({"_id": ObjectId(user["id"])})
+    tenant = await db.tenants.find_one({"_id": ObjectId(tenant_id)}) if tenant_id else None
+    
+    temp_pw = payload.temporary_password or (tenant.get("portal_password") if tenant else None)
+    if temp_pw and new_pw.strip() == temp_pw.strip():
+        raise HTTPException(status_code=400, detail="Password baru tidak boleh sama dengan password sementara")
+        
+    # Check password history (anti-repetition: last 5 entries)
+    history = acct.get("password_history", []) if acct else []
+    for entry in history[-5:]:
+        h = entry.get("hash")
+        if h and verify_password(new_pw, h):
+            raise HTTPException(status_code=400, detail="Kata sandi ini pernah Anda gunakan sebelumnya. Silakan gunakan kombinasi lain.")
+            
+    new_hash = hash_password(new_pw)
+    now = now_iso()
+    updated_history = (history + [{"hash": new_hash, "created_at": now}])[-5:]
+    
+    if acct:
+        await db.users.update_one(
+            {"_id": acct["_id"]},
+            {"$set": {
+                "password_hash": new_hash,
+                "is_temporary_password": False,
+                "password_updated_at": now,
+                "password_history": updated_history,
+            }}
+        )
+    if tenant_id:
+        await db.tenants.update_one(
+            {"_id": ObjectId(tenant_id)},
+            {"$set": {
+                "portal_password": new_pw,
+                "password_hash": new_hash,
+                "is_temporary_password": False,
+                "password_updated_at": now,
+                "password_history": updated_history,
+            }}
+        )
+    await log_audit(user.get("phone") or user.get("email", "tenant"), "CHANGE_PASSWORD", "tenant", tenant_id or user["id"], {"anti_repetition_passed": True})
+    return {"ok": True, "message": "Password berhasil diperbarui"}
+
+
+@portal.post("/in-app-change-password")
+async def portal_in_app_change_password(payload: InAppChangePasswordPayload, user: dict = Depends(require_tenant)):
+    acct = await db.users.find_one({"_id": ObjectId(user["id"])})
+    if not acct:
+        raise HTTPException(status_code=404, detail="Akun penghuni tidak ditemukan")
+        
+    if not verify_password(payload.current_password, acct.get("password_hash", "")):
+        raise HTTPException(status_code=400, detail="Password saat ini salah. Silakan periksa kembali.")
+        
+    new_pw = payload.new_password
+    if not new_pw or len(new_pw) < 8:
+        raise HTTPException(status_code=400, detail="Password baru minimal 8 karakter")
+    if not any(ch.isdigit() for ch in new_pw):
+        raise HTTPException(status_code=400, detail="Password baru wajib mengandung minimal 1 angka (0-9)")
+    if payload.confirm_password and new_pw != payload.confirm_password:
+        raise HTTPException(status_code=400, detail="Konfirmasi password baru tidak cocok")
+        
+    tenant_id = user.get("tenant_id")
+    tenant = await db.tenants.find_one({"_id": ObjectId(tenant_id)}) if tenant_id else None
+    temp_pw = tenant.get("portal_password") if tenant else None
+    if temp_pw and new_pw.strip() == temp_pw.strip():
+        raise HTTPException(status_code=400, detail="Password baru tidak boleh sama dengan password sementara")
+        
+    # Check password history (anti-repetition: last 5 entries)
+    history = acct.get("password_history", [])
+    for entry in history[-5:]:
+        h = entry.get("hash")
+        if h and verify_password(new_pw, h):
+            raise HTTPException(status_code=400, detail="Kata sandi ini pernah Anda gunakan sebelumnya. Silakan gunakan kombinasi lain.")
+            
+    new_hash = hash_password(new_pw)
+    now = now_iso()
+    updated_history = (history + [{"hash": new_hash, "created_at": now}])[-5:]
+    
+    await db.users.update_one(
+        {"_id": acct["_id"]},
+        {"$set": {
+            "password_hash": new_hash,
+            "is_temporary_password": False,
+            "password_updated_at": now,
+            "password_history": updated_history,
+        }}
+    )
+    if tenant_id:
+        await db.tenants.update_one(
+            {"_id": ObjectId(tenant_id)},
+            {"$set": {
+                "portal_password": new_pw,
+                "password_hash": new_hash,
+                "is_temporary_password": False,
+                "password_updated_at": now,
+                "password_history": updated_history,
+            }}
+        )
+    await log_audit(user.get("phone") or user.get("email", "tenant"), "IN_APP_CHANGE_PASSWORD", "tenant", tenant_id or user["id"], {"anti_repetition_passed": True})
+    return {"ok": True, "message": "Password berhasil diperbarui"}
+
+
+class UploadProofPayload(BaseModel):
+    proof_image: str  # Data URL / base64 or URL string
+    method: Optional[str] = "BANK_TRANSFER"
+    sender_name: Optional[str] = None
+    bank_name: Optional[str] = None
+    paid_at: Optional[str] = None
+    note: Optional[str] = None
+
+
 @portal.get("/bills")
 async def portal_bills(user: dict = Depends(require_tenant)):
     docs = await db.bills.find({"tenant_id": user["tenant_id"]}).sort("created_at", -1).to_list(200)
-    return [doc_to(Bill, derive_bill(d)) for d in docs]
+    tenant = await db.tenants.find_one({"_id": ObjectId(user["tenant_id"])})
+    room = await db.rooms.find_one({"_id": ObjectId(tenant["room_id"])}) if tenant and tenant.get("room_id") else None
+    
+    enriched = []
+    for d in docs:
+        b = derive_bill(d)
+        b["resident_name"] = tenant.get("name", "Penghuni") if tenant else "-"
+        b["room_unit"] = room.get("name", "-") if room else "-"
+        enriched.append(b)
+    return [doc_to(Bill, d) for d in enriched]
+
+
+@portal.post("/bills/{bill_id}/upload-proof")
+async def portal_upload_payment_proof(bill_id: str, payload: UploadProofPayload, user: dict = Depends(require_tenant)):
+    bill = await db.bills.find_one({"_id": oid(bill_id), "tenant_id": user["tenant_id"]})
+    if not bill:
+        raise HTTPException(404, "Tagihan tidak ditemukan")
+        
+    tenant = await db.tenants.find_one({"_id": ObjectId(user["tenant_id"])})
+    tenant_name = tenant.get("name", "Penghuni") if tenant else "Penghuni"
+    
+    details = {
+        "method": payload.method or "BANK_TRANSFER",
+        "proof_image_url": payload.proof_image,
+        "sender_name": payload.sender_name,
+        "bank_name": payload.bank_name or "BCA",
+        "paid_at": payload.paid_at or now_iso(),
+        "uploaded_at": now_iso(),
+        "note": payload.note,
+        "rejection_reason": None,
+        "verified_by": None,
+        "verified_at": None,
+        "status": "pending_verification"
+    }
+    
+    upd = {
+        "status": "VERIFYING",
+        "payment_details": details,
+    }
+    
+    await db.bills.update_one({"_id": oid(bill_id)}, {"$set": upd})
+    
+    inv_num = bill.get("invoice_number", "INV")
+    await log_audit(user.get("phone") or user.get("name", "tenant"), "UPLOAD_PAYMENT_PROOF", "bill", bill_id, {
+        "invoice": inv_num,
+        "method": payload.method,
+        "sender_name": payload.sender_name
+    })
+    
+    await notify_admins(
+        "payment_proof_uploaded",
+        {"invoice": inv_num, "tenant": tenant_name, "bill_id": bill_id},
+        "Bukti Pembayaran Baru Masuk 📸",
+        f"Penghuni {tenant_name} mengunggah bukti bayar untuk invoice {inv_num}. Menunggu verifikasi admin.",
+        "/bills"
+    )
+    
+    updated = await db.bills.find_one({"_id": oid(bill_id)})
+    return {"ok": True, "status": "VERIFYING", "bill": doc_to(Bill, derive_bill(updated))}
+
+
+@portal.get("/bills/{bill_id}/receipt")
+async def portal_get_receipt(bill_id: str, user: dict = Depends(require_tenant)):
+    d = await db.bills.find_one({"_id": oid(bill_id), "tenant_id": user["tenant_id"]})
+    if not d:
+        raise HTTPException(404, "Tagihan tidak ditemukan")
+    bill = derive_bill(d)
+    tenant = await db.tenants.find_one({"_id": ObjectId(user["tenant_id"])})
+    room = await db.rooms.find_one({"_id": ObjectId(bill["room_id"])}) if bill.get("room_id") else None
+    
+    period_clean = (bill.get("period") or "").replace("-", "")
+    receipt_no = f"REC/{period_clean}/{(bill.get('invoice_number') or '0001')[-4:]}"
+    
+    return {
+        "receipt_number": receipt_no,
+        "invoice_number": bill.get("invoice_number"),
+        "issued_at": bill.get("paid_at") or now_iso(),
+        "status": bill.get("status"),
+        "is_paid": bill.get("status") == "PAID",
+        "tenant": {
+            "name": tenant.get("name") if tenant else "-",
+            "phone": tenant.get("phone") if tenant else "-",
+            "email": tenant.get("email") if tenant else "-",
+        },
+        "room": {
+            "name": room.get("name") if room else "-",
+            "type": room.get("room_type") if room else "Standard",
+        },
+        "period": bill.get("period"),
+        "items": bill.get("items", []),
+        "total_amount": bill.get("total", 0),
+        "amount_paid": bill.get("amount_paid", 0),
+        "payment_method": bill.get("payment_method") or (bill.get("payment_details") or {}).get("method") or "Transfer Bank",
+        "verified_by": (bill.get("payment_details") or {}).get("verified_by") or "Lewi House Finance",
+        "verified_at": (bill.get("payment_details") or {}).get("verified_at") or bill.get("paid_at"),
+        "company": {
+            "name": "Lewi House Boutique Living",
+            "address": "Bandung, Jawa Barat, Indonesia",
+            "contact": "support@lewihouse.com | +62 812-3456-7890",
+            "tagline": "Exclusive Living & Boarding Experience"
+        }
+    }
 
 
 @portal.get("/tickets")
@@ -1824,6 +2796,16 @@ async def reminder_loop():
         await asyncio.sleep(21600)
 
 
+def _bill_collected_amount(b: dict) -> int:
+    if b.get("amount_paid") is not None and b.get("amount_paid") > 0:
+        return int(b["amount_paid"])
+    if b.get("payments"):
+        return int(sum(p.get("amount", 0) for p in b["payments"]))
+    if b.get("status") == "paid":
+        return int(b.get("total", 0))
+    return 0
+
+
 # ============ DASHBOARD & REPORTS ============
 @api.get("/dashboard/summary")
 async def dashboard_summary():
@@ -1838,7 +2820,7 @@ async def dashboard_summary():
 
     period = datetime.now(timezone.utc).strftime("%Y-%m")
     month_bills = await db.bills.find({"period": period}).to_list(5000)
-    revenue_month = sum(b.get("amount_paid", 0) if b.get("payments") else (b.get("total", 0) if b.get("status") == "paid" else 0) for b in month_bills)
+    revenue_month = sum(_bill_collected_amount(b) for b in month_bills)
 
     active_maintenance = await db.complaints.count_documents({"status": {"$in": ["pending", "in_progress"]}})
     active_tokens = await db.access_tokens.count_documents({"status": "active"})
@@ -1868,7 +2850,7 @@ async def monthly_report(months: int = 6):
     by_period = {}
     for b in docs:
         p = b.get("period", "")
-        paid = b.get("amount_paid", 0) if b.get("payments") else (b.get("total", 0) if b.get("status") == "paid" else 0)
+        paid = _bill_collected_amount(b)
         by_period[p] = by_period.get(p, 0) + paid
     today = date.today()
     result = []

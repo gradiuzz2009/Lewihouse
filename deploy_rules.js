@@ -120,6 +120,44 @@ async function main() {
     } else {
       console.log('Release response:', releaseRes);
     }
+
+    // Deploy Storage Rules
+    if (fs.existsSync('storage.rules')) {
+      const storageContent = fs.readFileSync('storage.rules', 'utf8');
+      console.log('[*] Creating storage ruleset for project:', PROJECT_ID);
+      const storageRulesetRes = await requestJson(`https://firebaserules.googleapis.com/v1/projects/${PROJECT_ID}/rulesets`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      }, {
+        source: {
+          files: [{ name: 'storage.rules', content: storageContent }]
+        }
+      });
+
+      if (storageRulesetRes.status === 200) {
+        const storageRulesetName = storageRulesetRes.data.name;
+        console.log('  [✓] Storage ruleset created:', storageRulesetName);
+
+        const buckets = [`${PROJECT_ID}.appspot.com`, `${PROJECT_ID}.firebasestorage.app`];
+        for (const bucket of buckets) {
+          try {
+            const bucketRelease = await requestJson(`https://firebaserules.googleapis.com/v1/projects/${PROJECT_ID}/releases/firebase.storage/${bucket}`, {
+              method: 'PATCH',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              }
+            }, { release: { name: `projects/${PROJECT_ID}/releases/firebase.storage/${bucket}`, rulesetName: storageRulesetName } });
+            if (bucketRelease.status >= 200 && bucketRelease.status < 300) {
+              console.log(`  [✓] Successfully published storage.rules to bucket: ${bucket}`);
+            }
+          } catch (e) {}
+        }
+      }
+    }
   } catch (err) {
     console.error('[!] Deploy rules error:', err);
   }

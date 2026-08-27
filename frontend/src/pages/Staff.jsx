@@ -25,6 +25,7 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
 
 export default function Staff() {
   const { t } = useLang();
@@ -73,9 +74,7 @@ export default function Staff() {
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useAutoRefresh(loadData);
 
   const triggerSync = async () => {
     try {

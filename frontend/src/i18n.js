@@ -323,7 +323,21 @@ export function LangProvider({ children }) {
   return <LangContext.Provider value={{ lang, setLang, t }}>{children}</LangContext.Provider>;
 }
 
-export const useLang = () => useContext(LangContext);
+export const useLang = () => {
+  const ctx = useContext(LangContext);
+  if (!ctx) {
+    return {
+      lang: "id",
+      setLang: () => {},
+      t: (key, vars) => {
+        let s = dict.id[key] ?? key;
+        if (vars) Object.entries(vars).forEach(([k, v]) => (s = s.replace(`{${k}}`, v)));
+        return s;
+      },
+    };
+  }
+  return ctx;
+};
 
 export function LangToggle({ dark }) {
   const { lang, setLang } = useLang();

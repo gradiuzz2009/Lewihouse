@@ -196,20 +196,25 @@ service cloud.firestore {
 
       // --- Real-time Chat Threads & Messages ---
       match /chat_threads/{threadId} {
-        allow read: if isOwnerOrAdmin() || (isAuthenticated() && threadId == request.auth.uid);
-        allow write: if isOwnerOrAdmin() || (isAuthenticated() && threadId == request.auth.uid);
+        allow read, write: if true;
       }
 
       match /chats/{threadId}/messages/{messageId} {
-        allow read: if isOwnerOrAdmin() || (isAuthenticated() && (
-          threadId == request.auth.uid ||
-          resource.data.tenantId == request.auth.uid
-        ));
-        allow create: if isOwnerOrAdmin() || (isAuthenticated() && (
-          (threadId == request.auth.uid || request.resource.data.tenantId == request.auth.uid) &&
-          isValidString(request.resource.data.text, 1, 1000)
-        ));
-        allow update, delete: if isOwnerOrAdmin();
+        allow read: if true;
+        allow create: if (
+          (request.resource.data.text is string && request.resource.data.text.size() <= 2000) ||
+          request.resource.data.attachment != null
+        );
+        allow update: if true;
+        allow delete: if isOwnerOrAdmin();
+      }
+
+      match /chats/{threadId}/typing/{userId} {
+        allow read, write: if true;
+      }
+
+      match /chats/{threadId}/presence/{userId} {
+        allow read, write: if true;
       }
     }
   }

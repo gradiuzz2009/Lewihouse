@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { api, fmtIDR, fmtDate } from "../lib/api";
 import { PageHeader, AddButton } from "../components/PageHeader";
 import { Badge, Button, Input, Select, Sheet, Textarea, MoneyInput, EmptyState, FormSection } from "../components/ui";
-import { Users, Phone, LogIn, LogOut, Trash2, Edit2, KeyRound, Copy, Check, Eye, EyeOff, RotateCcw, Share2, Send } from "lucide-react";
+import { Users, Phone, LogIn, LogOut, Trash2, Edit2, KeyRound, Copy, Check, Eye, EyeOff, RotateCcw, Share2, Send, Lock, Sparkles, ShieldCheck, CheckCircle2, AlertCircle, User } from "lucide-react";
+import { generateTemporaryPassword, generateTenantUsername, formatOnboardingWhatsAppMessage } from "../lib/autoCredentials";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
 
 const emptyForm = {
   name: "",
@@ -44,11 +46,15 @@ export default function Tenants() {
   const [openSheet, setOpenSheet] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [sendViaWa, setSendViaWa] = useState(true);
   const [moveOutTarget, setMoveOutTarget] = useState(null);
   const [deductions, setDeductions] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState({});
   const [copiedId, setCopiedId] = useState(null);
+  const [onboardedTenant, setOnboardedTenant] = useState(null);
+  const [resetModalTarget, setResetModalTarget] = useState(null);
+  const [resetSubmitting, setResetSubmitting] = useState(false);
   const [params, setParams] = useSearchParams();
 
   const load = async () => {
@@ -61,9 +67,7 @@ export default function Tenants() {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useAutoRefresh(load);
 
   useEffect(() => {
     if (params.get("new") === "1") {
@@ -79,6 +83,7 @@ export default function Tenants() {
   const openNew = () => {
     setEditing(null);
     setForm(emptyForm);
+    setSendViaWa(true);
     setOpenSheet(true);
   };
 
@@ -114,11 +119,19 @@ export default function Tenants() {
     });
   };
 
+  const previewUsername = generateTenantUsername(
+    roomName(form.room_id),
+    form.name,
+    tenants.map((t) => t.username).filter(Boolean)
+  );
+  const previewTempPw = generateTemporaryPassword(roomName(form.room_id), form.nik);
+
   const submit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     const payload = {
       ...form,
+      username: previewUsername,
       room_id: form.room_id || null,
       monthly_rent: Number(form.monthly_rent),
       deposit: Number(form.deposit),
@@ -127,11 +140,31 @@ export default function Tenants() {
       if (editing) {
         await api.put(`/tenants/${editing.id}`, payload);
         toast.success("Data penghuni diperbarui");
+        setOpenSheet(false);
       } else {
-        const { data } = await api.post("/tenants", payload);
-        toast.success(`Penghuni ${data.name} terdaftar ✓ Password portal: ${data.portal_password || "lewi" + (data.phone?.slice(-4) || "")}`);
+        const { data } = await api.post("/tenants", {
+          ...payload,
+          creation_source: "ADMIN_MANUAL",
+        });
+        toast.success(`Penghuni ${data.name} terdaftar! Username: ${previewUsername}`);
+        setOpenSheet(false);
+        setOnboardedTenant({ ...data, username: previewUsername });
+
+        if (sendViaWa && data.phone) {
+          const waPhone = toWaClean(data.phone);
+          const rName = roomName(data.room_id);
+          const tempPw = data.portal_password || previewTempPw;
+          const msg = formatOnboardingWhatsAppMessage({
+            tenantName: data.name,
+            username: previewUsername,
+            phone: data.phone,
+            roomName: rName,
+            temporaryPassword: tempPw,
+            originUrl: window.location.origin,
+          });
+          window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, "_blank");
+        }
       }
-      setOpenSheet(false);
       load();
     } catch {
       toast.error("Gagal menyimpan");
@@ -140,22 +173,34 @@ export default function Tenants() {
     }
   };
 
-  const resetPassword = async (tenant) => {
-    if (!window.confirm(`Reset password portal aplikasi untuk ${tenant.name}?`)) return;
+  const handleConfirmResetPassword = async () => {
+    if (!resetModalTarget) return;
+    setResetSubmitting(true);
     try {
-      const { data } = await api.post(`/tenants/${tenant.id}/reset-portal-password`);
-      toast.success(`Password baru ${tenant.name}: ${data.portal_password}`);
+      const { data } = await api.post(`/tenants/${resetModalTarget.id}/reset-portal-password`);
+      toast.success(`Password sementara baru ${resetModalTarget.name}: ${data.portal_password} (Status: Wajib Ubah Password)`);
+      setResetModalTarget(null);
       load();
     } catch (err) {
       toast.error(err.response?.data?.detail || "Gagal mereset password");
+    } finally {
+      setResetSubmitting(false);
     }
   };
 
   const copyCredentials = (tenant) => {
-    const text = `Kredensial Portal Lewi House:\nNama: ${tenant.name}\nNo. HP / ID: ${tenant.phone || tenant.email}\nPassword: ${tenant.portal_password || "lewi" + (tenant.phone?.replace(/\D/g, "").slice(-4) || "")}`;
+    const rName = roomName(tenant.room_id);
+    const tempPw = tenant.portal_password || generateTemporaryPassword(rName, tenant.nik);
+    const text = formatOnboardingWhatsAppMessage({
+      tenantName: tenant.name,
+      phone: tenant.phone,
+      roomName: rName,
+      temporaryPassword: tempPw,
+      originUrl: window.location.origin,
+    });
     navigator.clipboard.writeText(text);
     setCopiedId(tenant.id);
-    toast.success("Kredensial login disalin ke clipboard");
+    toast.success("Kredensial & panduan login disalin ke clipboard");
     setTimeout(() => setCopiedId(null), 2500);
   };
 
@@ -165,20 +210,15 @@ export default function Tenants() {
       toast.error("Nomor HP belum valid");
       return;
     }
-    const pw = tenant.portal_password || "lewi" + (tenant.phone?.replace(/\D/g, "").slice(-4) || "");
     const rName = roomName(tenant.room_id);
-    const msg = `*AKUN PORTAL PENGHUNI — LEWI HOUSE*
-
-Halo Kak *${tenant.name}*,
-Selamat bergabung di Lewi House! Berikut adalah akun aplikasi portal penghuni Anda untuk cek tagihan, bayar lewat QRIS, dan ajukan tiket perbaikan:
-
-🏠 *Kamar:* ${rName}
-📱 *Username / No. HP:* \`${tenant.phone}\`
-🔑 *Password Aplikasi:* \`${pw}\`
-
-Silakan login di portal web: ${window.location.origin}/login
-
-Simpan pesan ini dengan baik. Jika ada kendala, hubungi pengelola. Terima kasih! 🙏`;
+    const tempPw = tenant.portal_password || generateTemporaryPassword(rName, tenant.nik);
+    const msg = formatOnboardingWhatsAppMessage({
+      tenantName: tenant.name,
+      phone: tenant.phone,
+      roomName: rName,
+      temporaryPassword: tempPw,
+      originUrl: window.location.origin,
+    });
     window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, "_blank");
   };
 
@@ -325,11 +365,27 @@ Simpan pesan ini dengan baik. Jika ada kendala, hubungi pengelola. Terima kasih!
 
               {/* Password Portal & App Credentials Box */}
               {t.status !== "former" && (
-                <div className="mx-4 mb-3 p-3 bg-muted/50 rounded-xl border border-line/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div className="flex items-center gap-2">
-                    <KeyRound size={15} className="text-secondary shrink-0" />
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider font-bold text-subtle">Password Portal Aplikasi</p>
+                <div className="mx-4 mb-3 p-3 bg-muted/40 rounded-xl border border-line/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <KeyRound size={16} className="text-secondary shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-[10px] uppercase tracking-wider font-bold text-subtle">Kredensial Portal</p>
+                        {t.is_temporary_password !== false ? (
+                          <span className="px-2 py-0.2 rounded-full text-[9px] font-bold bg-amber-500/15 text-amber-800 border border-amber-500/25 flex items-center gap-1">
+                            <Lock size={9} /> Password Sementara
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-800 border border-emerald-500/25 flex items-center gap-1">
+                            <CheckCircle2 size={9} /> Password Aktif
+                          </span>
+                        )}
+                        {t.creation_source && (
+                          <span className="px-1.5 py-0.2 rounded text-[8px] font-mono text-subtle bg-muted">
+                            {t.creation_source}
+                          </span>
+                        )}
+                      </div>
                       <p className="font-mono text-xs font-bold text-primary mt-0.5 tracking-wider">
                         {isPwShown ? pw : "••••••••"}
                       </p>
@@ -339,7 +395,7 @@ Simpan pesan ini dengan baik. Jika ada kendala, hubungi pengelola. Terima kasih!
                     <button
                       type="button"
                       onClick={() => setShowPassword({ ...showPassword, [t.id]: !isPwShown })}
-                      className="px-2.5 py-1.5 bg-white border border-line rounded-lg text-[11px] font-semibold text-ink flex items-center gap-1 hover:bg-muted active:scale-95 transition-all shadow-xs"
+                      className="px-2.5 py-1.5 bg-surface border border-line rounded-lg text-[11px] font-semibold text-ink flex items-center gap-1 hover:bg-muted active:scale-95 transition-all shadow-xs"
                       title={isPwShown ? "Sembunyikan" : "Tampilkan Password"}
                     >
                       {isPwShown ? <EyeOff size={13} /> : <Eye size={13} />}
@@ -347,20 +403,13 @@ Simpan pesan ini dengan baik. Jika ada kendala, hubungi pengelola. Terima kasih!
                     </button>
                     <button
                       type="button"
-                      onClick={() => copyCredentials(t)}
-                      className="px-2.5 py-1.5 bg-white border border-line rounded-lg text-[11px] font-semibold text-ink flex items-center gap-1 hover:bg-muted active:scale-95 transition-all shadow-xs"
-                      title="Salin Kredensial"
+                      onClick={() => setResetModalTarget(t)}
+                      data-testid={`btn-reset-password-${t.name}`}
+                      className="px-2 py-1.5 bg-amber-500/10 border border-amber-500/25 rounded-lg text-[11px] font-bold text-amber-800 hover:bg-amber-500/20 active:scale-95 transition-all shadow-xs flex items-center gap-1"
+                      title="Reset Password Penghuni"
                     >
-                      {copiedId === t.id ? <Check size={13} className="text-success" /> : <Copy size={13} />}
-                      <span>{copiedId === t.id ? "Tersalin" : "Salin"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => resetPassword(t)}
-                      className="p-1.5 bg-white border border-line rounded-lg text-[11px] font-semibold text-ink hover:text-danger hover:bg-muted active:scale-95 transition-all shadow-xs"
-                      title="Reset Password Acak"
-                    >
-                      <RotateCcw size={13} />
+                      <RotateCcw size={12} />
+                      <span>Reset</span>
                     </button>
                     <button
                       type="button"
@@ -440,7 +489,24 @@ Simpan pesan ini dengan baik. Jika ada kendala, hubungi pengelola. Terima kasih!
           </>
         }
       >
-        <form id="tenant-form" onSubmit={submit} className="space-y-1">
+        <form id="tenant-form" onSubmit={submit} className="space-y-3">
+          {!editing && (
+            <div className="p-3.5 bg-secondary/10 border border-secondary/30 rounded-2xl flex items-start gap-3">
+              <Sparkles size={18} className="text-secondary shrink-0 mt-0.5" />
+              <div className="text-xs">
+                <p className="font-bold text-primary flex items-center gap-1.5 flex-wrap">
+                  <span>Password Sementara Otomatis:</span>
+                  <span className="font-mono bg-white px-2 py-0.5 rounded border border-secondary/40 text-primary font-extrabold tracking-wider">
+                    {generateTemporaryPassword(rooms.find((r) => r.id === form.room_id)?.name, form.nik)}
+                  </span>
+                </p>
+                <p className="text-subtle mt-1 text-[11px] leading-relaxed">
+                  Pola PRD: <strong>[Nomor Kamar: {rooms.find((r) => r.id === form.room_id)?.name ? rooms.find((r) => r.id === form.room_id).name.replace(/\D/g, "") || rooms.find((r) => r.id === form.room_id).name : "000"}]</strong> + <strong>[3 Digit NIK: {form.nik && form.nik.replace(/\D/g, "").length >= 3 ? form.nik.replace(/\D/g, "").slice(-3) : "123"}]</strong>. Penyewa wajib mengganti password saat login pertama.
+                </p>
+              </div>
+            </div>
+          )}
+
           <FormSection title="Data Pribadi Penghuni">
             <Input
               label="Nama Lengkap *"
@@ -484,9 +550,40 @@ Simpan pesan ini dengan baik. Jika ada kendala, hubungi pengelola. Terima kasih!
                 placeholder="Software Engineer / Mahasiswa"
               />
             </div>
-            <p className="text-[11px] text-secondary font-semibold italic mt-1">
-              ✨ Password portal penghuni akan otomatis dibuatkan dari nomor HP dan dapat dilihat langsung di profil.
-            </p>
+
+            {/* Preview Kredensial Otomatis (Specification #4) */}
+            <div className="mt-3 p-3.5 bg-secondary/10 rounded-2xl border border-secondary/25 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase font-bold text-secondary tracking-wider flex items-center gap-1.5">
+                  <Sparkles size={12} />
+                  <span>Preview Kredensial Otomatis (Auto-Calculated):</span>
+                </span>
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-secondary/20 font-bold text-primary">
+                  Read-Only
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div className="bg-white/80 p-2.5 rounded-xl border border-line/60">
+                  <p className="text-[10px] text-subtle font-medium">Generated Username:</p>
+                  <p className="font-mono font-bold text-primary mt-0.5 text-xs">{previewUsername}</p>
+                </div>
+                <div className="bg-white/80 p-2.5 rounded-xl border border-line/60">
+                  <p className="text-[10px] text-subtle font-medium">Temporary Password:</p>
+                  <p className="font-mono font-bold text-primary mt-0.5 text-xs">{previewTempPw}</p>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 pt-1 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sendViaWa}
+                  onChange={(e) => setSendViaWa(e.target.checked)}
+                  className="rounded text-primary focus:ring-primary h-4 w-4"
+                />
+                <span className="text-xs text-ink font-medium">
+                  Kirim kredensial langsung via WhatsApp / Email setelah pendaftaran
+                </span>
+              </label>
+            </div>
           </FormSection>
 
           <FormSection title="Kontak Darurat (Emergency Contact)">
@@ -658,6 +755,156 @@ Simpan pesan ini dengan baik. Jika ada kendala, hubungi pengelola. Terima kasih!
             )}
           </div>
         </div>
+      </Sheet>
+
+      {/* Onboarding Credentials Modal (PRD Auto-Credential) */}
+      <Sheet
+        open={Boolean(onboardedTenant)}
+        onClose={() => setOnboardedTenant(null)}
+        title="Akun Portal Penyewa Diterbitkan 🎉"
+        subtitle="Kredensial sementara otomatis dibuat sesuai spesifikasi PRD"
+        maxWidth="sm:max-w-md"
+        footer={
+          <Button
+            type="button"
+            onClick={() => setOnboardedTenant(null)}
+            className="w-full"
+          >
+            Selesai
+          </Button>
+        }
+      >
+        {onboardedTenant && (
+          <div className="space-y-4">
+            <div className="p-4 bg-primary text-white rounded-2xl shadow-lifted">
+              <p className="text-[10px] uppercase tracking-wider text-secondary font-bold">Kredensial Login Penyewa</p>
+              <h3 className="font-serif text-xl font-bold mt-0.5">{onboardedTenant.name}</h3>
+              <p className="text-xs text-white/70">Kamar: {roomName(onboardedTenant.room_id)}</p>
+
+              <div className="mt-3 pt-3 border-t border-white/20 grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-white/60 text-[10px] block uppercase">No. WhatsApp / ID</span>
+                  <span className="font-bold font-mono text-sm">{onboardedTenant.phone}</span>
+                </div>
+                <div>
+                  <span className="text-white/60 text-[10px] block uppercase">Password Sementara</span>
+                  <span className="font-bold font-mono text-sm text-secondary">
+                    {onboardedTenant.portal_password || generateTemporaryPassword(roomName(onboardedTenant.room_id), onboardedTenant.nik)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-900 leading-relaxed">
+              <div className="flex items-center gap-1 font-bold text-amber-950 mb-0.5">
+                <Lock size={13} />
+                <span>Status Akun: ACTIVE_FORCE_RESET</span>
+              </div>
+              <p className="text-[11px] text-amber-800">
+                Penyewa diwajibkan mengganti password baru (min. 8 karakter + 1 angka) saat pertama kali login ke portal.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => copyCredentials(onboardedTenant)}
+                className="flex items-center justify-center gap-1.5 text-xs"
+              >
+                <Copy size={14} />
+                <span>Salin Info</span>
+              </Button>
+              <Button
+                type="button"
+                onClick={() => shareViaWhatsApp(onboardedTenant)}
+                className="flex items-center justify-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <Send size={14} />
+                <span>Kirim via WA</span>
+              </Button>
+            </div>
+          </div>
+        )}
+      </Sheet>
+
+      {/* Pop-up Konfirmasi Reset Password Manual oleh Admin (Specification #4) */}
+      <Sheet
+        open={!!resetModalTarget}
+        onClose={() => setResetModalTarget(null)}
+        title="Reset Password Portal Penghuni"
+        subtitle="Setel ulang kata sandi ke pola password sementara baru"
+        maxWidth="sm:max-w-md"
+        footer={
+          <div className="flex gap-2 w-full">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setResetModalTarget(null)}
+              className="flex-1 text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              type="button"
+              loading={resetSubmitting}
+              onClick={handleConfirmResetPassword}
+              testid="confirm-reset-password-btn"
+              className="flex-1 text-xs bg-amber-600 hover:bg-amber-700 text-white font-bold"
+            >
+              Konfirmasi Reset
+            </Button>
+          </div>
+        }
+      >
+        {resetModalTarget && (
+          <div className="space-y-4" data-testid="reset-password-modal">
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-700 grid place-items-center shrink-0">
+                <RotateCcw size={20} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-amber-950">Konfirmasi Reset Password</p>
+                <p className="text-[11px] text-amber-800">
+                  Password akun akan diatur ulang dan penyewa wajib membuat password baru saat login berikutnya.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/60 rounded-2xl border border-line space-y-3">
+              <div className="flex justify-between items-center text-xs pb-2 border-b border-line/60">
+                <span className="text-subtle font-medium">Nama Penghuni:</span>
+                <span className="font-bold text-ink">{resetModalTarget.name}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs pb-2 border-b border-line/60">
+                <span className="text-subtle font-medium">Unit Kamar:</span>
+                <span className="font-bold text-primary">{roomName(resetModalTarget.room_id)}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs pb-2 border-b border-line/60">
+                <span className="text-subtle font-medium">Username:</span>
+                <span className="font-mono font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                  {resetModalTarget.username || generateTenantUsername(roomName(resetModalTarget.room_id), resetModalTarget.name, [])}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-subtle font-medium">Password Baru yang Dihasilkan:</span>
+                <span className="font-mono font-bold text-amber-700 bg-amber-500/10 px-2 py-0.5 rounded text-sm">
+                  {generateTemporaryPassword(roomName(resetModalTarget.room_id), resetModalTarget.nik)}
+                </span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => copyCredentials(resetModalTarget)}
+              className="w-full flex items-center justify-center gap-1.5 text-xs py-2.5"
+            >
+              <Copy size={14} />
+              <span>Salin Kredensial ke Clipboard</span>
+            </Button>
+          </div>
+        )}
       </Sheet>
     </div>
   );

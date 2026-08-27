@@ -1,71 +1,60 @@
-import { useState, useEffect, useCallback } from "react";
-import { api } from "../lib/api";
+import { doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { db, PROPERTY_PATH } from "../lib/firebase";
+import { useFirestoreCollection } from "./useFirestoreCollection";
 import { toast } from "sonner";
 
 export function useRooms() {
-  const [rooms, setRooms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { data: rooms, loading, error } = useFirestoreCollection(`${PROPERTY_PATH}/rooms`);
 
-  const fetchRooms = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const saveRoom = async (roomData) => {
     try {
-      const res = await api.get("/rooms");
-      setRooms(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      const msg = err.response?.data?.detail || err.message || "Failed to load rooms";
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      const roomId = roomData.id || `room_${Date.now()}`;
+      const docRef = doc(db, `${PROPERTY_PATH}/rooms`, roomId);
+      
+      const payload = {
+        ...roomData,
+        roomNumber: String(roomData.roomNumber || roomData.name || ""),
+        floor: String(roomData.floor || "1"),
+        roomType: roomData.roomType || roomData.room_type || "standard",
+        capacity: Number(roomData.capacity) || 1,
+        monthlyPrice: Number(roomData.monthlyPrice || roomData.price) || 0,
+        deposit: Number(roomData.deposit) || 0,
+        status: (roomData.status || "AVAILABLE").toUpperCase(),
+        facilities: Array.isArray(roomData.facilities) ? roomData.facilities : [],
+        updatedAt: serverTimestamp(),
+      };
 
-  useEffect(() => {
-    fetchRooms();
-  }, [fetchRooms]);
-
-  const updateRoomStatus = async (roomId, newStatus) => {
-    try {
-      await api.post(`/rooms/${roomId}/status`, { status: newStatus });
-      setRooms((prev) =>
-        prev.map((r) => (r.id === roomId ? { ...r, status: newStatus } : r))
-      );
-      toast.success(`Room status updated to ${newStatus}`);
+      await setDoc(docRef, payload, { merge: true });
+      toast.success("Data kamar berhasil disimpan");
       return true;
     } catch (err) {
-      toast.error("Failed to update room status");
+      toast.error("Gagal menyimpan kamar: " + err.message);
       return false;
     }
   };
 
-  const saveRoom = async (roomData) => {
+  const updateRoomStatus = async (roomId, newStatus) => {
     try {
-      if (roomData.id) {
-        const res = await api.put(`/rooms/${roomData.id}`, roomData);
-        setRooms((prev) => prev.map((r) => (r.id === roomData.id ? res.data : r)));
-        toast.success("Room updated successfully");
-      } else {
-        const res = await api.post("/rooms", roomData);
-        setRooms((prev) => [...prev, res.data]);
-        toast.success("Room added successfully");
-      }
+      const docRef = doc(db, `${PROPERTY_PATH}/rooms`, roomId);
+      await updateDoc(docRef, {
+        status: newStatus.toUpperCase(),
+        updatedAt: serverTimestamp(),
+      });
+      toast.success(`Status kamar diubah ke ${newStatus}`);
       return true;
     } catch (err) {
-      toast.error("Failed to save room");
+      toast.error("Gagal memperbarui status: " + err.message);
       return false;
     }
   };
 
   const deleteRoom = async (roomId) => {
     try {
-      await api.delete(`/rooms/${roomId}`);
-      setRooms((prev) => prev.filter((r) => r.id !== roomId));
-      toast.success("Room removed");
+      await deleteDoc(doc(db, `${PROPERTY_PATH}/rooms`, roomId));
+      toast.success("Kamar berhasil dihapus");
       return true;
     } catch (err) {
-      toast.error("Failed to delete room");
+      toast.error("Gagal menghapus kamar: " + err.message);
       return false;
     }
   };
@@ -74,9 +63,10 @@ export function useRooms() {
     rooms,
     loading,
     error,
-    refresh: fetchRooms,
-    updateRoomStatus,
     saveRoom,
+    updateRoomStatus,
     deleteRoom,
   };
 }
+
+export default useRooms;

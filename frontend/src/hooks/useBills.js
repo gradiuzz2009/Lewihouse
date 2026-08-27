@@ -1,61 +1,29 @@
-import { useState, useEffect, useCallback } from "react";
-import { api } from "../lib/api";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db, PROPERTY_PATH } from "../lib/firebase";
+import { useFirestoreCollection } from "./useFirestoreCollection";
 import { toast } from "sonner";
 
 export function useBills() {
-  const [bills, setBills] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { data: bills, loading, error } = useFirestoreCollection(`${PROPERTY_PATH}/payments`);
 
-  const fetchBills = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const recordPayment = async (paymentId, paymentData) => {
     try {
-      const res = await api.get("/bills");
-      setBills(Array.isArray(res.data) ? res.data : []);
-    } catch (err) {
-      const msg = err.response?.data?.detail || err.message || "Failed to load invoices";
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchBills();
-  }, [fetchBills]);
-
-  const recordPayment = async (billId, paymentData) => {
-    try {
-      await api.post(`/bills/${billId}/payments`, paymentData);
-      toast.success("Payment recorded successfully");
-      await fetchBills();
+      const docRef = doc(db, `${PROPERTY_PATH}/payments`, paymentId);
+      await updateDoc(docRef, {
+        ...paymentData,
+        status: "PAID",
+        paidAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      toast.success("Pembayaran berhasil dikonfirmasi");
       return true;
     } catch (err) {
-      toast.error("Failed to record payment");
+      toast.error("Gagal memperbarui pembayaran: " + err.message);
       return false;
     }
   };
 
-  const generateMonthlyInvoices = async () => {
-    try {
-      const res = await api.post("/bills/generate");
-      toast.success(`Generated ${res.data?.count || "monthly"} invoices`);
-      await fetchBills();
-      return true;
-    } catch (err) {
-      toast.error("Failed to generate invoices");
-      return false;
-    }
-  };
-
-  return {
-    bills,
-    loading,
-    error,
-    refresh: fetchBills,
-    recordPayment,
-    generateMonthlyInvoices,
-  };
+  return { bills, loading, error, recordPayment };
 }
+
+export default useBills;

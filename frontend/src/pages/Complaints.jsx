@@ -9,6 +9,7 @@ import {
   Wrench, CheckCircle2, Clock, AlertTriangle, AlertCircle,
   UserCheck, Trash2, Edit2, ShieldAlert, ArrowRight, Check, Calendar
 } from "lucide-react";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
 
 const empty = {
   tenant_id: "",
@@ -107,9 +108,7 @@ export default function Complaints() {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useAutoRefresh(load);
 
   useEffect(() => {
     if (params.get("new") === "1") {

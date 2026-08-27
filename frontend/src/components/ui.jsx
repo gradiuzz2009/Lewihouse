@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 
@@ -34,10 +35,12 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, maxWid
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open, onClose]);
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-hidden">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -45,7 +48,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, maxWid
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
             data-testid="sheet-backdrop"
           />
 
@@ -58,7 +61,7 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, maxWid
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className={`relative z-50 w-full ${maxWidth} bg-surface rounded-t-[28px] sm:rounded-3xl shadow-lifted border-t sm:border border-line max-h-[85dvh] sm:max-h-[85vh] flex flex-col overflow-hidden`}
+            className={`relative z-[101] w-full ${maxWidth} bg-surface rounded-t-[28px] sm:rounded-3xl shadow-lifted border-t sm:border border-line max-h-[85dvh] sm:max-h-[85vh] flex flex-col overflow-hidden`}
             data-testid="sheet"
           >
             {/* Header with Drag Indicator */}
@@ -97,7 +100,8 @@ export function Sheet({ open, onClose, title, subtitle, children, footer, maxWid
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

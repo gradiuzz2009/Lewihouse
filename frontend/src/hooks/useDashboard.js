@@ -13,7 +13,7 @@ export function useDashboard() {
     try {
       const [sumRes, repRes] = await Promise.allSettled([
         api.get("/dashboard/summary"),
-        api.get("/reports/monthly"),
+        api.get("/reports/monthly?months=6"),
       ]);
 
       if (sumRes.status === "fulfilled" && sumRes.value?.data) {

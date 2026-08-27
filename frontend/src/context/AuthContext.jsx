@@ -6,41 +6,39 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
+      const token = localStorage.getItem("lh_token");
       const saved = localStorage.getItem("lh_user");
-      if (saved) return JSON.parse(saved);
+      // Only restore user if a token actually exists
+      if (token && saved) return JSON.parse(saved);
     } catch {}
     return null;
   });
 
   useEffect(() => {
-    const t = localStorage.getItem("lh_token");
-    const u = localStorage.getItem("lh_user");
+    const token = localStorage.getItem("lh_token");
 
-    if (!t && !u) {
+    if (!token) {
+      localStorage.removeItem("lh_user");
+      localStorage.removeItem("lh_current_user");
       setUser(false);
       return;
     }
 
-    if (u) {
-      try {
-        setUser(JSON.parse(u));
-      } catch {}
-    }
-
+    // Validate active token with the live server
     api
       .get("/auth/me")
       .then((r) => {
         if (r.data && typeof r.data === "object") {
           setUser(r.data);
           localStorage.setItem("lh_user", JSON.stringify(r.data));
+        } else {
+          logout();
         }
       })
-      .catch(() => {
-        // If we already have a saved session in localStorage, preserve it
-        const fallback = localStorage.getItem("lh_user");
-        if (!fallback) {
-          localStorage.removeItem("lh_token");
-          setUser(false);
+      .catch((err) => {
+        // If unauthenticated or token expired, wipe stale storage
+        if (err.response?.status === 401 || err.response?.status === 403) {
+          logout();
         }
       });
   }, []);
@@ -65,7 +63,15 @@ export function AuthProvider({ children }) {
     setUser(false);
   };
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+  const updateUser = (updatedFields) => {
+    setUser((prev) => {
+      const next = { ...(prev || {}), ...updatedFields };
+      localStorage.setItem("lh_user", JSON.stringify(next));
+      return next;
+    });
+  };
+
+  return <AuthContext.Provider value={{ user, login, logout, updateUser }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);

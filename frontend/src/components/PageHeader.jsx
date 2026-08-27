@@ -2,12 +2,21 @@ import React from "react";
 import { ChevronLeft, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import NotificationBell from "./NotificationBell";
+import UserIndicator from "./UserIndicator";
 
-export function PageHeader({ title, subtitle, onBack, action, testid = "page-header", showBell = true }) {
+export function PageHeader({
+  title,
+  subtitle,
+  onBack,
+  action,
+  testid = "page-header",
+  showBell = true,
+  showUser = true,
+}) {
   const nav = useNavigate();
   return (
-    <div className="px-5 sm:px-6 pt-6 sm:pt-8 pb-4 flex items-start justify-between gap-4" data-testid={testid}>
-      <div className="flex items-start gap-3 min-w-0">
+    <div className="px-5 sm:px-6 pt-5 sm:pt-7 pb-4 flex items-start justify-between gap-3" data-testid={testid}>
+      <div className="flex items-start gap-3 min-w-0 flex-1">
         {onBack !== false && (
           <button
             type="button"
@@ -27,6 +36,7 @@ export function PageHeader({ title, subtitle, onBack, action, testid = "page-hea
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {showBell && <NotificationBell />}
+        {showUser && <UserIndicator avatarOnly />}
         {action}
       </div>
     </div>

@@ -6,6 +6,7 @@ import { api, fmtDate, formatTokenValidity } from "../lib/api";
 import { PageHeader, AddButton } from "../components/PageHeader";
 import { Badge, Button, Input, Select, Sheet, EmptyState, FormSection } from "../components/ui";
 import { KeyRound, ShieldOff, Eye, EyeOff } from "lucide-react";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
 
 const empty = {
   label: "",
@@ -47,9 +48,7 @@ export default function Access() {
       toast.error("Gagal memuat token akses");
     }
   };
-  useEffect(() => {
-    load();
-  }, []);
+  useAutoRefresh(load);
 
   useEffect(() => {
     if (params.get("new") === "1") {

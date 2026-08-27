@@ -1,52 +1,58 @@
 /* eslint-disable no-restricted-globals */
-const CACHE_NAME = "lewi-house-v2";
-const STATIC_ASSETS = ["/", "/index.html"];
+const CACHE_NAME = "lewi-house-v5";
 
-// Install: cache static assets
+// Install: skip waiting immediately
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-  );
   self.skipWaiting();
 });
 
-// Activate: clean old caches
+// Activate: clean all old caches and claim clients immediately
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(keys.map((k) => caches.delete(k)))
     )
   );
   self.clients.claim();
 });
 
-// Fetch: network-first for API, cache-first for assets
+// Fetch: network-first strategy for dynamic SPA and robust offline fallback
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
   // Skip non-GET requests
   if (event.request.method !== "GET") return;
 
-  // API calls: network-first
+  // API & WS calls: bypass cache completely
   if (url.pathname.startsWith("/api") || url.pathname.startsWith("/ws")) {
     return;
   }
 
-  // Static assets: cache-first with network fallback
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200 && response.type === "basic") {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
+  // SPA navigation requests (e.g. /portal, /rooms, /tenants, /login)
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => caches.match("/index.html"))
+        .then((response) => response || caches.match("/index.html"))
+    );
+    return;
+  }
 
-      return cached || fetchPromise;
-    })
+  // Static assets: Network-first with cache fallback
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.status === 200 && response.type === "basic") {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        return new Response("Offline", { status: 503, statusText: "Service Unavailable" });
+      })
   );
 });
 
@@ -68,7 +74,6 @@ self.addEventListener("push", (event) => {
     renotify: true,
   };
 
-  // Add context-specific actions
   if (data.type === "chat") {
     options.actions = [{ action: "reply", title: "Balas" }];
   } else if (data.type === "bill_reminder") {
@@ -87,25 +92,13 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((wins) => {
-      // Try to focus an existing window
       for (const w of wins) {
         if (w.url.includes(self.location.origin) && "focus" in w) {
           w.navigate(url);
           return w.focus();
         }
       }
-      // Open a new window
       return clients.openWindow(url);
     })
   );
-});
-
-// Background sync for offline messages
-self.addEventListener("sync", (event) => {
-  if (event.tag === "send-message") {
-    event.waitUntil(
-      // Retrieve queued messages from IndexedDB and send them
-      Promise.resolve()
-    );
-  }
 });

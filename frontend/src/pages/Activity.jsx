@@ -5,6 +5,7 @@ import { api, fmtDateTime, fmtIDR } from "../lib/api";
 import { PageHeader } from "../components/PageHeader";
 import { EmptyState } from "../components/ui";
 import { History } from "lucide-react";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
 
 const actionMap = {
   LOGIN: { label: "Masuk", color: "bg-muted text-subtle border-line" },
@@ -49,12 +50,14 @@ function detailText(log) {
 export default function Activity() {
   const [logs, setLogs] = useState([]);
 
-  useEffect(() => {
+  const load = () => {
     api
       .get("/audit?limit=80")
-      .then((r) => setLogs(r.data))
+      .then((r) => setLogs(Array.isArray(r.data) ? r.data : []))
       .catch(() => toast.error("Gagal memuat riwayat"));
-  }, []);
+  };
+
+  useAutoRefresh(load);
 
   return (
     <div className="fade-up" data-testid="activity-page">

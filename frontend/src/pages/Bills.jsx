@@ -8,27 +8,40 @@ import { Badge, Button, Input, Select, Sheet, Textarea, MoneyInput, EmptyState, 
 import {
   Receipt, Wallet, Trash2, Zap, Edit2, ArrowRight, MessageSquare,
   Send, CheckCircle, AlertTriangle, Sparkles, ExternalLink,
-  TrendingUp, Clock, AlertCircle, ChevronDown, ChevronUp, Check, Copy
+  TrendingUp, Clock, AlertCircle, ChevronDown, ChevronUp, Check, Copy,
+  Eye, CheckCircle2, XCircle, FileText, Printer, ArrowLeftRight, Plus, Minus
 } from "lucide-react";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
 
 const currentPeriod = () => new Date().toISOString().slice(0, 7);
+
+const emptyItem = { name: "Sewa Kamar Pokok", amount: 0, category: "rent" };
 
 const emptyForm = {
   tenant_id: "",
   room_id: "",
   period: currentPeriod(),
+  due_date: "",
+  status: "UNPAID",
+  notes: "",
+  items: [{ ...emptyItem }],
   rent: 0,
   electricity: 0,
   water: 0,
   other: 0,
   other_label: "",
   late_fee: 0,
-  due_date: "",
-  status: "unpaid",
-  notes: "",
 };
 
-const methodLabels = { qris: "QRIS", bank_transfer: "Transfer Bank", cash: "Tunai", midtrans: "Midtrans Gateway" };
+const methodLabels = {
+  qris: "QRIS",
+  bank_transfer: "Transfer Bank",
+  BANK_TRANSFER: "Transfer Bank",
+  QRIS: "QRIS",
+  cash: "Tunai",
+  CASH: "Tunai",
+  midtrans: "Midtrans Gateway"
+};
 
 // Helper to compute overdue days
 function getOverdueDays(dueDateStr) {
@@ -61,13 +74,32 @@ export default function Bills() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [paySheet, setPaySheet] = useState(false);
-  const [payForm, setPayForm] = useState({ bill_id: "", amount: 0, method: "qris", reference: "" });
+  const [payForm, setPayForm] = useState({ bill_id: "", amount: 0, method: "BANK_TRANSFER", reference: "" });
   const [dunningSheet, setDunningSheet] = useState(false);
   const [dunningList, setDunningList] = useState([]);
   const [loadingDunning, setLoadingDunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showPaidSection, setShowPaidSection] = useState(false);
   const [params, setParams] = useSearchParams();
+
+  // Verification & Receipt States
+  const [verifyModalBill, setVerifyModalBill] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showRejectBox, setShowRejectBox] = useState(false);
+  const [receiptData, setReceiptData] = useState(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+
+  // Prorata Modal State
+  const [prorataOpen, setProrataOpen] = useState(false);
+  const [prorataForm, setProrataForm] = useState({
+    tenant_id: "",
+    old_room_id: "",
+    new_room_id: "",
+    transfer_date: new Date().toISOString().slice(0, 10),
+    period: currentPeriod(),
+    days_in_month: 30,
+  });
 
   const load = async () => {
     try {
@@ -80,13 +112,11 @@ export default function Bills() {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useAutoRefresh(load);
 
   useEffect(() => {
     if (params.get("pay") === "1") {
-      setPayForm({ bill_id: "", amount: 0, method: "qris", reference: "" });
+      setPayForm({ bill_id: "", amount: 0, method: "BANK_TRANSFER", reference: "" });
       setPaySheet(true);
       setParams({}, { replace: true });
     }
@@ -108,6 +138,7 @@ export default function Bills() {
     let totalOutstanding = 0;
     let totalOverdue = 0;
     let overdueCount = 0;
+    let verifyingCount = 0;
     let partiallyPaidCount = 0;
     let unpaidCount = 0;
     let paidCount = 0;
@@ -115,17 +146,24 @@ export default function Bills() {
 
     bills.forEach((b) => {
       const remaining = Math.max(0, b.total - (b.amount_paid || 0));
-      totalBilled += b.total;
-      totalCollected += b.amount_paid || (b.status === "paid" ? b.total : 0);
+      const statusUpper = (b.status || "").toUpperCase();
 
-      if (b.status === "paid") {
+      if (statusUpper !== "CANCELLED") {
+        totalBilled += b.total;
+        totalCollected += b.amount_paid || (statusUpper === "PAID" ? b.total : 0);
+      }
+
+      if (statusUpper === "PAID") {
         paidCount++;
-      } else {
+      } else if (statusUpper === "VERIFYING") {
+        verifyingCount++;
         totalOutstanding += remaining;
-        if (b.is_overdue) {
+      } else if (statusUpper !== "CANCELLED") {
+        totalOutstanding += remaining;
+        if (b.is_overdue || statusUpper === "OVERDUE") {
           totalOverdue += remaining;
           overdueCount++;
-        } else if (b.status === "partially_paid") {
+        } else if (statusUpper === "PARTIAL_PAID" || b.status === "partially_paid") {
           partiallyPaidCount++;
         } else {
           unpaidCount++;
@@ -145,6 +183,7 @@ export default function Bills() {
       totalOutstanding,
       totalOverdue,
       overdueCount,
+      verifyingCount,
       partiallyPaidCount,
       unpaidCount,
       paidCount,
@@ -154,24 +193,24 @@ export default function Bills() {
     };
   }, [bills]);
 
-  // ─── SMART RISK-PRIORITIZED SORTING ────────────────────────────
+  // ─── SMART SORTING ─────────────────────────────────────────────
   const sortedBills = useMemo(() => {
-    // Priority order: 1. Overdue, 2. Partially Paid, 3. Unpaid, 4. Paid
     return [...bills].sort((a, b) => {
       const getPriority = (item) => {
-        if (item.is_overdue) return 1;
-        if (item.status === "partially_paid") return 2;
-        if (item.status === "unpaid") return 3;
-        return 4; // paid
+        const s = (item.status || "").toUpperCase();
+        if (s === "VERIFYING") return 0; // Top priority: pending admin review
+        if (item.is_overdue || s === "OVERDUE") return 1;
+        if (s === "PARTIAL_PAID" || item.status === "partially_paid") return 2;
+        if (s === "UNPAID" || item.status === "unpaid") return 3;
+        if (s === "PAID" || item.status === "paid") return 4;
+        return 5;
       };
 
       const pA = getPriority(a);
       const pB = getPriority(b);
-
       if (pA !== pB) return pA - pB;
 
-      // Secondary sort: Overdue sorted by overdue days desc, Unpaid by due_date asc
-      if (a.is_overdue && b.is_overdue) {
+      if ((a.is_overdue || a.status === "OVERDUE") && (b.is_overdue || b.status === "OVERDUE")) {
         return getOverdueDays(b.due_date) - getOverdueDays(a.due_date);
       }
       if (a.due_date && b.due_date) {
@@ -183,72 +222,129 @@ export default function Bills() {
 
   const filteredBills = useMemo(() => {
     if (filter === "all") return sortedBills;
-    if (filter === "overdue") return sortedBills.filter((b) => b.is_overdue);
-    return sortedBills.filter((b) => b.status === filter);
+    if (filter === "verifying") return sortedBills.filter((b) => (b.status || "").toUpperCase() === "VERIFYING");
+    if (filter === "overdue") return sortedBills.filter((b) => b.is_overdue || (b.status || "").toUpperCase() === "OVERDUE");
+    if (filter === "partially_paid") return sortedBills.filter((b) => (b.status || "").toUpperCase() === "PARTIAL_PAID" || b.status === "partially_paid");
+    if (filter === "unpaid") return sortedBills.filter((b) => (b.status || "").toUpperCase() === "UNPAID" && !b.is_overdue);
+    if (filter === "paid") return sortedBills.filter((b) => (b.status || "").toUpperCase() === "PAID" || b.status === "paid");
+    if (filter === "cancelled") return sortedBills.filter((b) => (b.status || "").toUpperCase() === "CANCELLED");
+    return sortedBills;
   }, [sortedBills, filter]);
 
-  const activeBills = useMemo(() => filteredBills.filter((b) => b.status !== "paid"), [filteredBills]);
-  const paidBills = useMemo(() => filteredBills.filter((b) => b.status === "paid"), [filteredBills]);
+  const activeBills = useMemo(() => filteredBills.filter((b) => (b.status || "").toUpperCase() !== "PAID"), [filteredBills]);
+  const paidBills = useMemo(() => filteredBills.filter((b) => (b.status || "").toUpperCase() === "PAID" || b.status === "paid"), [filteredBills]);
 
   // ─── ACTIONS ──────────────────────────────────────────────────
   const openNew = () => {
     setEditing(null);
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      due_date: `${currentPeriod()}-05`,
+      items: [{ name: "Sewa Kamar Pokok", amount: 0, category: "rent" }],
+    });
     setOpenSheet(true);
   };
 
   const openEdit = (b) => {
     setEditing(b);
+    let items = b.items && b.items.length > 0 ? b.items : [];
+    if (items.length === 0) {
+      if (b.rent) items.push({ name: "Sewa Kamar Pokok", amount: b.rent, category: "rent" });
+      if (b.electricity) items.push({ name: "Listrik / PLN", amount: b.electricity, category: "electricity" });
+      if (b.water) items.push({ name: "Air / PDAM", amount: b.water, category: "water" });
+      if (b.other) items.push({ name: b.other_label || "Biaya Tambahan", amount: b.other, category: "add_on" });
+      if (b.late_fee) items.push({ name: "Denda Keterlambatan", amount: b.late_fee, category: "penalty" });
+    }
+    if (items.length === 0) items = [{ name: "Sewa Kamar Pokok", amount: b.total || 0, category: "rent" }];
+
     setForm({
       tenant_id: b.tenant_id,
       room_id: b.room_id || "",
       period: b.period,
-      rent: b.rent,
-      electricity: b.electricity,
-      water: b.water,
-      other: b.other,
+      due_date: b.due_date || "",
+      status: b.status || "UNPAID",
+      notes: b.notes || "",
+      items: items,
+      rent: b.rent || 0,
+      electricity: b.electricity || 0,
+      water: b.water || 0,
+      other: b.other || 0,
       other_label: b.other_label || "",
       late_fee: b.late_fee || 0,
-      due_date: b.due_date || "",
-      status: b.status,
-      notes: b.notes || "",
     });
     setOpenSheet(true);
   };
 
   const onTenantChange = (tid) => {
     const t = tenants.find((x) => x.id === tid);
-    setForm({ ...form, tenant_id: tid, room_id: t?.room_id || "", rent: t?.monthly_rent ?? form.rent });
+    const rentAmount = Number(t?.monthly_rent || 0);
+    const updatedItems = form.items.map((item, idx) =>
+      idx === 0 && item.category === "rent" ? { ...item, amount: rentAmount } : item
+    );
+    setForm({
+      ...form,
+      tenant_id: tid,
+      room_id: t?.room_id || "",
+      items: updatedItems,
+      rent: rentAmount,
+    });
   };
+
+  const handleAddItem = (presetName = "Biaya Tambahan", category = "add_on", defaultAmount = 0) => {
+    setForm({
+      ...form,
+      items: [...form.items, { name: presetName, amount: defaultAmount, category: category }],
+    });
+  };
+
+  const handleRemoveItem = (index) => {
+    if (form.items.length <= 1) {
+      toast.error("Minimal harus ada 1 item biaya");
+      return;
+    }
+    const updated = form.items.filter((_, i) => i !== index);
+    setForm({ ...form, items: updated });
+  };
+
+  const handleItemChange = (index, field, value) => {
+    const updated = [...form.items];
+    updated[index] = { ...updated[index], [field]: value };
+    setForm({ ...form, items: updated });
+  };
+
+  const totalCalculatedForm = useMemo(() => {
+    return form.items.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  }, [form.items]);
 
   const submit = async (e) => {
     e.preventDefault();
     if (!form.tenant_id) {
-      toast.error("Pilih penghuni dulu");
+      toast.error("Pilih penghuni terlebih dahulu");
+      return;
+    }
+    if (form.items.length === 0 || totalCalculatedForm <= 0) {
+      toast.error("Rincian tagihan tidak boleh kosong / 0");
       return;
     }
     setSubmitting(true);
     const payload = {
       ...form,
       room_id: form.room_id || null,
-      rent: Number(form.rent),
-      electricity: Number(form.electricity),
-      water: Number(form.water),
-      other: Number(form.other),
-      late_fee: Number(form.late_fee),
+      items: form.items.map((it) => ({ ...it, amount: Number(it.amount || 0) })),
+      rent: Number(form.items.find((i) => i.category === "rent")?.amount || form.rent || 0),
     };
     try {
       if (editing) {
         await api.put(`/bills/${editing.id}`, payload);
-        toast.success("Tagihan diperbarui");
+        toast.success("Tagihan diperbarui ✓");
       } else {
         const { data } = await api.post("/bills", payload);
-        toast.success(`Invoice ${data.invoice_number} dibuat`);
+        toast.success(`Invoice ${data.invoice_number} berhasil diterbitkan ✓`);
       }
       setOpenSheet(false);
       load();
     } catch {
-      toast.error("Gagal menyimpan");
+      toast.error("Gagal menyimpan invoice");
     } finally {
       setSubmitting(false);
     }
@@ -257,16 +353,95 @@ export default function Bills() {
   const generateMonthly = async () => {
     if (!window.confirm(`Buat tagihan otomatis untuk semua penghuni aktif periode ${monthLabel(currentPeriod())}?`)) return;
     try {
-      const { data } = await api.post("/bills/generate", { period: currentPeriod() });
-      toast.success(data.created > 0 ? `${data.created} invoice dibuat otomatis` : "Semua penghuni sudah punya tagihan bulan ini");
+      const { data } = await api.post("/bills/generate", { period: currentPeriod(), due_day: 5 });
+      toast.success(data.created > 0 ? `${data.created} invoice resmi dibuat otomatis` : "Semua penghuni sudah memiliki tagihan periode ini");
       load();
     } catch {
       toast.error("Gagal generate tagihan");
     }
   };
 
+  // ─── VERIFICATION & APPROVAL ──────────────────────────────────
+  const openVerifyModal = (bill) => {
+    setVerifyModalBill(bill);
+    setRejectionReason("");
+    setShowRejectBox(false);
+  };
+
+  const handleVerify = async (action) => {
+    if (!verifyModalBill) return;
+    if (action === "reject" && !rejectionReason.trim()) {
+      toast.error("Wajib mengisi alasan penolakan bukti transfer");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data } = await api.post(`/bills/${verifyModalBill.id}/verify-payment`, {
+        action: action,
+        rejection_reason: action === "reject" ? rejectionReason.trim() : null,
+        method: verifyModalBill.payment_details?.method || "BANK_TRANSFER",
+      });
+      toast.success(action === "approve" ? "Pembayaran berhasil diverifikasi & Lunas ✓" : "Bukti pembayaran ditolak");
+      setVerifyModalBill(null);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Gagal memverifikasi bukti bayar");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ─── DIGITAL RECEIPT ──────────────────────────────────────────
+  const openReceipt = async (billId) => {
+    setReceiptLoading(true);
+    setReceiptModalOpen(true);
+    try {
+      const { data } = await api.get(`/bills/${billId}/receipt`);
+      setReceiptData(data);
+    } catch {
+      toast.error("Gagal memuat kwitansi digital");
+      setReceiptModalOpen(false);
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
+
+  const printReceipt = () => {
+    window.print();
+  };
+
+  // ─── PRORATA ROOM TRANSFER ────────────────────────────────────
+  const submitProrata = async (e) => {
+    e.preventDefault();
+    if (!prorataForm.tenant_id || !prorataForm.old_room_id || !prorataForm.new_room_id) {
+      toast.error("Lengkapi data penghuni, kamar lama, dan kamar baru");
+      return;
+    }
+    if (prorataForm.old_room_id === prorataForm.new_room_id) {
+      toast.error("Kamar baru harus berbeda dengan kamar lama");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data } = await api.post("/bills/prorata-transfer", prorataForm);
+      toast.success(`Invoice prorata ${data.invoice_number} berhasil dibuat ✓`);
+      setProrataOpen(false);
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Gagal membuat invoice prorata");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ─── DIRECT PAYMENT & WA ──────────────────────────────────────
   const openPay = (b) => {
-    setPayForm({ bill_id: b.id, amount: Math.max(0, b.total - (b.amount_paid || 0)), method: "qris", reference: "" });
+    setPayForm({
+      bill_id: b.id,
+      amount: Math.max(0, b.total - (b.amount_paid || 0)),
+      method: "BANK_TRANSFER",
+      reference: "",
+    });
     setPaySheet(true);
   };
 
@@ -292,7 +467,7 @@ export default function Bills() {
         method: payForm.method,
         reference: payForm.reference || null,
       });
-      toast.success(data.status === "paid" ? "Pembayaran lunas ✓" : "Pembayaran sebagian tercatat");
+      toast.success((data.status || "").toUpperCase() === "PAID" ? "Pembayaran lunas ✓" : "Pembayaran sebagian tercatat");
       setPaySheet(false);
       load();
     } catch (err) {
@@ -349,8 +524,19 @@ export default function Bills() {
     }
   };
 
+  const cancelBillAction = async (id) => {
+    if (!window.confirm("Batalkan invoice ini? Status akan berubah menjadi CANCELLED.")) return;
+    try {
+      await api.post(`/bills/${id}/cancel`);
+      toast.success("Invoice dibatalkan");
+      load();
+    } catch {
+      toast.error("Gagal membatalkan invoice");
+    }
+  };
+
   const remove = async (id) => {
-    if (!window.confirm("Hapus tagihan ini?")) return;
+    if (!window.confirm("Hapus permanen data tagihan ini?")) return;
     try {
       await api.delete(`/bills/${id}`);
       toast.success("Tagihan dihapus");
@@ -367,13 +553,23 @@ export default function Bills() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-secondary">
-              Pusat Penagihan & Arus Kas
+              Pusat Penagihan & Keuangan
             </p>
             <h1 className="font-serif text-2xl sm:text-3xl text-primary font-bold mt-0.5">
               Tagihan & Invoice
             </h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {metrics.verifyingCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setFilter("verifying")}
+                className="px-4 py-2.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-2 active:scale-95 shadow-soft transition-all min-h-[44px] animate-bounce"
+              >
+                <Eye size={15} />
+                <span>Verifikasi Bukti ({metrics.verifyingCount})</span>
+              </button>
+            )}
             {metrics.overdueCount > 0 && (
               <button
                 type="button"
@@ -384,27 +580,64 @@ export default function Bills() {
                 <span>Tindak Lanjut ({metrics.overdueCount})</span>
               </button>
             )}
+            <Button
+              variant="outline"
+              onClick={() => setProrataOpen(true)}
+              className="text-xs"
+            >
+              <ArrowLeftRight size={14} className="mr-1 text-primary" /> Prorata Pindah
+            </Button>
             <AddButton onClick={openNew} testid="add-bill-btn" label="Buat Tagihan" />
           </div>
         </div>
 
         {/* Bento KPI Dashboard Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           {/* Card 1: Total Outstanding */}
           <div className="bg-primary rounded-2xl p-4 text-white shadow-soft grain border border-white/10 flex flex-col justify-between">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-secondary font-bold">Total Piutang Tertunda</p>
+              <p className="text-[10px] uppercase tracking-widest text-secondary font-bold">Total Tertunggak</p>
               <p className="font-serif text-2xl sm:text-3xl font-bold mt-1 tnum text-white">
                 {fmtIDR(metrics.totalOutstanding)}
               </p>
             </div>
             <div className="mt-3 pt-2.5 border-t border-white/15 flex items-center justify-between text-xs text-white/80">
               <span>{metrics.unpaidCount + metrics.partiallyPaidCount + metrics.overdueCount} tagihan aktif</span>
-              <span className="font-semibold text-secondary">{metrics.dueThisWeekCount} jatuh tempo 7 hari</span>
+              <span className="font-semibold text-secondary">{metrics.dueThisWeekCount} jatuh tempo 7h</span>
             </div>
           </div>
 
-          {/* Card 2: Overdue Risk */}
+          {/* Card 2: Verifying Workload Card */}
+          <div
+            onClick={() => setFilter("verifying")}
+            className={`rounded-2xl p-4 border shadow-soft flex flex-col justify-between cursor-pointer transition-all ${
+              metrics.verifyingCount > 0
+                ? "bg-amber-500/10 border-amber-500/40 text-amber-950 hover:border-amber-600"
+                : "bg-surface border-line text-ink"
+            }`}
+          >
+            <div>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-amber-800">Menunggu Verifikasi</p>
+                {metrics.verifyingCount > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold animate-pulse">
+                    {metrics.verifyingCount} Baru
+                  </span>
+                )}
+              </div>
+              <p className="font-serif text-2xl font-bold mt-1 tnum text-amber-700">
+                {metrics.verifyingCount} Invoice
+              </p>
+            </div>
+            <div className="mt-3 pt-2.5 border-t border-amber-200/60 flex items-center justify-between text-xs font-semibold">
+              <span className="text-amber-800">Bukti Transfer Masuk</span>
+              <span className="text-amber-700 text-[11px] flex items-center gap-1">
+                Buka Panel <ArrowRight size={12} />
+              </span>
+            </div>
+          </div>
+
+          {/* Card 3: Overdue Risk */}
           <div className={`rounded-2xl p-4 border shadow-soft flex flex-col justify-between ${
             metrics.overdueCount > 0
               ? "bg-rose-50 border-rose-200 text-rose-950"
@@ -412,7 +645,7 @@ export default function Bills() {
           }`}>
             <div>
               <div className="flex items-center justify-between">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-rose-700">Total Menunggak (Overdue)</p>
+                <p className="text-[10px] uppercase tracking-widest font-bold text-rose-700">Lewat Jatuh Tempo</p>
                 {metrics.overdueCount > 0 && (
                   <span className="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-bold animate-pulse">
                     {metrics.overdueCount} Overdue
@@ -424,22 +657,22 @@ export default function Bills() {
               </p>
             </div>
             <div className="mt-3 pt-2.5 border-t border-rose-200/60 flex items-center justify-between text-xs font-semibold">
-              <span className="text-rose-800">Prioritas Penagihan H+</span>
+              <span className="text-rose-800">Prioritas Penagihan</span>
               <button
                 type="button"
                 onClick={openDunningDialog}
                 className="text-rose-700 hover:underline flex items-center gap-1 text-[11px]"
               >
-                Kirim WA Dunning <ArrowRight size={12} />
+                WA Dunning <ArrowRight size={12} />
               </button>
             </div>
           </div>
 
-          {/* Card 3: Collection Progress */}
+          {/* Card 4: Collection Progress */}
           <div className="bg-surface rounded-2xl p-4 border border-line shadow-soft flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-subtle">Kolektibilitas Bulan Ini</p>
+                <p className="text-[10px] uppercase tracking-widest font-bold text-subtle">Kolektibilitas / Lunas</p>
                 <span className="font-serif font-bold text-sm text-primary">{metrics.collectionRate}%</span>
               </div>
               <div className="w-full bg-muted rounded-full h-2.5 mt-2.5 overflow-hidden">
@@ -460,29 +693,31 @@ export default function Bills() {
       {/* ─── 2. REVENUE ACTION STRIP ──────────────────────────────────── */}
       <div className="px-5 sm:px-6 mt-3 flex flex-wrap gap-2">
         <Button variant="secondary" onClick={generateMonthly} testid="generate-bills-btn" className="text-xs">
-          <Zap size={14} className="mr-1 text-secondary" /> Tagihan Bulanan Otomatis ({monthLabel(currentPeriod()).split(" ")[0]})
+          <Zap size={14} className="mr-1 text-secondary" /> Auto-Generate Tagihan ({monthLabel(currentPeriod()).split(" ")[0]})
         </Button>
         <Button
           variant="outline"
           onClick={() => {
-            setPayForm({ bill_id: "", amount: 0, method: "qris", reference: "" });
+            setPayForm({ bill_id: "", amount: 0, method: "BANK_TRANSFER", reference: "" });
             setPaySheet(true);
           }}
           testid="record-payment-btn"
           className="text-xs"
         >
-          <Wallet size={14} className="mr-1" /> Catat Pembayaran Masuk
+          <Wallet size={14} className="mr-1" /> Catat Pembayaran Manual
         </Button>
       </div>
 
-      {/* ─── 3. STATUS FILTER PILLS WITH LIVE WORKLOAD COUNTS ─────────── */}
+      {/* ─── 3. STATUS FILTER PILLS ───────────────────────────────────── */}
       <div className="px-5 sm:px-6 mt-4 chip-scroll-container pb-1">
         {[
           { key: "all", label: "Semua", count: metrics.allCount },
+          { key: "verifying", label: "Menunggu Verifikasi", count: metrics.verifyingCount, alert: metrics.verifyingCount > 0, highlight: true },
           { key: "overdue", label: "Terlambat", count: metrics.overdueCount, alert: metrics.overdueCount > 0 },
           { key: "partially_paid", label: "Sebagian", count: metrics.partiallyPaidCount },
           { key: "unpaid", label: "Belum Bayar", count: metrics.unpaidCount },
           { key: "paid", label: "Lunas", count: metrics.paidCount },
+          { key: "cancelled", label: "Dibatalkan", count: bills.filter((b) => (b.status || "").toUpperCase() === "CANCELLED").length },
         ].map((f) => (
           <button
             key={f.key}
@@ -490,11 +725,15 @@ export default function Bills() {
             onClick={() => setFilter(f.key)}
             className={`px-3.5 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 min-h-[40px] ${
               filter === f.key
-                ? "bg-primary text-white border-primary shadow-xs"
+                ? f.highlight
+                  ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                  : "bg-primary text-white border-primary shadow-xs"
+                : f.alert && f.highlight
+                ? "bg-amber-50 text-amber-900 border-amber-300 hover:border-amber-500"
                 : "bg-surface text-gray-700 hover:text-ink border-line hover:border-primary/30"
             }`}
           >
-            {f.alert && <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />}
+            {f.alert && <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />}
             <span>{f.label}</span>
             <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
               filter === f.key ? "bg-white/20 text-white" : "bg-muted text-subtle"
@@ -516,19 +755,25 @@ export default function Bills() {
           />
         )}
 
-        {/* ACTIVE INVOICES (Overdue, Partially Paid, Unpaid) */}
+        {/* ACTIVE INVOICES */}
         {activeBills.map((b, i) => {
           const remaining = Math.max(0, b.total - (b.amount_paid || 0));
-          const isOverdue = b.is_overdue;
-          const isPartial = b.status === "partially_paid";
+          const statusUpper = (b.status || "").toUpperCase();
+          const isVerifying = statusUpper === "VERIFYING";
+          const isOverdue = b.is_overdue || statusUpper === "OVERDUE";
+          const isPartial = statusUpper === "PARTIAL_PAID" || b.status === "partially_paid";
+          const isCancelled = statusUpper === "CANCELLED";
           const overdueDays = getOverdueDays(b.due_date);
 
-          // Card Border & Background styling based on status risk
           let cardStyle = "bg-surface border-line hover:border-primary/40 border-l-4 border-l-primary/70";
-          if (isOverdue) {
+          if (isVerifying) {
+            cardStyle = "bg-amber-50/50 border-amber-300 hover:border-amber-500 border-l-4 border-l-amber-500 shadow-sm";
+          } else if (isOverdue) {
             cardStyle = "bg-rose-50/40 border-rose-200 hover:border-rose-400 border-l-4 border-l-rose-600 shadow-sm";
           } else if (isPartial) {
-            cardStyle = "bg-amber-50/30 border-amber-200 hover:border-amber-400 border-l-4 border-l-amber-500 shadow-sm";
+            cardStyle = "bg-blue-50/30 border-blue-200 hover:border-blue-400 border-l-4 border-l-blue-500 shadow-sm";
+          } else if (isCancelled) {
+            cardStyle = "bg-gray-50 border-gray-200 opacity-60 border-l-4 border-l-gray-400";
           }
 
           return (
@@ -547,34 +792,46 @@ export default function Bills() {
                     <span className="text-xs font-bold font-mono uppercase tracking-wider text-secondary">
                       {b.invoice_number}
                     </span>
-                    {isOverdue && (
+                    {isVerifying && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs animate-pulse">
+                        <Eye size={12} /> Menunggu Verifikasi Bukti
+                      </span>
+                    )}
+                    {isOverdue && !isVerifying && (
                       <span className="px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs">
                         <AlertCircle size={12} /> Terlambat {overdueDays > 0 ? `${overdueDays} Hari` : ""}
                       </span>
                     )}
-                    {isPartial && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[11px] font-bold shadow-xs">
-                        Sebagian (Tercatat: {fmtIDR(b.amount_paid)})
+                    {isPartial && !isVerifying && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-bold shadow-xs">
+                        Sebagian (Masuk: {fmtIDR(b.amount_paid)})
                       </span>
                     )}
-                    {!isOverdue && !isPartial && (
+                    {!isVerifying && !isOverdue && !isPartial && !isCancelled && (
                       <span className="px-2.5 py-0.5 rounded-full bg-slate-200 text-slate-800 text-[11px] font-bold">
                         Belum Bayar
                       </span>
                     )}
+                    {isCancelled && (
+                      <span className="px-2.5 py-0.5 rounded-full bg-gray-200 text-gray-700 text-[11px] font-bold">
+                        Dibatalkan
+                      </span>
+                    )}
                   </div>
                   <p className="font-serif text-xl font-bold text-primary mt-1 truncate">
-                    {tenantName(b.tenant_id)}
+                    {b.resident_name || tenantName(b.tenant_id)}
                   </p>
                   <p className="text-xs text-gray-600 mt-0.5 font-medium">
-                    Kamar <strong>{roomName(b.room_id)}</strong> · Periode {monthLabel(b.period)}
+                    Kamar <strong>{b.room_unit || roomName(b.room_id)}</strong> · Periode {monthLabel(b.period)}
                   </p>
                 </div>
 
-                {/* Dominant Financial Highlight: Remaining Balance */}
+                {/* Remaining Balance */}
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] uppercase font-bold tracking-wider text-subtle">Sisa Pembayaran</p>
-                  <p className={`font-mono text-xl sm:text-2xl font-bold tnum ${isOverdue ? "text-rose-700" : isPartial ? "text-amber-700" : "text-primary"}`}>
+                  <p className="text-[10px] uppercase font-bold tracking-wider text-subtle">Sisa Tagihan</p>
+                  <p className={`font-mono text-xl sm:text-2xl font-bold tnum ${
+                    isVerifying ? "text-amber-700" : isOverdue ? "text-rose-700" : isPartial ? "text-blue-700" : "text-primary"
+                  }`}>
                     {fmtIDR(remaining)}
                   </p>
                   <p className="text-[11px] text-gray-500 mt-0.5 font-medium">
@@ -583,6 +840,31 @@ export default function Bills() {
                 </div>
               </div>
 
+              {/* Line Items Preview */}
+              {b.items && b.items.length > 0 && (
+                <div className="mt-3 py-2 px-3 bg-muted/50 rounded-xl border border-line/60 text-xs space-y-1">
+                  <p className="text-[10px] uppercase font-bold text-subtle tracking-wider">Komponen Tagihan:</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
+                    {b.items.map((it, idx) => (
+                      <div key={idx} className="flex justify-between items-center text-gray-700">
+                        <span className="truncate">• {it.name}</span>
+                        <span className="font-mono font-medium ml-2">{fmtIDR(it.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Rejection Note Alert if previously rejected */}
+              {b.payment_details?.rejection_reason && (
+                <div className="mt-2.5 p-2.5 bg-rose-100/70 border border-rose-200 rounded-xl text-xs text-rose-900 flex items-start gap-2">
+                  <AlertTriangle size={14} className="text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">Bukti Transfer Ditolak Sebelumnya:</span> {b.payment_details.rejection_reason}
+                  </div>
+                </div>
+              )}
+
               {/* Due Date & Action Bar */}
               <div className="mt-3.5 pt-3 border-t border-line/70 flex flex-wrap items-center justify-between gap-2.5">
                 <div className="flex items-center gap-1.5 text-xs text-gray-600 font-medium">
@@ -590,30 +872,17 @@ export default function Bills() {
                   <span>Jatuh Tempo: <strong>{b.due_date ? fmtDate(b.due_date) : "-"}</strong></span>
                 </div>
 
-                {/* Clear Action Hierarchy */}
-                <div className="flex items-center gap-2 ml-auto">
-                  {isOverdue ? (
-                    // Overdue Dominant Action: Send WA Reminder
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => sendWhatsAppReminder(b.id)}
-                        className="px-3.5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs active:scale-95 transition-all min-h-[40px]"
-                        title="Kirim Pesan Tagihan ke WhatsApp"
-                      >
-                        <Send size={13} /> Kirim WA
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openPay(b)}
-                        className="px-3 py-2 rounded-full bg-white hover:bg-muted text-primary border border-line text-xs font-bold flex items-center gap-1 active:scale-95 transition-all min-h-[40px]"
-                        title="Catat Pembayaran Masuk"
-                      >
-                        <Wallet size={13} /> Catat Bayar
-                      </button>
-                    </>
+                {/* Actions */}
+                <div className="flex items-center gap-2 ml-auto flex-wrap">
+                  {isVerifying ? (
+                    <button
+                      type="button"
+                      onClick={() => openVerifyModal(b)}
+                      className="px-4 py-2 rounded-full bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs active:scale-95 transition-all min-h-[40px]"
+                    >
+                      <Eye size={14} /> Review Bukti Transfer
+                    </button>
                   ) : (
-                    // Unpaid / Partial Dominant Action: Record Payment
                     <>
                       <button
                         type="button"
@@ -634,7 +903,7 @@ export default function Bills() {
                     </>
                   )}
 
-                  {/* Secondary Simulation & Edit Controls */}
+                  {/* Simulation & Action Controls */}
                   <button
                     type="button"
                     onClick={() => simulateDirectPay(b.id)}
@@ -645,12 +914,30 @@ export default function Bills() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => openReceipt(b.id)}
+                    className="p-2.5 rounded-full text-subtle hover:text-primary hover:bg-primary/5 grid place-items-center active:scale-95 transition-all min-h-[40px] min-w-[40px]"
+                    title="Lihat Kwitansi / Invoice"
+                  >
+                    <FileText size={14} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => openEdit(b)}
                     className="p-2.5 rounded-full text-subtle hover:text-primary hover:bg-primary/5 grid place-items-center active:scale-95 transition-all min-h-[40px] min-w-[40px]"
                     title="Edit Data Tagihan"
                   >
                     <Edit2 size={14} />
                   </button>
+                  {!isCancelled && (
+                    <button
+                      type="button"
+                      onClick={() => cancelBillAction(b.id)}
+                      className="p-2.5 rounded-full text-subtle hover:text-amber-700 hover:bg-amber-50 grid place-items-center active:scale-95 transition-all min-h-[40px] min-w-[40px]"
+                      title="Batalkan Tagihan"
+                    >
+                      <XCircle size={14} />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => remove(b.id)}
@@ -665,7 +952,7 @@ export default function Bills() {
           );
         })}
 
-        {/* ─── 5. COLLAPSED / MINIMIZED PAID INVOICES SECTION ─────────── */}
+        {/* ─── 5. PAID INVOICES SECTION ───────────────────────────────── */}
         {paidBills.length > 0 && filter === "all" && (
           <div className="mt-4 pt-4 border-t border-line">
             <button
@@ -691,7 +978,7 @@ export default function Bills() {
                   {paidBills.map((b) => (
                     <div
                       key={b.id}
-                      className="bg-surface/80 rounded-2xl border border-line/80 p-3.5 flex items-center justify-between gap-3 opacity-85 hover:opacity-100 transition-opacity border-l-4 border-l-emerald-600/40"
+                      className="bg-surface/80 rounded-2xl border border-line/80 p-3.5 flex items-center justify-between gap-3 opacity-90 hover:opacity-100 transition-opacity border-l-4 border-l-emerald-600"
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -701,15 +988,23 @@ export default function Bills() {
                           </span>
                         </div>
                         <p className="font-serif text-base font-bold text-primary truncate mt-0.5">
-                          {tenantName(b.tenant_id)} (Kamar {roomName(b.room_id)})
+                          {b.resident_name || tenantName(b.tenant_id)} (Kamar {b.room_unit || roomName(b.room_id)})
                         </p>
                         <p className="text-[11px] text-subtle">
-                          Periode {monthLabel(b.period)} · Metode: {methodLabels[b.payment_method] || "Terkonfirmasi"}
+                          Periode {monthLabel(b.period)} · Metode: {methodLabels[b.payment_method] || methodLabels[b.payment_details?.method] || "Transfer Bank"}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
                         <p className="font-serif text-base font-bold text-primary tnum">{fmtIDR(b.total)}</p>
                         <div className="flex items-center gap-1 justify-end mt-1">
+                          <button
+                            type="button"
+                            onClick={() => openReceipt(b.id)}
+                            className="px-2.5 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs font-bold flex items-center gap-1"
+                            title="Lihat Kwitansi Digital"
+                          >
+                            <FileText size={12} /> Kwitansi
+                          </button>
                           <button
                             type="button"
                             onClick={() => openEdit(b)}
@@ -736,7 +1031,7 @@ export default function Bills() {
           </div>
         )}
 
-        {/* If Filter is specifically "paid", show full paid cards */}
+        {/* If Filter is specifically "paid" */}
         {filter === "paid" && (
           paidBills.map((b) => (
             <div
@@ -750,19 +1045,397 @@ export default function Bills() {
                     Lunas Terkonfirmasi ✓
                   </span>
                 </div>
-                <p className="font-serif text-lg font-bold text-primary mt-1">{tenantName(b.tenant_id)}</p>
-                <p className="text-xs text-gray-600">Kamar {roomName(b.room_id)} · Periode {monthLabel(b.period)}</p>
+                <p className="font-serif text-lg font-bold text-primary mt-1">{b.resident_name || tenantName(b.tenant_id)}</p>
+                <p className="text-xs text-gray-600">Kamar {b.room_unit || roomName(b.room_id)} · Periode {monthLabel(b.period)}</p>
               </div>
               <div className="text-right">
                 <p className="font-serif text-xl font-bold text-primary tnum">{fmtIDR(b.total)}</p>
-                <p className="text-xs text-subtle mt-0.5">{methodLabels[b.payment_method] || "Lunas"}</p>
+                <button
+                  type="button"
+                  onClick={() => openReceipt(b.id)}
+                  className="mt-1 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full text-xs font-bold inline-flex items-center gap-1"
+                >
+                  <FileText size={13} /> Cetak Kwitansi
+                </button>
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* ─── 6. DYNAMIC DUNNING & WHATSAPP SHEET ─────────────────────── */}
+      {/* ─── 6. PROOF OF PAYMENT VERIFICATION MODAL ───────────────────── */}
+      {verifyModalBill && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-surface rounded-3xl border border-line shadow-2xl max-w-3xl w-full overflow-hidden flex flex-col max-h-[90vh]"
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-line flex items-center justify-between bg-muted/40">
+              <div>
+                <span className="text-xs font-bold text-secondary uppercase font-mono">
+                  {verifyModalBill.invoice_number}
+                </span>
+                <h3 className="font-serif text-xl font-bold text-primary">Verifikasi Bukti Transfer</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVerifyModalBill(null)}
+                className="p-2 rounded-full hover:bg-muted text-subtle hover:text-primary"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Content: Split Screen */}
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto flex-1">
+              {/* Left Side: Proof Image Preview */}
+              <div className="flex flex-col">
+                <p className="text-xs uppercase font-bold text-subtle tracking-wider mb-2">Foto / Bukti Transfer:</p>
+                <div className="bg-black/5 rounded-2xl border border-line/80 flex items-center justify-center overflow-hidden min-h-[260px] p-2 relative group">
+                  {verifyModalBill.payment_details?.proof_image_url ? (
+                    <img
+                      src={verifyModalBill.payment_details.proof_image_url}
+                      alt="Bukti Transfer"
+                      className="max-h-[340px] w-auto object-contain rounded-xl shadow-xs"
+                    />
+                  ) : (
+                    <div className="text-center p-6 text-subtle text-xs">
+                      <AlertCircle size={32} className="mx-auto mb-2 text-amber-500" />
+                      Gambar bukti transfer tidak ditemukan / belum diunggah.
+                    </div>
+                  )}
+                </div>
+                {verifyModalBill.payment_details?.proof_image_url && (
+                  <a
+                    href={verifyModalBill.payment_details.proof_image_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-primary font-bold hover:underline flex items-center gap-1 mt-2 mx-auto"
+                  >
+                    Buka Gambar Penuh <ExternalLink size={12} />
+                  </a>
+                )}
+              </div>
+
+              {/* Right Side: Invoice & Payment Details */}
+              <div className="flex flex-col justify-between space-y-4">
+                <div className="space-y-3 bg-muted/30 p-4 rounded-2xl border border-line/60">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-subtle">Penghuni & Kamar</span>
+                    <p className="font-serif text-lg font-bold text-primary">
+                      {verifyModalBill.resident_name || tenantName(verifyModalBill.tenant_id)}
+                    </p>
+                    <p className="text-xs text-gray-600">Unit: {verifyModalBill.room_unit || roomName(verifyModalBill.room_id)}</p>
+                  </div>
+
+                  <div className="pt-2 border-t border-line/60 grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-subtle">Bank Pengirim:</span>
+                      <p className="font-bold text-primary">{verifyModalBill.payment_details?.bank_name || "Transfer Bank"}</p>
+                    </div>
+                    <div>
+                      <span className="text-subtle">Nama Pengirim:</span>
+                      <p className="font-bold text-primary">{verifyModalBill.payment_details?.sender_name || "-"}</p>
+                    </div>
+                    <div>
+                      <span className="text-subtle">Waktu Transfer:</span>
+                      <p className="font-medium text-gray-700">{verifyModalBill.payment_details?.paid_at ? fmtDate(verifyModalBill.payment_details.paid_at) : "-"}</p>
+                    </div>
+                    <div>
+                      <span className="text-subtle">Metode:</span>
+                      <p className="font-medium text-gray-700">{methodLabels[verifyModalBill.payment_details?.method] || "Bank Transfer"}</p>
+                    </div>
+                  </div>
+
+                  {verifyModalBill.payment_details?.note && (
+                    <div className="pt-2 border-t border-line/60 text-xs">
+                      <span className="text-subtle">Catatan Penghuni:</span>
+                      <p className="italic text-gray-800">"{verifyModalBill.payment_details.note}"</p>
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t border-line flex items-center justify-between">
+                    <span className="text-xs uppercase font-bold text-subtle">Total Tagihan:</span>
+                    <span className="font-serif text-2xl font-bold text-primary tnum">
+                      {fmtIDR(verifyModalBill.total)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Reject Input Field */}
+                {showRejectBox ? (
+                  <div className="space-y-2 p-3 bg-rose-50 rounded-2xl border border-rose-200">
+                    <label className="text-xs font-bold text-rose-900 block">Alasan Penolakan Bukti *</label>
+                    <input
+                      type="text"
+                      className="w-full text-xs p-2.5 bg-white border border-rose-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500"
+                      placeholder="Contoh: Bukti buram / nominal transfer tidak sesuai..."
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                    />
+                    <div className="flex gap-2 justify-end pt-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowRejectBox(false)}
+                      >
+                        Batal
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        loading={submitting}
+                        onClick={() => handleVerify("reject")}
+                        className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold"
+                      >
+                        Konfirmasi Tolak
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowRejectBox(true)}
+                      className="flex-1 border-rose-300 text-rose-700 hover:bg-rose-50 font-bold"
+                    >
+                      <XCircle size={15} className="mr-1.5 text-rose-600" /> Tolak Bukti
+                    </Button>
+                    <Button
+                      type="button"
+                      loading={submitting}
+                      onClick={() => handleVerify("approve")}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                    >
+                      <CheckCircle2 size={15} className="mr-1.5" /> Setujui & Lunaskan
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ─── 7. DIGITAL RECEIPT MODAL ─────────────────────────────────── */}
+      {receiptModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-surface rounded-3xl border border-line shadow-2xl max-w-xl w-full overflow-hidden flex flex-col max-h-[90vh]"
+          >
+            {/* Action Bar */}
+            <div className="px-6 py-3 border-b border-line flex items-center justify-between bg-muted/40 no-print">
+              <span className="text-xs font-bold uppercase tracking-wider text-secondary">Kwitansi Pembayaran Resmi</span>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={printReceipt} className="text-xs">
+                  <Printer size={13} className="mr-1" /> Cetak / PDF
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setReceiptModalOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-muted text-subtle hover:text-primary"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Receipt Paper */}
+            <div className="p-8 overflow-y-auto bg-white text-ink font-sans space-y-6" id="printable-receipt">
+              {receiptLoading || !receiptData ? (
+                <div className="py-16 text-center text-subtle animate-pulse text-sm">Menyiapkan Kwitansi...</div>
+              ) : (
+                <>
+                  {/* Brand Header */}
+                  <div className="flex items-start justify-between border-b-2 border-primary/20 pb-4">
+                    <div>
+                      <h2 className="font-serif text-2xl font-bold text-primary tracking-tight">LEWI HOUSE</h2>
+                      <p className="text-[11px] uppercase tracking-widest text-secondary font-bold font-mono">Boutique Living & Boarding</p>
+                      <p className="text-[11px] text-gray-500 mt-1">Bandung, Jawa Barat · support@lewihouse.com</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full font-mono">
+                        LUNAS / PAID
+                      </span>
+                      <p className="text-xs font-mono font-bold text-primary mt-2">{receiptData.receipt_number}</p>
+                      <p className="text-[11px] text-gray-500">Ref: {receiptData.invoice_number}</p>
+                    </div>
+                  </div>
+
+                  {/* Customer & Bill Details */}
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <p className="text-gray-500 uppercase font-bold text-[10px]">Diterima Dari (Penyewa):</p>
+                      <p className="font-serif text-base font-bold text-primary mt-0.5">{receiptData.tenant?.name}</p>
+                      <p className="text-gray-600">{receiptData.tenant?.phone} · Kamar {receiptData.room?.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-gray-500 uppercase font-bold text-[10px]">Tanggal Pembayaran:</p>
+                      <p className="font-bold text-primary mt-0.5">{fmtDate(receiptData.issued_at)}</p>
+                      <p className="text-gray-600">Periode: {monthLabel(receiptData.period)}</p>
+                    </div>
+                  </div>
+
+                  {/* Items Table */}
+                  <div className="border border-line rounded-xl overflow-hidden">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-muted/60 text-subtle font-bold uppercase text-[10px]">
+                        <tr>
+                          <th className="p-2.5">Rincian Pembayaran</th>
+                          <th className="p-2.5 text-right">Nominal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {receiptData.items?.map((it, idx) => (
+                          <tr key={idx}>
+                            <td className="p-2.5 font-medium text-gray-800">{it.name}</td>
+                            <td className="p-2.5 text-right font-mono font-bold">{fmtIDR(it.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-primary/5 font-bold">
+                        <tr>
+                          <td className="p-2.5 text-primary">TOTAL DITERIMA</td>
+                          <td className="p-2.5 text-right font-mono text-base text-primary font-bold">
+                            {fmtIDR(receiptData.total_amount)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  {/* Verification Seal & Signature */}
+                  <div className="pt-4 border-t border-dashed border-line flex items-center justify-between text-xs text-gray-600">
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-subtle">Kanal Pembayaran:</p>
+                      <p className="font-medium text-primary font-mono">{receiptData.payment_method}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase font-bold text-subtle">Diverifikasi Oleh:</p>
+                      <p className="font-serif font-bold text-primary">{receiptData.verified_by}</p>
+                      <p className="text-[10px] text-emerald-700 font-bold">✓ Official Certified Digital Receipt</p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ─── 8. PRORATA ROOM TRANSFER SHEET ──────────────────────────── */}
+      <Sheet
+        open={prorataOpen}
+        onClose={() => setProrataOpen(false)}
+        title="Kalkulator Prorata Pindah Kamar"
+        subtitle="Hitung penyesuaian sewa otomatis saat penghuni berpindah unit di pertengahan bulan"
+        maxWidth="sm:max-w-lg"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setProrataOpen(false)}
+              className="flex-1"
+            >
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              form="prorata-form"
+              loading={submitting}
+              className="flex-1"
+            >
+              Terbitkan Invoice Prorata
+            </Button>
+          </>
+        }
+      >
+        <form id="prorata-form" onSubmit={submitProrata} className="space-y-3">
+          <Select
+            label="Pilih Penghuni *"
+            value={prorataForm.tenant_id}
+            onChange={(e) => {
+              const tid = e.target.value;
+              const t = tenants.find((x) => x.id === tid);
+              setProrataForm({
+                ...prorataForm,
+                tenant_id: tid,
+                old_room_id: t?.room_id || "",
+              });
+            }}
+            required
+          >
+            <option value="">-- Pilih Penghuni Aktif --</option>
+            {tenants.filter((t) => t.status === "active").map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name} (Kamar Sekarang: {roomName(t.room_id)})
+              </option>
+            ))}
+          </Select>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Select
+              label="Kamar Lama *"
+              value={prorataForm.old_room_id}
+              onChange={(e) => setProrataForm({ ...prorataForm, old_room_id: e.target.value })}
+              required
+            >
+              <option value="">-- Kamar Lama --</option>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name} ({fmtIDR(r.price)})
+                </option>
+              ))}
+            </Select>
+
+            <Select
+              label="Kamar Baru *"
+              value={prorataForm.new_room_id}
+              onChange={(e) => setProrataForm({ ...prorataForm, new_room_id: e.target.value })}
+              required
+            >
+              <option value="">-- Kamar Baru --</option>
+              {rooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name} ({fmtIDR(r.price)})
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Tanggal Pindah Kamar *"
+              type="date"
+              value={prorataForm.transfer_date}
+              onChange={(e) => setProrataForm({ ...prorataForm, transfer_date: e.target.value })}
+              required
+            />
+            <Input
+              label="Periode (YYYY-MM) *"
+              type="month"
+              value={prorataForm.period}
+              onChange={(e) => setProrataForm({ ...prorataForm, period: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="p-3.5 bg-muted rounded-2xl border border-line text-xs text-subtle space-y-1">
+            <p className="font-bold text-primary">Formula Perhitungan Prorata:</p>
+            <p>• Hari 1 s.d. Tanggal Pindah: Tarif kamar lama dihitung harian.</p>
+            <p>• Sisa hari bulan berjalan: Tarif kamar baru dihitung harian.</p>
+          </div>
+        </form>
+      </Sheet>
+
+      {/* ─── 9. DYNAMIC DUNNING & WHATSAPP SHEET ─────────────────────── */}
       <Sheet
         open={dunningSheet}
         onClose={() => setDunningSheet(false)}
@@ -819,7 +1492,6 @@ export default function Bills() {
                   </div>
                 </div>
 
-                {/* Preview text */}
                 <div className="p-3 bg-white rounded-xl border border-line/60 text-xs text-ink font-mono whitespace-pre-wrap max-h-28 overflow-y-auto leading-relaxed">
                   {item.message_preview}
                 </div>
@@ -845,13 +1517,13 @@ export default function Bills() {
         </div>
       </Sheet>
 
-      {/* ─── 7. DYNAMIC ADD/EDIT INVOICE SHEET ───────────────────────── */}
+      {/* ─── 10. DYNAMIC ADD/EDIT INVOICE SHEET ──────────────────────── */}
       <Sheet
         open={openSheet}
         onClose={() => setOpenSheet(false)}
-        title={editing ? `Edit ${editing.invoice_number}` : "Buat Tagihan Baru"}
-        subtitle={editing ? "Perbarui rincian komponen biaya invoice" : "Terbitkan invoice sewa bulanan, utilitas & biaya lainnya"}
-        maxWidth="sm:max-w-xl"
+        title={editing ? `Edit ${editing.invoice_number}` : "Terbitkan Tagihan / Custom Bill"}
+        subtitle={editing ? "Perbarui komponen biaya invoice resmi" : "Pilih penyewa dan tambahkan rincian komponen tagihan sewa & utilitas"}
+        maxWidth="sm:max-w-2xl"
         footer={
           <>
             <Button
@@ -869,13 +1541,13 @@ export default function Bills() {
               loading={submitting}
               className="flex-1"
             >
-              {editing ? "Simpan Perubahan" : "Terbitkan Tagihan"}
+              {editing ? "Simpan Perubahan" : "Terbitkan Invoice Resmi"}
             </Button>
           </>
         }
       >
-        <form id="bill-form" onSubmit={submit} className="space-y-1">
-          <FormSection title="Penyewa & Kamar">
+        <form id="bill-form" onSubmit={submit} className="space-y-3">
+          <FormSection title="Penyewa & Jadwal Jatuh Tempo">
             <Select
               label="Pilih Penghuni *"
               testid="input-bill-tenant"
@@ -901,7 +1573,7 @@ export default function Bills() {
                 required
               />
               <Input
-                label="Tanggal Batas Jatuh Tempo *"
+                label="Batas Tanggal Jatuh Tempo *"
                 testid="input-bill-due"
                 type="date"
                 value={form.due_date}
@@ -911,56 +1583,92 @@ export default function Bills() {
             </div>
           </FormSection>
 
-          <FormSection title="Rincian Komponen Biaya">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <MoneyInput
-                label="Harga Sewa Kamar"
-                testid="input-bill-rent"
-                value={form.rent}
-                onChange={(val) => setForm({ ...form, rent: val })}
-              />
-              <MoneyInput
-                label="Biaya Listrik / PLN"
-                testid="input-bill-electricity"
-                value={form.electricity}
-                onChange={(val) => setForm({ ...form, electricity: val })}
-              />
+          {/* Dynamic Bill Components */}
+          <FormSection title="Komponen Rincian Biaya (Line Items)">
+            <div className="space-y-2.5">
+              {form.items.map((item, idx) => (
+                <div key={idx} className="p-3 bg-muted/40 rounded-2xl border border-line/70 flex items-center gap-2">
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      className="w-full text-xs font-bold p-2 bg-white border border-line rounded-xl"
+                      placeholder="Nama Biaya (contoh: Sewa Pokok, Listrik kWh)"
+                      value={item.name}
+                      onChange={(e) => handleItemChange(idx, "name", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="w-36 sm:w-44">
+                    <MoneyInput
+                      value={item.amount}
+                      onChange={(val) => handleItemChange(idx, "amount", val)}
+                      placeholder="Nominal (Rp)"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(idx)}
+                    className="p-2 rounded-xl text-subtle hover:text-danger hover:bg-danger/10 active:scale-95"
+                    title="Hapus baris"
+                  >
+                    <Minus size={15} />
+                  </button>
+                </div>
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <MoneyInput
-                label="Biaya Air / PDAM"
-                testid="input-bill-water"
-                value={form.water}
-                onChange={(val) => setForm({ ...form, water: val })}
-              />
-              <MoneyInput
-                label="Denda Keterlambatan"
-                testid="input-bill-late"
-                value={form.late_fee}
-                onChange={(val) => setForm({ ...form, late_fee: val })}
-              />
+            {/* Preset Quick Add Buttons */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-2">
+              <span className="text-[10px] uppercase font-bold text-subtle mr-1">+ Tambah Preset:</span>
+              <button
+                type="button"
+                onClick={() => handleAddItem("Listrik (Selisih kWh)", "electricity", 150000)}
+                className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-gray-700 flex items-center gap-1"
+              >
+                <Plus size={11} /> Listrik kWh
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddItem("Air / PDAM", "water", 50000)}
+                className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-gray-700 flex items-center gap-1"
+              >
+                <Plus size={11} /> Air PDAM
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddItem("Layanan Kebersihan", "add_on", 100000)}
+                className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-gray-700 flex items-center gap-1"
+              >
+                <Plus size={11} /> Kebersihan
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddItem("Parkir Kendaraan", "add_on", 150000)}
+                className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-gray-700 flex items-center gap-1"
+              >
+                <Plus size={11} /> Parkir
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddItem("Denda Keterlambatan", "penalty", 50000)}
+                className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-rose-700 flex items-center gap-1"
+              >
+                <Plus size={11} /> Denda
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAddItem("Biaya Lainnya", "other", 0)}
+                className="px-2.5 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-[11px] font-bold flex items-center gap-1"
+              >
+                <Plus size={11} /> Kustom
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Input
-                label="Keterangan Biaya Lain (Opsional)"
-                placeholder="Misal: Laundry / Parkir Mobil"
-                value={form.other_label}
-                onChange={(e) => setForm({ ...form, other_label: e.target.value })}
-              />
-              <MoneyInput
-                label="Nominal Biaya Lain"
-                testid="input-bill-other"
-                value={form.other}
-                onChange={(val) => setForm({ ...form, other: val })}
-              />
-            </div>
-
-            <div className="p-4 bg-muted rounded-2xl border border-line flex items-center justify-between">
-              <span className="text-xs uppercase font-bold text-subtle tracking-wider">Total Kalkulasi Invoice:</span>
+            {/* Total Display */}
+            <div className="p-4 bg-primary/5 rounded-2xl border border-primary/20 flex items-center justify-between mt-3">
+              <span className="text-xs uppercase font-bold text-subtle tracking-wider">Total Tagihan:</span>
               <span className="font-serif text-2xl font-bold text-primary tnum">
-                {fmtIDR(Number(form.rent) + Number(form.electricity) + Number(form.water) + Number(form.other) + Number(form.late_fee))}
+                {fmtIDR(totalCalculatedForm)}
               </span>
             </div>
           </FormSection>
@@ -971,18 +1679,18 @@ export default function Bills() {
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
-              placeholder="Catatan khusus invoice untuk penghuni..."
+              placeholder="Catatan khusus invoice untuk dicetak di invoice..."
             />
           </FormSection>
         </form>
       </Sheet>
 
-      {/* ─── 8. DYNAMIC RECORD PAYMENT SHEET ─────────────────────────── */}
+      {/* ─── 11. RECORD PAYMENT SHEET ─────────────────────────────────── */}
       <Sheet
         open={paySheet}
         onClose={() => setPaySheet(false)}
         title="Catat Pembayaran Masuk"
-        subtitle="Simpan transaksi transfer bank, QRIS, atau tunai"
+        subtitle="Simpan pembayaran transfer bank, QRIS, atau tunai manual"
         maxWidth="sm:max-w-lg"
         footer={
           <>
@@ -1006,7 +1714,7 @@ export default function Bills() {
           </>
         }
       >
-        <form id="pay-form" onSubmit={submitPayment} className="space-y-1">
+        <form id="pay-form" onSubmit={submitPayment} className="space-y-3">
           <FormSection title="Rincian Tagihan & Nominal">
             <Select
               label="Pilih Invoice Tagihan *"
@@ -1016,9 +1724,9 @@ export default function Bills() {
               required
             >
               <option value="">-- Pilih Tagihan Tertunda --</option>
-              {bills.filter((b) => b.status !== "paid").map((b) => (
+              {bills.filter((b) => (b.status || "").toUpperCase() !== "PAID").map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.invoice_number} — {tenantName(b.tenant_id)} (Sisa: {fmtIDR(b.total - (b.amount_paid || 0))})
+                  {b.invoice_number} — {b.resident_name || tenantName(b.tenant_id)} (Sisa: {fmtIDR(b.total - (b.amount_paid || 0))})
                 </option>
               ))}
             </Select>
@@ -1040,14 +1748,14 @@ export default function Bills() {
                 value={payForm.method}
                 onChange={(e) => setPayForm({ ...payForm, method: e.target.value })}
               >
-                <option value="qris">QRIS (Scan Realtime)</option>
-                <option value="bank_transfer">Transfer Bank (BCA / Mandiri)</option>
-                <option value="cash">Tunai (Cash ke Staff)</option>
+                <option value="BANK_TRANSFER">Transfer Bank (BCA / Mandiri)</option>
+                <option value="QRIS">QRIS</option>
+                <option value="CASH">Tunai (Cash)</option>
               </Select>
               <Input
-                label="Nomor Referensi / Ref ID"
+                label="Nomor Referensi / Struk"
                 testid="input-pay-ref"
-                placeholder="Contoh: TRF98810 / QR882"
+                placeholder="Contoh: TRF98810"
                 value={payForm.reference}
                 onChange={(e) => setPayForm({ ...payForm, reference: e.target.value })}
               />

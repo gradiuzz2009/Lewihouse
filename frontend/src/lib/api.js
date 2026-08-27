@@ -1,57 +1,50 @@
 import axios from "axios";
-import { handleMockApi } from "./mockData";
+import { executeLiveQuery } from "./liveStore";
 
-const BASE = process.env.REACT_APP_BACKEND_URL;
+const BASE = process.env.REACT_APP_BACKEND_URL || "";
 
-const axiosInstance = axios.create({
+export const axiosInstance = axios.create({
   baseURL: BASE ? `${BASE.replace(/\/$/, "")}/api` : "/api",
   headers: { "Content-Type": "application/json" },
   withCredentials: true,
 });
 
 axiosInstance.interceptors.request.use((cfg) => {
-  const t = localStorage.getItem("lh_token");
-  if (t) cfg.headers.Authorization = `Bearer ${t}`;
+  const token = localStorage.getItem("lh_token");
+  if (token) {
+    cfg.headers.Authorization = `Bearer ${token}`;
+  }
   return cfg;
 });
 
-axiosInstance.interceptors.response.use(
-  (r) => r,
-  (err) => {
-    if (err.response?.status === 401 && !String(err.config?.url).includes("/auth/")) {
-      localStorage.removeItem("lh_token");
-      if (window.location.pathname !== "/login") window.location.href = "/login";
-    }
-    return Promise.reject(err);
-  }
-);
-
-// Wrapper that transparently proxies to live backend if available, or seamlessly uses mock storage
-async function requestWithFallback(method, url, data, config) {
+// Safe request dispatcher: routes to live backend if BASE configured; otherwise uses liveStore
+async function dispatchRequest(method, url, data, config) {
   if (BASE) {
     try {
       if (method === "get") return await axiosInstance.get(url, config);
       if (method === "post") return await axiosInstance.post(url, data, config);
       if (method === "put") return await axiosInstance.put(url, data, config);
       if (method === "delete") return await axiosInstance.delete(url, config);
+      if (method === "patch") return await axiosInstance.patch(url, data, config);
     } catch (err) {
-      // If live backend gives 401 on auth check, let it bubble
+      // If server returned 401 on login, bubble it up
       if (err.response?.status === 401 && String(url).includes("/auth/login")) {
         throw err;
       }
     }
   }
 
-  // Fallback to local persistent mock engine (for Firebase static hosting & offline mode)
-  const result = handleMockApi(method, url, data);
+  // Live client-side persistent storage
+  const result = executeLiveQuery(method, url, data);
   return { data: result, status: 200, statusText: "OK", headers: {}, config: {} };
 }
 
 export const api = {
-  get: (url, config) => requestWithFallback("get", url, null, config),
-  post: (url, data, config) => requestWithFallback("post", url, data, config),
-  put: (url, data, config) => requestWithFallback("put", url, data, config),
-  delete: (url, config) => requestWithFallback("delete", url, null, config),
+  get: (url, config) => dispatchRequest("get", url, null, config),
+  post: (url, data, config) => dispatchRequest("post", url, data, config),
+  put: (url, data, config) => dispatchRequest("put", url, data, config),
+  delete: (url, config) => dispatchRequest("delete", url, null, config),
+  patch: (url, data, config) => dispatchRequest("patch", url, data, config),
   interceptors: axiosInstance.interceptors,
 };
 

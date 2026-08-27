@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "lewihouseadminapp",
     "public": "frontend/build",
     "ignore": [
       "firebase.json",
@@ -16,6 +17,9 @@
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
   },
   "emulators": {
     "dataconnect": {

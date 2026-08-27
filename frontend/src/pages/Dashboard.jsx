@@ -6,8 +6,9 @@ import { api, fmtIDR, monthLabel } from "../lib/api";
 import { History, TrendingUp, AlertCircle, Sparkles, KeyRound, LogOut, Wrench, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../components/ui";
-import SpeedDial from "../components/SpeedDial";
+import UserIndicator from "../components/UserIndicator";
 import { useAuth } from "../context/AuthContext";
+import { useAutoRefresh } from "../hooks/useAutoRefresh";
 
 const HERO = "https://customer-assets-0z36b82j.emergentagent.net/job_dorm-hub-31/artifacts/rbo24c8q_agoda-01-view.webp";
 
@@ -37,9 +38,7 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
-    load();
-  }, []);
+  useAutoRefresh(load);
 
   const seed = async () => {
     try {
@@ -61,51 +60,60 @@ export default function Dashboard() {
   return (
     <div className="fade-up" data-testid="dashboard-page">
       {/* Hero */}
-      <div className="relative h-80 overflow-hidden">
+      <div className="relative min-h-[340px] overflow-hidden">
         <img src={HERO} alt="Property" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0e1a15] via-[#0e1a15]/70 to-[#0e1a15]/35" />
-        <div className="relative z-10 h-full flex flex-col justify-between px-6 pt-6 pb-16 text-white">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.25em] text-white/70">Selamat datang</p>
-              <h1 className="font-serif text-3xl leading-tight mt-1">Lewi House</h1>
-              <p className="text-xs text-white/60 mt-1 capitalize">{today}</p>
-            </div>
-            <div className="flex gap-2">
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0e1a15] via-[#0e1a15]/75 to-[#0e1a15]/40" />
+        <div className="relative z-10 h-full flex flex-col justify-between px-6 pt-6 pb-12 text-white">
+          {/* Top Bar: User Indicator & Action Icons */}
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <UserIndicator compact />
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => nav("/staff")}
-                className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 grid place-items-center active:scale-95"
+                className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-md border border-white/20 grid place-items-center active:scale-95 hover:bg-white/20 transition-all shadow-soft"
                 title="Manajemen Staff"
                 data-testid="staff-btn"
               >
-                <Users size={16} />
+                <Users size={15} />
               </button>
               <button
                 onClick={() => nav("/access")}
-                className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 grid place-items-center active:scale-95"
+                className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-md border border-white/20 grid place-items-center active:scale-95 hover:bg-white/20 transition-all shadow-soft"
                 data-testid="access-btn"
+                title="Akses & Token"
               >
-                <KeyRound size={16} />
+                <KeyRound size={15} />
               </button>
               <button
                 onClick={() => nav("/activity")}
-                className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 grid place-items-center active:scale-95"
+                className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-md border border-white/20 grid place-items-center active:scale-95 hover:bg-white/20 transition-all shadow-soft"
                 data-testid="activity-btn"
+                title="Riwayat Aktivitas"
               >
-                <History size={16} />
+                <History size={15} />
               </button>
               <button
                 onClick={doLogout}
-                className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 grid place-items-center active:scale-95"
+                className="w-9 h-9 rounded-full bg-white/10 backdrop-blur-md border border-white/20 grid place-items-center active:scale-95 hover:bg-red-500/30 text-white hover:text-red-200 transition-all shadow-soft"
                 data-testid="logout-btn"
+                title="Keluar"
               >
-                <LogOut size={16} />
+                <LogOut size={15} />
               </button>
             </div>
           </div>
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.25em] text-secondary/90">Pendapatan Bulan Ini</p>
-            <p className="font-serif text-3xl mt-1 tnum" data-testid="revenue-month">
+
+          {/* Welcome Greeting */}
+          <div className="my-2">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-white/70 font-semibold">Selamat datang</p>
+            <h1 className="font-serif text-3xl leading-tight mt-0.5 font-bold">Lewi House</h1>
+            <p className="text-xs text-white/60 mt-0.5 capitalize">{today}</p>
+          </div>
+
+          {/* Revenue */}
+          <div className="pt-2">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-secondary/90 font-bold">Pendapatan Bulan Ini</p>
+            <p className="font-serif text-3xl mt-0.5 tnum font-bold text-white" data-testid="revenue-month">
               {fmtIDR(s?.revenue_month || 0)}
             </p>
           </div>
@@ -246,7 +254,6 @@ export default function Dashboard() {
 
         <div className="h-8" />
       </div>
-      <SpeedDial />
     </div>
   );
 }

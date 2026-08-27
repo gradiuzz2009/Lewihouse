@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import BottomNav from "./components/BottomNav";
+import SpeedDial from "./components/SpeedDial";
 import Dashboard from "./pages/Dashboard";
 import Rooms from "./pages/Rooms";
 import Tenants from "./pages/Tenants";
@@ -14,6 +15,7 @@ import Staff from "./pages/Staff";
 import Login from "./pages/Login";
 import TenantPortal from "./pages/TenantPortal";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { LangProvider } from "./i18n";
 import { RouteErrorBoundary } from "./components/ErrorBoundary";
 import "./App.css";
 
@@ -65,7 +67,7 @@ function Shell() {
 
   return (
     <div
-      className={`${isPortal ? "" : "max-w-md"} mx-auto min-h-screen bg-bg relative ${showAdminNav ? "main-content-scroll" : ""} shadow-lifted overflow-x-hidden`}
+      className="w-full max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto min-h-screen bg-bg relative main-content-scroll shadow-lifted overflow-x-hidden"
       data-testid="app-shell"
     >
       <Routes>
@@ -83,6 +85,7 @@ function Shell() {
         <Route path="/portal/*" element={<TenantProtected title="Portal Penghuni"><TenantPortal /></TenantProtected>} />
       </Routes>
       {showAdminNav && <BottomNav />}
+      {showAdminNav && <SpeedDial />}
       <Toaster
         position="bottom-center"
         offset={90}
@@ -102,11 +105,13 @@ function Shell() {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Shell />
-      </BrowserRouter>
-    </AuthProvider>
+    <LangProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Shell />
+        </BrowserRouter>
+      </AuthProvider>
+    </LangProvider>
   );
 }
 
