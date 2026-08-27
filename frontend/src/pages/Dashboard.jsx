@@ -60,10 +60,10 @@ export default function Dashboard() {
   return (
     <div className="fade-up" data-testid="dashboard-page">
       {/* Hero */}
-      <div className="relative min-h-[340px] overflow-hidden">
+      <div className="relative min-h-[350px] overflow-hidden">
         <img src={HERO} alt="Property" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0e1a15] via-[#0e1a15]/75 to-[#0e1a15]/40" />
-        <div className="relative z-10 h-full flex flex-col justify-between px-6 pt-6 pb-12 text-white">
+        <div className="relative z-10 h-full flex flex-col justify-between px-6 pt-[calc(env(safe-area-inset-top,0px)+1.5rem)] pb-12 text-white">
           {/* Top Bar: User Indicator & Action Icons */}
           <div className="flex items-center justify-between gap-2 mb-4">
             <UserIndicator compact />

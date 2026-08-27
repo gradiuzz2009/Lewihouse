@@ -112,7 +112,7 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-primary flex flex-col justify-between overflow-x-hidden" data-testid="login-page">
       {/* Top Header Hero */}
-      <div className="px-7 pt-10 pb-5 text-white">
+      <div className="px-7 pt-[calc(env(safe-area-inset-top,0px)+2rem)] pb-5 text-white">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-3.5">
             <div className="w-12 h-12 rounded-2xl bg-secondary/20 grid place-items-center border border-secondary/30 shadow-inner">

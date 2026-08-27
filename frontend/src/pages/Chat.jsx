@@ -380,7 +380,7 @@ function ActiveConversationWorkspace({ thread, onBack }) {
       )}
 
       {/* Workspace Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-line bg-surface/95 backdrop-blur-md shrink-0">
+      <div className="flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] pb-3 border-b border-line bg-surface/95 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           {onBack && (
             <button

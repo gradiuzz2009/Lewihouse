@@ -15,7 +15,10 @@ export function PageHeader({
 }) {
   const nav = useNavigate();
   return (
-    <div className="px-5 sm:px-6 pt-5 sm:pt-7 pb-4 flex items-start justify-between gap-3" data-testid={testid}>
+    <div
+      className="px-5 sm:px-6 pt-[calc(env(safe-area-inset-top,0px)+1.25rem)] sm:pt-7 pb-4 flex items-start justify-between gap-3"
+      data-testid={testid}
+    >
       <div className="flex items-start gap-3 min-w-0 flex-1">
         {onBack !== false && (
           <button

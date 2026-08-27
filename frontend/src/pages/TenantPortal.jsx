@@ -1427,7 +1427,7 @@ export default function TenantPortal() {
   return (
     <div className="w-full max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto min-h-screen bg-bg relative pb-24 shadow-lifted overflow-x-hidden" data-testid="tenant-portal">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-4 sm:px-5 py-3.5 bg-surface/90 backdrop-blur-xl border-b border-line sticky top-0 z-30">
+      <div className="flex items-center justify-between px-4 sm:px-5 pt-[calc(env(safe-area-inset-top,0px)+1rem)] pb-3.5 bg-surface/90 backdrop-blur-xl border-b border-line sticky top-0 z-30">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-2xl bg-primary/10 grid place-items-center text-primary font-serif font-bold text-base border border-primary/20 shrink-0">
             {tenant?.name?.[0]?.toUpperCase() || <User size={16} />}
