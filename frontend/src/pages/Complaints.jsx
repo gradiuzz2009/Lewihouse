@@ -104,7 +104,7 @@ export default function Complaints() {
       setTenants(t.data);
       setRooms(r.data);
     } catch {
-      toast.error("Gagal memuat tiket perbaikan");
+      toast.error("Gagal memuat keluhan perbaikan");
     }
   };
 
@@ -172,10 +172,10 @@ export default function Complaints() {
     try {
       if (editing) {
         await api.put(`/complaints/${editing.id}`, payload);
-        toast.success("Tiket perbaikan diperbarui");
+        toast.success("Laporan keluhan diperbarui");
       } else {
         await api.post("/complaints", payload);
-        toast.success("Tiket keluhan berhasil dibuat");
+        toast.success("Laporan keluhan berhasil dibuat");
       }
       setOpenSheet(false);
       load();
@@ -197,10 +197,10 @@ export default function Complaints() {
   };
 
   const remove = async (id) => {
-    if (!window.confirm("Hapus tiket ini?")) return;
+    if (!window.confirm("Hapus keluhan ini?")) return;
     try {
       await api.delete(`/complaints/${id}`);
-      toast.success("Tiket dihapus");
+      toast.success("Keluhan dihapus");
       load();
     } catch {
       toast.error("Gagal menghapus");
@@ -229,10 +229,10 @@ export default function Complaints() {
   return (
     <div className="fade-up" data-testid="complaints-page">
       <PageHeader
-        title="Tiket & Perbaikan"
-        subtitle={`${items.filter((c) => c.status !== "resolved" && c.status !== "closed").length} tiket aktif menunggu penanganan`}
+        title="Keluhan & Perbaikan"
+        subtitle={`${items.filter((c) => c.status !== "resolved" && c.status !== "closed").length} keluhan aktif menunggu penanganan`}
         onBack={false}
-        action={<AddButton onClick={openNew} testid="add-complaint-btn" label="Lapor Perbaikan" />}
+        action={<AddButton onClick={openNew} testid="add-complaint-btn" label="Lapor Keluhan" />}
       />
 
       {/* Filter Tabs with Quantities */}
@@ -265,14 +265,14 @@ export default function Complaints() {
         ))}
       </div>
 
-      {/* Complaint Tickets List */}
+      {/* Complaints List */}
       <div className="px-5 sm:px-6 mt-4 flex flex-col gap-3.5 pb-8">
         {filtered.length === 0 && (
           <EmptyState
             icon={Wrench}
-            title="Tidak ada tiket perbaikan"
+            title="Tidak ada keluhan perbaikan"
             subtitle="Semua fasilitas kamar dan area bersama kosan dalam kondisi prima."
-            action={<Button onClick={openNew}>Buat Tiket Perbaikan</Button>}
+            action={<Button onClick={openNew}>Lapor Keluhan Baru</Button>}
           />
         )}
 
@@ -380,7 +380,7 @@ export default function Complaints() {
                     type="button"
                     onClick={() => openEdit(c)}
                     className="p-2 rounded-full text-subtle hover:text-primary hover:bg-primary/5 grid place-items-center active:scale-95 transition-all"
-                    title="Edit Detail Tiket"
+                    title="Edit Detail Keluhan"
                   >
                     <Edit2 size={14} />
                   </button>
@@ -388,7 +388,7 @@ export default function Complaints() {
                     type="button"
                     onClick={() => remove(c.id)}
                     className="p-2 rounded-full text-subtle hover:text-danger hover:bg-danger/5 grid place-items-center active:scale-95 transition-all"
-                    title="Hapus Tiket"
+                    title="Hapus Keluhan"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -399,11 +399,11 @@ export default function Complaints() {
         })}
       </div>
 
-      {/* 2-Step Progressive Ticket Sheet */}
+      {/* 2-Step Progressive Complaint Sheet */}
       <Sheet
         open={openSheet}
         onClose={() => setOpenSheet(false)}
-        title={editing ? `Edit Tiket #${editing.title}` : "Lapor Kendala / Tiket Baru"}
+        title={editing ? `Edit Keluhan #${editing.title}` : "Lapor Kendala / Keluhan Baru"}
         subtitle="Formulir 2-tahap pelaporan dan penugasan perbaikan fasilitas"
         maxWidth="sm:max-w-xl"
         footer={
@@ -423,7 +423,7 @@ export default function Complaints() {
               loading={submitting}
               className="flex-1"
             >
-              {editing ? "Simpan Perubahan" : "Terbitkan Tiket"}
+              {editing ? "Simpan Perubahan" : "Terbitkan Keluhan"}
             </Button>
           </div>
         }

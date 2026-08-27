@@ -14,10 +14,10 @@ export function useComplaints() {
         resolvedAt: status === "RESOLVED" ? serverTimestamp() : null,
         updatedAt: serverTimestamp(),
       });
-      toast.success(`Status tiket diubah ke ${status}`);
+      toast.success(`Status keluhan diubah ke ${status}`);
       return true;
     } catch (err) {
-      toast.error("Gagal mengupdate tiket: " + err.message);
+      toast.error("Gagal mengupdate keluhan: " + err.message);
       return false;
     }
   };
@@ -32,10 +32,10 @@ export function useComplaints() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      toast.success("Tiket keluhan terkirim");
+      toast.success("Laporan keluhan terkirim");
       return true;
     } catch (err) {
-      toast.error("Gagal mengirim tiket: " + err.message);
+      toast.error("Gagal mengirim laporan keluhan: " + err.message);
       return false;
     }
   };

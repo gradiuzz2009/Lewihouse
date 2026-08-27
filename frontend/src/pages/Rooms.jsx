@@ -1081,7 +1081,7 @@ export default function Rooms() {
 
             {/* Related Active Complaints / Tickets */}
             {selectedRoomDetails.roomComplaints.length > 0 && (
-              <FormSection title="Tiket Komplain & Perbaikan" subtitle="Laporan aktif untuk kamar ini">
+              <FormSection title="Keluhan & Perbaikan" subtitle="Laporan aktif untuk kamar ini">
                 <div className="space-y-2">
                   {selectedRoomDetails.roomComplaints.slice(0, 3).map((comp) => (
                     <div key={comp.id} className="p-2.5 rounded-xl bg-surface border border-line text-xs flex items-center justify-between">

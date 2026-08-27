@@ -274,7 +274,7 @@ export default function Staff() {
                 <p className="font-bold text-sm text-primary">{syncStatus.stats.bills || 0}</p>
               </div>
               <div className="bg-surface/80 rounded-xl p-2 border border-line/40 shadow-xs">
-                <p className="text-[9px] uppercase tracking-wider text-subtle font-semibold">Tiket</p>
+                <p className="text-[9px] uppercase tracking-wider text-subtle font-semibold">Keluhan</p>
                 <p className="font-bold text-sm text-primary">{syncStatus.stats.complaints || 0}</p>
               </div>
             </div>

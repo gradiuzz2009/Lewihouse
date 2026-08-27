@@ -63,13 +63,13 @@ export const QUICK_ACTIONS = [
   },
   {
     id: "new-ticket",
-    title: "Lapor Tiket Perbaikan",
+    title: "Lapor Keluhan / Perbaikan",
     desc: "Catat keluhan kerusakan fasilitas kosan",
     category: "Operasional",
     icon: Wrench,
     color: "bg-rose-500/10 text-rose-600 border-rose-500/20",
     to: "/complaints?new=1",
-    badge: "Tiket",
+    badge: "Keluhan",
   },
   {
     id: "new-chat",

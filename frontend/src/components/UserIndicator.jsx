@@ -32,7 +32,7 @@ export const ROLE_CONFIG = {
     badgeClass: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30",
     pillClass: "bg-emerald-600 text-white",
     icon: Shield,
-    description: "Pengelolaan kamar, penghuni, tagihan, dan tiket perbaikan",
+    description: "Pengelolaan kamar, penghuni, tagihan, dan keluhan perbaikan",
   },
   staff: {
     label: "Staff",
@@ -40,7 +40,7 @@ export const ROLE_CONFIG = {
     badgeClass: "bg-blue-500/15 text-blue-700 border-blue-500/30",
     pillClass: "bg-blue-600 text-white",
     icon: Wrench,
-    description: "Akses operasional tiket perbaikan, pembersihan & token akses",
+    description: "Akses operasional keluhan perbaikan, pembersihan & token akses",
   },
   tenant: {
     label: "Penghuni",

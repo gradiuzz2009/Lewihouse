@@ -201,7 +201,7 @@ export default function Dashboard() {
             </span>
             <div className="flex-1">
               <p className="text-[10px] uppercase tracking-[0.2em] text-secondary">Perlu perhatian</p>
-              <p className="text-sm mt-0.5">{s.active_maintenance} tiket perbaikan sedang berjalan</p>
+              <p className="text-sm mt-0.5">{s.active_maintenance} keluhan perbaikan sedang berjalan</p>
             </div>
             <AlertCircle size={16} className="text-secondary" />
           </motion.div>

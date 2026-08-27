@@ -150,7 +150,7 @@ function HomeTab({ tenant, room, onNavigate, onOpenSecurity }) {
           </div>
           <div className="min-w-0">
             <p className="font-bold text-xs text-ink group-hover:text-primary transition-colors truncate">Lapor Kendala</p>
-            <p className="text-[10px] text-subtle truncate">Tiket Perbaikan</p>
+            <p className="text-[10px] text-subtle truncate">Laporan Keluhan</p>
           </div>
         </button>
 
@@ -253,7 +253,7 @@ function HomeTab({ tenant, room, onNavigate, onOpenSecurity }) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-primary">Aktifkan Notifikasi Pengingat</p>
-            <p className="text-[11px] text-subtle mt-0.5">Terima update invoice & status tiket langsung di HP</p>
+            <p className="text-[11px] text-subtle mt-0.5">Terima update invoice & status keluhan langsung di HP</p>
           </div>
           <ChevronRight size={18} className="text-subtle shrink-0" />
         </button>
@@ -995,12 +995,12 @@ function TicketsTab() {
     setSubmitting(true);
     try {
       await api.post("/portal/tickets", form);
-      toast.success("Tiket terkirim ke pengelola kosan");
+      toast.success("Laporan keluhan terkirim ke pengelola kosan");
       setShowNew(false);
       setForm({ title: "", description: "", category: "other", priority: "medium" });
       load();
     } catch (e) {
-      toast.error(e.response?.data?.detail || "Gagal mengirim tiket");
+      toast.error(e.response?.data?.detail || "Gagal mengirim laporan keluhan");
     } finally {
       setSubmitting(false);
     }
@@ -1022,16 +1022,16 @@ function TicketsTab() {
         onClick={() => setShowNew(true)}
         className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-[#122820] text-white rounded-full py-3 text-sm font-bold active:scale-[0.98] transition-all shadow-soft min-h-[48px]"
       >
-        <Plus size={18} /> Ajukan Tiket Perbaikan Baru
+        <Plus size={18} /> Ajukan Keluhan / Perbaikan Baru
       </button>
 
       {/* Ticket list */}
       {loading ? (
-        <div className="py-12 text-center text-subtle text-sm animate-pulse">Memuat tiket...</div>
+        <div className="py-12 text-center text-subtle text-sm animate-pulse">Memuat laporan keluhan...</div>
       ) : (Array.isArray(tickets) ? tickets : []).length === 0 ? (
         <div className="py-12 text-center text-subtle">
           <Wrench size={36} className="mx-auto mb-2 text-line" />
-          <p className="text-sm font-semibold">Belum ada tiket keluhan</p>
+          <p className="text-sm font-semibold">Belum ada laporan keluhan</p>
         </div>
       ) : (
         (Array.isArray(tickets) ? tickets : []).map((t) => (
@@ -1052,7 +1052,7 @@ function TicketsTab() {
       <Sheet
         open={showNew}
         onClose={() => setShowNew(false)}
-        title="Ajukan Tiket Perbaikan"
+        title="Ajukan Keluhan Perbaikan"
         subtitle="Laporkan kendala fasilitas kamar atau area bersama"
         maxWidth="sm:max-w-lg"
         footer={
@@ -1071,7 +1071,7 @@ function TicketsTab() {
               loading={submitting}
               className="flex-1"
             >
-              Kirim Tiket
+              Kirim Keluhan
             </Button>
           </>
         }
@@ -1254,7 +1254,7 @@ function RequestsTab() {
 const TABS = [
   { key: "home", icon: Home, label: "Beranda" },
   { key: "bills", icon: CreditCard, label: "Tagihan" },
-  { key: "tickets", icon: Wrench, label: "Tiket" },
+  { key: "tickets", icon: Wrench, label: "Keluhan" },
   { key: "chat", icon: MessageCircle, label: "Chat" },
   { key: "requests", icon: FileText, label: "Pengajuan" },
 ];

@@ -7,7 +7,7 @@ import OverlayQuickAction from "./OverlayQuickAction";
 const actions = [
   { label: "Catat Pembayaran", icon: Wallet, to: "/bills?pay=1", testid: "fab-record-payment" },
   { label: "Tambah Penghuni", icon: UserPlus, to: "/tenants?new=1", testid: "fab-add-tenant" },
-  { label: "Tiket Baru", icon: Wrench, to: "/complaints?new=1", testid: "fab-new-ticket" },
+  { label: "Lapor Keluhan", icon: Wrench, to: "/complaints?new=1", testid: "fab-new-ticket" },
   { label: "Terbitkan Token", icon: KeyRound, to: "/access?new=1", testid: "fab-issue-token" },
   { label: "Chat Baru", icon: MessageCircle, to: "/chat?new=1", testid: "fab-new-chat" },
 ];
