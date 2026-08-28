@@ -101,6 +101,17 @@ export const ONBOARDING_CONFIG = {
     ],
     helpUrl: "https://lewihouse.com/guide/staff"
   },
+  ADMIN_LEADS: {
+    screenKey: "ADMIN_LEADS",
+    title: "Pipeline Calon Penyewa",
+    role: "admin",
+    quickTips: [
+      "Klik '+ Catat Calon' saat ada prospek bertanya lewat Mamikos/WA.",
+      "Gunakan filter platform untuk melihat sumber calon penyewa terbanyak.",
+      "Klik 'Konversi' saat calon penyewa sudah membayar DP/sewa."
+    ],
+    helpUrl: "https://lewihouse.com/guide/leads"
+  },
 
   // Tenant Portal Screens
   TENANT_HOME: {
@@ -155,6 +166,7 @@ export function getScreenKeyFromPath(pathname, role = "admin") {
 
   // Admin routes
   if (pathname === "/" || pathname === "/dashboard") return "ADMIN_DASHBOARD";
+  if (pathname === "/leads") return "ADMIN_LEADS";
   if (pathname === "/rooms") return "ADMIN_ROOMS";
   if (pathname === "/tenants") return "ADMIN_TENANTS";
   if (pathname === "/bills") return "ADMIN_BILLS";
