@@ -1,0 +1,22 @@
+{
+  "ADMIN_LEADS_MANUAL": [
+    "Klik '+ Catat Calon' saat ada prospek bertanya lewat Mamikos/WA",
+    "Gunakan filter platform untuk melihat sumber calon penyewa terbanyak",
+    "Klik 'Konversi' saat calon penyewa sudah membayar DP/sewa"
+  ],
+  "OWNER_LEADS_MANUAL": [
+    "Pantau jumlah prospek masuk dan efektivitas listing sewa",
+    "Lihat estimasi pemasukan dari calon penyewa yang sedang survei",
+    "Evaluasi durasi konversi dari tanya-tanya hingga resmi menyewa"
+  ],
+  "ADMIN_LEADS_PIPELINE": [
+    "Sinkronkan inquiry baru dari Mamikos/Rukita secara otomatis",
+    "Gunakan Kanban Board untuk melacak status survei calon penyewa",
+    "Klik 'Konversi Jadi Penyewa' untuk auto-generate kredensial akun"
+  ],
+  "OWNER_EXECUTIVE_LEADS": [
+    "Pantau rasio konversi prospek menjadi penyewa aktif",
+    "Evaluasi efektivitas listing kamar di Mamikos vs platform lain",
+    "Lihat estimasi potensi pemasukan dari prospek dalam antrean"
+  ]
+}

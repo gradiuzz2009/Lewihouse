@@ -25065,3 +25065,32 @@ I0827 14:29:45.589521   27748 load.go:109] Finished reloading
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0827 14:29:45.589521   27748 collector.go:107] connector \"example\" kotlinSdk wrote into \"c:\\\\Users\\\\AL_AAF\\\\Project\\\\Android App\\\\Lewi house kosan management\\\\Lewi house-emergent\\\\Lewihouse\\\\_android_backup\\\\app\\\\src\\\\main\\\\kotlin\\\\com\\\\google\\\\firebase\\\\dataconnect\\\\generated\"\nGenerated sources: ListMaintenanceTicketsQuery.kt [2463B] ListResidentsQuery.kt [2384B] ExampleConnectorEnums.kt [281B] README.md [8728B] ExampleConnector.kt [13610B] CreateResidentMutation.kt [7795B] ListInvoicesQuery.kt [2358B] ListRoomsQuery.kt [2402B] SendChatMessageMutation.kt [2104B] ExampleConnectorKeys.kt [772B] CreateMaintenanceTicketMutation.kt [6366B] CreateRoomMutation.kt [6142B] ListElectricityMetersQuery.kt [2377B] \nI0827 14:29:45.589521   27748 load.go:109] Finished reloading\n"}}
 [debug] [2026-08-27T07:29:46.984Z] I0827 14:29:46.966820   27748 dev.go:101] Listening on address (HTTP + gRPC): 127.0.0.1:50001
  {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0827 14:29:46.966820   27748 dev.go:101] Listening on address (HTTP + gRPC): 127.0.0.1:50001\n"}}
+[info] [Firebase Plugin] Stopping SQL Connect toolkit
+[debug] [2026-08-28T02:17:25.757Z] [Firebase Plugin] Activating Firebase extension.
+[warn] !  SQL Connect Emulator has exited upon receiving signal: SIGINT 
+[debug] [2026-08-28T02:19:02.885Z] [Firebase Plugin] requireAuthWrapper
+[debug] [2026-08-28T02:19:02.938Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-28T02:19:02.940Z] > authorizing via signed-in user (fauziealiakhmad@gmail.com)
+[debug] [2026-08-28T02:19:02.954Z] Checked if tokens are valid: false, expires at: 1787862701914
+[debug] [2026-08-28T02:19:02.956Z] Checked if tokens are valid: false, expires at: 1787862701914
+[debug] [2026-08-28T02:19:02.958Z] > refreshing access token with scopes: []
+[debug] [2026-08-28T02:19:02.967Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-08-28T02:19:02.967Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-28T02:19:03.008Z] [Firebase Plugin] VSCode notification server listening on port 40001
+[info] [Firebase Plugin] Starting SQL Connect toolkit (version 3.4.16) on port 50001
+[debug] [2026-08-28T02:19:17.752Z] I0828 09:19:17.266023   21636 control.go:100] [projects/emulator/locations/emulator/services/lewihouse ca94] UpdateResources(): done
+Main schema: sources: schema\schema.gql [2392B] 
+Connector "example": sources: example\mutations.gql [2117B] example\queries.gql [1256B] 
+ {"metadata":{"emulator":{"name":"dataconnect"},"message":"I0828 09:19:17.266023   21636 control.go:100] [projects/emulator/locations/emulator/services/lewihouse ca94] UpdateResources(): done\nMain schema: sources: schema\\schema.gql [2392B] \nConnector \"example\": sources: example\\mutations.gql [2117B] example\\queries.gql [1256B] \n"}}
+[debug] [2026-08-28T02:19:19.559Z] Ignoring unsupported arg: auto_download {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: auto_download"}}
+[debug] [2026-08-28T02:19:19.561Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"dataconnect"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2026-08-28T02:19:19.563Z] Starting SQL Connect Emulator with command {"binary":"C:\\Users\\AL_AAF\\.cache\\firebase\\emulators\\dataconnect-emulator-3.4.16.exe","args":["--logtostderr","-v=2","dev","--listen=localhost:50001","--config_dir=c:\\Users\\AL_AAF\\Project\\Android App\\Lewi house kosan management\\Lewi house-emergent\\Lewihouse\\dataconnect","--enable_output_schema_extensions=true","--enable_output_generated_sdk=true"],"optionalArgs":["listen","config_dir","enable_output_schema_extensions","enable_output_generated_sdk"],"joinArgs":true,"shell":false,"port":9399} {"metadata":{"emulator":{"name":"dataconnect"},"message":"Starting SQL Connect Emulator with command {\"binary\":\"C:\\\\Users\\\\AL_AAF\\\\.cache\\\\firebase\\\\emulators\\\\dataconnect-emulator-3.4.16.exe\",\"args\":[\"--logtostderr\",\"-v=2\",\"dev\",\"--listen=localhost:50001\",\"--config_dir=c:\\\\Users\\\\AL_AAF\\\\Project\\\\Android App\\\\Lewi house kosan management\\\\Lewi house-emergent\\\\Lewihouse\\\\dataconnect\",\"--enable_output_schema_extensions=true\",\"--enable_output_generated_sdk=true\"],\"optionalArgs\":[\"listen\",\"config_dir\",\"enable_output_schema_extensions\",\"enable_output_generated_sdk\"],\"joinArgs\":true,\"shell\":false,\"port\":9399}"}}
+[info] i  dataconnect: SQL Connect Emulator logging to dataconnect-debug.log {"metadata":{"emulator":{"name":"dataconnect"},"message":"SQL Connect Emulator logging to \u001b[1mdataconnect-debug.log\u001b[22m"}}
+[debug] [2026-08-28T02:19:20.510Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-08-28T02:19:20.511Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-28T02:19:20.550Z] [Firebase Plugin] User found:  fauziealiakhmad@gmail.com
+[info] [Firebase Plugin] (Core:Project) New user detected, fetching projects
+[debug] [2026-08-28T02:19:20.555Z] Checked if tokens are valid: true, expires at: 1787887159511
+[debug] [2026-08-28T02:19:20.557Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2026-08-28T02:19:23.446Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2026-08-28T02:19:23.446Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]

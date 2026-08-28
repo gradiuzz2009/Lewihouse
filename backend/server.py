@@ -44,6 +44,9 @@ MIDTRANS_CLIENT_KEY = os.environ.get("MIDTRANS_CLIENT_KEY", "")
 MIDTRANS_IS_PRODUCTION = os.environ.get("MIDTRANS_IS_PRODUCTION", "false").lower() == "true"
 MIDTRANS_SNAP_URL = "https://app.midtrans.com/snap/v1/transactions" if MIDTRANS_IS_PRODUCTION else "https://app.sandbox.midtrans.com/snap/v1/transactions"
 
+client = AsyncIOMotorClient(MONGO_URL)
+db = client[DB_NAME]
+
 app = FastAPI(title="Lewi House API")
 
 
@@ -206,6 +209,7 @@ async def login(payload: LoginPayload, request: Request, response: Response):
             "tenant_id": user.get("tenant_id"),
             "room_name": user.get("room_name"),
             "is_temporary_password": bool(user.get("is_temporary_password")),
+            "has_completed_onboarding": bool(user.get("has_completed_onboarding", False)),
             "creation_source": user.get("creation_source", "ADMIN_MANUAL"),
             "password_updated_at": user.get("password_updated_at"),
         },
@@ -222,7 +226,21 @@ async def logout(response: Response):
 
 @auth_router.get("/me")
 async def me(user: dict = Depends(get_current_user)):
+    user["has_completed_onboarding"] = bool(user.get("has_completed_onboarding", False))
     return user
+
+
+@auth_router.post("/complete-onboarding")
+async def complete_onboarding(user: dict = Depends(get_current_user)):
+    uid = user.get("id")
+    now = now_iso()
+    if uid:
+        await db.users.update_one(
+            {"_id": ObjectId(uid)},
+            {"$set": {"has_completed_onboarding": True, "last_tour_opened_at": now}}
+        )
+    return {"ok": True, "has_completed_onboarding": True, "last_tour_opened_at": now}
+
 
 
 @auth_router.post("/refresh")
@@ -244,17 +262,242 @@ async def refresh_token(request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 
-# ============ AUDIT ============
-async def log_audit(actor: str, action: str, entity: str, entity_id: str, detail: dict = None):
+# ============ UNIFIED NOTIFICATION & ACTIVITY HUB ============
+MODULES = ["AUTH", "BILLING", "MAINTENANCE", "ROOM", "ELECTRICITY", "CHAT", "ANNOUNCEMENT"]
+
+
+async def send_webpush_notification(user_id: str, title: str, body: str, url: str = "/"):
+    try:
+        subs = await db.push_subscriptions.find({"user_id": user_id}).to_list(10)
+        for s in subs:
+            try:
+                sub_info = s.get("subscription")
+                if sub_info:
+                    webpush(
+                        subscription_info=sub_info,
+                        data=json.dumps({"title": title, "body": body, "url": url}),
+                        vapid_private_key=VAPID_PRIVATE_KEY_FILE,
+                        vapid_claims={"sub": VAPID_SUBJECT},
+                    )
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+async def create_activity_and_notification(
+    recipient_id: str,
+    recipient_role: str,
+    module: str,
+    event_type: str,
+    reference_id: str,
+    room_unit: Optional[str] = None,
+    title: str = "",
+    message: str = "",
+    action_url: str = "/",
+    urgency: str = "info",
+    actor: str = "system",
+    detail: Optional[dict] = None,
+):
+    now = now_iso()
+    mod = (module or "BILLING").upper()
+    act_doc = {
+        "recipient_id": recipient_id,
+        "recipient_role": recipient_role,
+        "module": mod,
+        "event_type": event_type,
+        "reference_id": reference_id,
+        "room_unit": room_unit,
+        "title": title,
+        "message": message,
+        "action_url": action_url,
+        "urgency": urgency,
+        "actor": actor,
+        "detail": detail or {},
+        "created_at": now,
+        "at": now,
+    }
+    r_act = await db.activity_logs.insert_one(act_doc)
+    
+    # Mirror into audit_logs for backward compatibility
     await db.audit_logs.insert_one({
-        "at": now_iso(), "actor": actor, "action": action,
+        "at": now,
+        "actor": actor,
+        "action": event_type,
+        "entity": mod.lower(),
+        "entity_id": reference_id,
+        "detail": {**(detail or {}), "title": title, "room_unit": room_unit, "urgency": urgency},
+    })
+    
+    # Distribute notifications
+    if recipient_id == "ROLE_ALL_ADMIN":
+        admins = await db.users.find({"role": {"$in": ["owner", "admin", "staff"]}}).to_list(100)
+        notif_docs = []
+        for adm in admins:
+            notif_docs.append({
+                "user_id": str(adm["_id"]),
+                "recipient_role": "ADMIN",
+                "module": mod,
+                "event_type": event_type,
+                "reference_id": reference_id,
+                "room_unit": room_unit,
+                "title": title,
+                "message": message,
+                "body": message,
+                "action_url": action_url,
+                "urgency": urgency,
+                "read": False,
+                "is_read": False,
+                "created_at": now,
+            })
+            asyncio.create_task(send_webpush_notification(str(adm["_id"]), title, message, action_url))
+        if notif_docs:
+            await db.notifications.insert_many(notif_docs)
+
+    elif recipient_id == "ROLE_ALL_TENANT":
+        tenants = await db.users.find({"role": "tenant"}).to_list(500)
+        notif_docs = []
+        for tn in tenants:
+            notif_docs.append({
+                "user_id": str(tn["_id"]),
+                "recipient_role": "TENANT",
+                "module": mod,
+                "event_type": event_type,
+                "reference_id": reference_id,
+                "room_unit": room_unit or tn.get("room_name"),
+                "title": title,
+                "message": message,
+                "body": message,
+                "action_url": action_url,
+                "urgency": urgency,
+                "read": False,
+                "is_read": False,
+                "created_at": now,
+            })
+            asyncio.create_task(send_webpush_notification(str(tn["_id"]), title, message, action_url))
+        if notif_docs:
+            await db.notifications.insert_many(notif_docs)
+
+    else:
+        user_target = None
+        if ObjectId.is_valid(recipient_id):
+            user_target = await db.users.find_one({"_id": ObjectId(recipient_id)})
+        if not user_target:
+            user_target = await db.users.find_one({"tenant_id": recipient_id})
+        
+        target_uid = str(user_target["_id"]) if user_target else recipient_id
+        room_name = room_unit or (user_target.get("room_name") if user_target else None)
+        
+        notif_doc = {
+            "user_id": target_uid,
+            "recipient_role": recipient_role,
+            "module": mod,
+            "event_type": event_type,
+            "reference_id": reference_id,
+            "room_unit": room_name,
+            "title": title,
+            "message": message,
+            "body": message,
+            "action_url": action_url,
+            "urgency": urgency,
+            "read": False,
+            "is_read": False,
+            "created_at": now,
+        }
+        await db.notifications.insert_one(notif_doc)
+        asyncio.create_task(send_webpush_notification(target_uid, title, message, action_url))
+
+    return str(r_act.inserted_id)
+
+
+async def notify_admins(
+    event_type: str,
+    reference_dict: dict,
+    title: str,
+    message: str,
+    action_url: str = "/bills",
+    module: str = "BILLING",
+    room_unit: Optional[str] = None,
+    urgency: str = "info",
+    actor: str = "system",
+):
+    ref_id = str(reference_dict.get("id") or reference_dict.get("invoice") or reference_dict.get("bill_id") or reference_dict.get("ticket_id") or reference_dict.get("tenant_id") or reference_dict.get("room_id") or "")
+    if not room_unit and reference_dict.get("room"):
+        room_unit = str(reference_dict.get("room"))
+    return await create_activity_and_notification(
+        recipient_id="ROLE_ALL_ADMIN",
+        recipient_role="ADMIN",
+        module=module,
+        event_type=event_type,
+        reference_id=ref_id,
+        room_unit=room_unit,
+        title=title,
+        message=message,
+        action_url=action_url,
+        urgency=urgency,
+        actor=actor,
+        detail=reference_dict,
+    )
+
+
+async def notify_tenant(
+    tenant_id: str,
+    event_type: str,
+    reference_dict: dict,
+    title: str,
+    message: str,
+    action_url: str = "/portal/bills",
+    module: str = "BILLING",
+    room_unit: Optional[str] = None,
+    urgency: str = "info",
+    actor: str = "system",
+):
+    ref_id = str(reference_dict.get("id") or reference_dict.get("invoice") or reference_dict.get("bill_id") or reference_dict.get("ticket_id") or tenant_id or "")
+    return await create_activity_and_notification(
+        recipient_id=tenant_id,
+        recipient_role="TENANT",
+        module=module,
+        event_type=event_type,
+        reference_id=ref_id,
+        room_unit=room_unit,
+        title=title,
+        message=message,
+        action_url=action_url,
+        urgency=urgency,
+        actor=actor,
+        detail=reference_dict,
+    )
+
+
+async def log_audit(actor: str, action: str, entity: str, entity_id: str, detail: dict = None):
+    now = now_iso()
+    await db.audit_logs.insert_one({
+        "at": now, "actor": actor, "action": action,
         "entity": entity, "entity_id": entity_id, "detail": detail or {},
+    })
+    await db.activity_logs.insert_one({
+        "recipient_id": "ROLE_ALL_ADMIN",
+        "recipient_role": "ADMIN",
+        "module": entity.upper(),
+        "event_type": action,
+        "reference_id": entity_id,
+        "room_unit": (detail or {}).get("room") or (detail or {}).get("room_name") or (detail or {}).get("room_unit"),
+        "title": (detail or {}).get("title") or f"{action} {entity}",
+        "message": (detail or {}).get("message") or (detail or {}).get("name") or f"Aktivitas {entity} oleh {actor}",
+        "action_url": f"/{entity}s" if entity != "system" else "/activity",
+        "urgency": (detail or {}).get("urgency", "info"),
+        "actor": actor,
+        "detail": detail or {},
+        "created_at": now,
+        "at": now,
     })
 
 
 @api.get("/audit")
 async def list_audit(limit: int = 60):
-    docs = await db.audit_logs.find().sort("at", -1).to_list(min(limit, 200))
+    docs = await db.activity_logs.find().sort("created_at", -1).to_list(min(limit, 200))
+    if not docs:
+        docs = await db.audit_logs.find().sort("at", -1).to_list(min(limit, 200))
     for d in docs:
         d["id"] = str(d.pop("_id"))
     return docs
@@ -722,6 +965,18 @@ async def transfer_room(payload: RoomTransferPayload, user: dict = Depends(get_c
     }
 
 
+@api.post("/rooms/{room_id}/clear-resident")
+async def clear_room_resident(room_id: str, user: dict = Depends(get_current_user)):
+    d = await db.rooms.find_one({"_id": oid(room_id)})
+    if not d:
+        raise HTTPException(404, "Room not found")
+    ts = now_iso()
+    await db.tenants.update_many({"room_id": room_id}, {"$set": {"room_id": None, "status": "former", "updated_at": ts}})
+    await db.rooms.update_one({"_id": oid(room_id)}, {"$set": {"status": "cleaning", "tenant_id": None, "updated_at": ts}})
+    await log_audit(user["email"], "CLEAR_RESIDENT", "room", room_id, {"name": d.get("name")})
+    return {"ok": True, "message": f"Unit {d.get('name')} berhasil dikosongkan dan dialihkan ke CLEANING"}
+
+
 @api.delete("/rooms/{room_id}")
 async def delete_room(room_id: str, user: dict = Depends(get_current_user)):
     d = await db.rooms.find_one({"_id": oid(room_id)})
@@ -729,6 +984,15 @@ async def delete_room(room_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(404, "Room not found")
     if d.get("status") == "occupied":
         raise HTTPException(400, "Kamar sedang dihuni, tidak bisa dihapus")
+    
+    # Check unpaid bills
+    unpaid_bill = await db.bills.find_one({
+        "$or": [{"room_id": room_id}, {"room_unit": d.get("name")}],
+        "status": {"$in": ["UNPAID", "OVERDUE", "VERIFYING", "unpaid", "overdue"]}
+    })
+    if unpaid_bill:
+        raise HTTPException(400, f"Unit {d.get('name')} masih memiliki tagihan yang belum lunas ({unpaid_bill.get('invoice_number', 'Belum Lunas')}). Selesaikan tagihan terlebih dahulu.")
+        
     await db.tenants.update_many({"room_id": room_id}, {"$set": {"room_id": None}})
     await db.rooms.delete_one({"_id": oid(room_id)})
     await log_audit(user["email"], "DELETE", "room", room_id, {"name": d.get("name")})
@@ -1263,14 +1527,22 @@ async def create_prorata_transfer_bill(payload: ProrataTransferPayload, user: di
     return doc_to(Bill, derive_bill({**doc, "_id": r.inserted_id, "room_unit": new_room.get("name"), "resident_name": tenant.get("name")}))
 
 
+class CancelBillPayload(BaseModel):
+    reason: Optional[str] = "Dibatalkan oleh Admin"
+
+
 @api.post("/bills/{bill_id}/cancel")
-async def cancel_bill(bill_id: str, user: dict = Depends(get_current_user)):
+async def cancel_bill(bill_id: str, payload: Optional[CancelBillPayload] = None, user: dict = Depends(get_current_user)):
     d = await db.bills.find_one({"_id": oid(bill_id)})
     if not d:
         raise HTTPException(404, "Bill not found")
-    await db.bills.update_one({"_id": oid(bill_id)}, {"$set": {"status": "CANCELLED"}})
-    await log_audit(user["email"], "CANCEL", "bill", bill_id, {"invoice": d.get("invoice_number")})
-    return {"ok": True, "status": "CANCELLED"}
+    reason = payload.reason if payload and payload.reason else "Dibatalkan oleh Admin"
+    await db.bills.update_one(
+        {"_id": oid(bill_id)},
+        {"$set": {"status": "CANCELLED", "cancellation_reason": reason, "cancelled_at": now_iso()}}
+    )
+    await log_audit(user["email"], "CANCEL", "bill", bill_id, {"invoice": d.get("invoice_number"), "reason": reason})
+    return {"ok": True, "status": "CANCELLED", "reason": reason}
 
 
 @api.get("/bills/{bill_id}/receipt")
@@ -1546,6 +1818,27 @@ async def transition_ticket(cid: str, payload: TicketStatusPayload, user: dict =
         upd["resolved_at"] = now_iso()
     await db.complaints.update_one({"_id": oid(cid)}, {"$set": upd})
     await log_audit(user["email"], "TICKET_STATUS", "ticket", cid, {"from": cur, "to": new, "title": d.get("title")})
+    
+    if d.get("tenant_id"):
+        status_labels = {
+            "in_progress": "Sedang Dikerjakan 🛠️",
+            "resolved": "Selesai Diperbaiki ✅",
+            "closed": "Tiket Ditutup 🔒",
+            "pending": "Menunggu Penanganan",
+        }
+        lbl = status_labels.get(new, new.upper())
+        await notify_tenant(
+            d["tenant_id"],
+            f"TICKET_{new.upper()}",
+            {"ticket_id": cid, "title": d.get("title"), "status": new},
+            f"Status Tiket: {lbl}",
+            f"Keluhan '{d.get('title')}' statusnya kini telah diperbarui menjadi {lbl}.",
+            "/portal/tickets",
+            module="MAINTENANCE",
+            urgency="info",
+            actor=user.get("name") or user.get("email") or "Admin"
+        )
+
     d.update(upd)
     return doc_to(Ticket, d)
 
@@ -2610,10 +2903,33 @@ async def websocket_chat(ws: WebSocket, tenant_id: str, token: str = Query(...))
         ws_manager.disconnect(tenant_id, ws)
 
 
-# ============ FCM DEVICE TOKENS ============
+# ============ FCM & PUSH NOTIFICATIONS ============
 class FCMTokenPayload(BaseModel):
     token: str
     device_type: str = "android"
+
+
+class PushSubscriptionPayload(BaseModel):
+    subscription: dict
+
+
+@common.get("/push/vapid-key")
+async def get_vapid_public_key():
+    return {"public_key": VAPID_PUBLIC_KEY}
+
+
+@common.post("/push/subscribe")
+async def subscribe_push(payload: PushSubscriptionPayload, user: dict = Depends(get_current_user)):
+    await db.push_subscriptions.update_one(
+        {"user_id": user["id"], "endpoint": payload.subscription.get("endpoint")},
+        {"$set": {
+            "user_id": user["id"],
+            "subscription": payload.subscription,
+            "updated_at": now_iso(),
+        }},
+        upsert=True,
+    )
+    return {"ok": True}
 
 
 @common.post("/push/register-fcm")
@@ -2637,6 +2953,295 @@ async def unread_notification_count(user: dict = Depends(get_current_user)):
         chat_unread = await db.messages.count_documents(
             {"tenant_id": user["tenant_id"], "sender": "admin", "read_by_tenant": False})
     return {"notifications": count, "chat": chat_unread, "total": count + chat_unread}
+
+
+@common.get("/notifications")
+async def list_notifications(
+    module: Optional[str] = None,
+    unread_only: bool = False,
+    limit: int = 50,
+    user: dict = Depends(get_current_user)
+):
+    query = {"user_id": user["id"]}
+    if module and module.upper() != "ALL":
+        query["module"] = module.upper()
+    if unread_only:
+        query["read"] = False
+    
+    docs = await db.notifications.find(query).sort("created_at", -1).to_list(min(limit, 200))
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+    return docs
+
+
+@common.post("/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, user: dict = Depends(get_current_user)):
+    await db.notifications.update_one(
+        {"_id": oid(notification_id), "user_id": user["id"]},
+        {"$set": {"read": True, "is_read": True, "read_at": now_iso()}}
+    )
+    return {"ok": True}
+
+
+@common.post("/notifications/read-all")
+async def mark_all_notifications_read(user: dict = Depends(get_current_user)):
+    await db.notifications.update_many(
+        {"user_id": user["id"], "read": False},
+        {"$set": {"read": True, "is_read": True, "read_at": now_iso()}}
+    )
+    return {"ok": True}
+
+
+# ============ LIVE ACTIVITY FEED & AUDIT LOGS (ADMIN) ============
+@api.get("/activity/feed")
+async def get_live_activity_feed(limit: int = 25):
+    """Real-time streamed activity feed for Admin Dashboard."""
+    docs = await db.activity_logs.find().sort("created_at", -1).to_list(min(limit, 100))
+    formatted = []
+    for d in docs:
+        d_id = str(d.pop("_id"))
+        formatted.append({
+            "id": d_id,
+            "module": d.get("module", "SYSTEM"),
+            "event_type": d.get("event_type", "INFO"),
+            "room_unit": d.get("room_unit") or "-",
+            "title": d.get("title", ""),
+            "message": d.get("message", ""),
+            "action_url": d.get("action_url", "/"),
+            "urgency": d.get("urgency", "info"),
+            "actor": d.get("actor", "system"),
+            "created_at": d.get("created_at") or d.get("at") or now_iso(),
+            "reference_id": d.get("reference_id"),
+        })
+    return formatted
+
+
+@api.get("/activity/logs")
+async def get_audit_activity_logs(
+    unit: Optional[str] = None,
+    module: Optional[str] = None,
+    urgency: Optional[str] = None,
+    search: Optional[str] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0
+):
+    """Comprehensive filtered activity and audit log list."""
+    query = {}
+    if unit and unit.strip() and unit != "ALL":
+        query["$or"] = [
+            {"room_unit": {"$regex": unit.strip(), "$options": "i"}},
+            {"detail.room": {"$regex": unit.strip(), "$options": "i"}},
+            {"detail.room_name": {"$regex": unit.strip(), "$options": "i"}},
+        ]
+    if module and module.strip() and module != "ALL":
+        query["module"] = module.strip().upper()
+    if urgency and urgency.strip() and urgency != "ALL":
+        query["urgency"] = urgency.strip().lower()
+    if from_date or to_date:
+        query["created_at"] = {}
+        if from_date:
+            query["created_at"]["$gte"] = from_date
+        if to_date:
+            query["created_at"]["$lte"] = to_date + "T23:59:59Z"
+    if search and search.strip():
+        s = search.strip()
+        query["$or"] = [
+            {"title": {"$regex": s, "$options": "i"}},
+            {"message": {"$regex": s, "$options": "i"}},
+            {"actor": {"$regex": s, "$options": "i"}},
+            {"reference_id": {"$regex": s, "$options": "i"}},
+        ]
+
+    total = await db.activity_logs.count_documents(query)
+    docs = await db.activity_logs.find(query).sort("created_at", -1).skip(offset).limit(min(limit, 500)).to_list(min(limit, 500))
+    
+    if not docs and not query:
+        docs = await db.audit_logs.find().sort("at", -1).skip(offset).limit(min(limit, 500)).to_list(min(limit, 500))
+        total = await db.audit_logs.count_documents({})
+        out = []
+        for d in docs:
+            out.append({
+                "id": str(d.pop("_id")),
+                "module": (d.get("entity") or "SYSTEM").upper(),
+                "event_type": d.get("action", "INFO"),
+                "room_unit": (d.get("detail") or {}).get("room_name") or "-",
+                "title": (d.get("detail") or {}).get("title") or f"{d.get('action')} {d.get('entity')}",
+                "message": (d.get("detail") or {}).get("name") or f"Aktivitas {d.get('entity')} oleh {d.get('actor')}",
+                "action_url": f"/{d.get('entity')}s" if d.get('entity') != 'system' else "/activity",
+                "urgency": (d.get("detail") or {}).get("urgency", "info"),
+                "actor": d.get("actor", "system"),
+                "created_at": d.get("at") or now_iso(),
+            })
+        return {"total": total, "logs": out}
+
+    out = []
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+        out.append(d)
+    return {"total": total, "logs": out}
+
+
+@api.get("/activity/export")
+async def export_activity_logs(
+    unit: Optional[str] = None,
+    module: Optional[str] = None,
+    urgency: Optional[str] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+):
+    query = {}
+    if unit and unit != "ALL":
+        query["room_unit"] = {"$regex": unit.strip(), "$options": "i"}
+    if module and module != "ALL":
+        query["module"] = module.strip().upper()
+    if urgency and urgency != "ALL":
+        query["urgency"] = urgency.strip().lower()
+
+    docs = await db.activity_logs.find(query).sort("created_at", -1).to_list(2000)
+    
+    lines = ["Waktu,Unit,Pengguna/Pelaku,Modul,Jenis Event,Judul,Deskripsi,Tingkat Urgensi,Link Aksi"]
+    for d in docs:
+        dt = d.get("created_at", "")
+        u = d.get("room_unit") or "-"
+        act = (d.get("actor") or "system").replace(",", " ")
+        m = d.get("module") or "SYSTEM"
+        ev = d.get("event_type") or "-"
+        t = (d.get("title") or "").replace('"', '""').replace(",", " ")
+        msg = (d.get("message") or "").replace('"', '""').replace(",", " ")
+        urg = d.get("urgency") or "info"
+        url = d.get("action_url") or "/"
+        lines.append(f'"{dt}","{u}","{act}","{m}","{ev}","{t}","{msg}","{urg}","{url}"')
+    
+    csv_content = "\n".join(lines)
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=lewi_house_audit_log_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"}
+    )
+
+
+# ============ ANNOUNCEMENTS BROADCAST ============
+class AnnouncementPayload(BaseModel):
+    title: str
+    message: str
+    urgency: str = "info"  # info | warning | urgent
+    target: str = "all"    # all | tenant | staff
+
+
+@api.post("/announcements/broadcast")
+async def broadcast_announcement(payload: AnnouncementPayload, user: dict = Depends(get_current_user)):
+    if not payload.title.strip() or not payload.message.strip():
+        raise HTTPException(400, "Judul dan pesan pengumuman wajib diisi")
+    
+    doc = {
+        "title": payload.title.strip(),
+        "message": payload.message.strip(),
+        "urgency": payload.urgency,
+        "target": payload.target,
+        "author": user.get("name") or user.get("email", "Admin"),
+        "created_at": now_iso(),
+    }
+    r = await db.announcements.insert_one(doc)
+    ann_id = str(r.inserted_id)
+
+    await create_activity_and_notification(
+        recipient_id="ROLE_ALL_TENANT",
+        recipient_role="TENANT",
+        module="ANNOUNCEMENT",
+        event_type="ANNOUNCEMENT_BROADCAST",
+        reference_id=ann_id,
+        room_unit=None,
+        title=f"📢 {payload.title.strip()}",
+        message=payload.message.strip(),
+        action_url="/portal",
+        urgency=payload.urgency,
+        actor=user.get("name") or "Pengelola Lewi House",
+        detail={"announcement_id": ann_id, "target": payload.target}
+    )
+
+    await log_audit(user["email"], "ANNOUNCEMENT_BROADCAST", "announcement", ann_id, {
+        "title": payload.title, "urgency": payload.urgency
+    })
+
+    return {"ok": True, "id": ann_id, "message": "Pengumuman berhasil disiarkan"}
+
+
+# ============ ELECTRICITY & UTILITIES ============
+class ElectricityReadingPayload(BaseModel):
+    room_id: str
+    meter_reading: float
+    period: str  # YYYY-MM
+    note: Optional[str] = None
+
+
+@api.post("/electricity/readings")
+async def record_electricity_reading(payload: ElectricityReadingPayload, user: dict = Depends(get_current_user)):
+    room = await db.rooms.find_one({"_id": oid(payload.room_id)})
+    if not room:
+        raise HTTPException(404, "Kamar tidak ditemukan")
+    
+    prev = await db.electricity_readings.find_one(
+        {"room_id": payload.room_id},
+        sort=[("period", -1)]
+    )
+    usage = 0
+    if prev and payload.meter_reading >= prev.get("meter_reading", 0):
+        usage = payload.meter_reading - prev.get("meter_reading", 0)
+
+    doc = {
+        "room_id": payload.room_id,
+        "room_name": room.get("name"),
+        "tenant_id": room.get("tenant_id"),
+        "meter_reading": payload.meter_reading,
+        "previous_reading": prev.get("meter_reading", 0) if prev else 0,
+        "usage_kwh": usage,
+        "period": payload.period,
+        "recorded_by": user.get("name") or user.get("email"),
+        "created_at": now_iso(),
+        "note": payload.note,
+    }
+    r = await db.electricity_readings.insert_one(doc)
+    reading_id = str(r.inserted_id)
+
+    if room.get("tenant_id"):
+        urgency = "warning" if usage > 200 else "info"
+        msg = f"Meteran listrik bulan {payload.period} telah dicatat: {payload.meter_reading:.1f} kWh (Pemakaian: {usage:.1f} kWh)."
+        if usage > 200:
+            msg += " ⚠️ Pemakaian listrik bulan ini melebihi batas rata-rata."
+        
+        await notify_tenant(
+            tenant_id=room["tenant_id"],
+            event_type="ELECTRICITY_RECORDED" if usage <= 200 else "ELECTRICITY_OVER_LIMIT",
+            reference_dict={"room": room.get("name"), "usage_kwh": usage, "reading": payload.meter_reading},
+            title=f"⚡ Pencatatan Meteran Listrik ({room.get('name')})",
+            message=msg,
+            action_url="/portal/bills",
+            module="ELECTRICITY",
+            room_unit=room.get("name"),
+            urgency=urgency,
+            actor=user.get("name", "Admin")
+        )
+
+    await log_audit(user["email"], "METER_RECORDED", "electricity", reading_id, {
+        "room": room.get("name"), "reading": payload.meter_reading, "usage": usage
+    })
+
+    return {"ok": True, "id": reading_id, "usage_kwh": usage}
+
+
+@api.get("/electricity/readings")
+async def list_electricity_readings(room_id: Optional[str] = None, period: Optional[str] = None):
+    query = {}
+    if room_id:
+        query["room_id"] = room_id
+    if period:
+        query["period"] = period
+    docs = await db.electricity_readings.find(query).sort("period", -1).to_list(200)
+    for d in docs:
+        d["id"] = str(d.pop("_id"))
+    return docs
 
 
 # ============ REMINDERS ============
@@ -2986,6 +3591,146 @@ async def seed_data(user: dict = Depends(get_current_user)):
         "created_at": now_iso(), "resolved_at": None,
     })
 
+    # Seed Announcements
+    await db.announcements.insert_many([
+        {
+            "title": "Maintenance Pompa Air Gedung",
+            "message": "Akan dilakukan pembersihan tangki dan pemeliharaan pompa air utama pada hari Sabtu pukul 09:00 - 11:00 WIB.",
+            "urgency": "warning",
+            "target": "all",
+            "author": "Admin Lewi House",
+            "created_at": now_iso(),
+        }
+    ])
+
+    # Seed Electricity readings
+    await db.electricity_readings.insert_many([
+        {
+            "room_id": room_ids[0],
+            "room_name": "K-101",
+            "tenant_id": tenant_ids[0],
+            "meter_reading": 1342.5,
+            "previous_reading": 1210.0,
+            "usage_kwh": 132.5,
+            "period": today.strftime("%Y-%m"),
+            "recorded_by": "Admin Lewi House",
+            "created_at": now_iso(),
+            "note": "Pencatatan rutin awal bulan",
+        },
+        {
+            "room_id": room_ids[3],
+            "room_name": "K-204",
+            "tenant_id": tenant_ids[2],
+            "meter_reading": 2890.0,
+            "previous_reading": 2640.0,
+            "usage_kwh": 250.0,
+            "period": today.strftime("%Y-%m"),
+            "recorded_by": "Admin Lewi House",
+            "created_at": now_iso(),
+            "note": "Pemakaian tinggi AC non-stop",
+        }
+    ])
+
+    # Seed Activity logs & Notifications for Tenants
+    tenant_users = await db.users.find({"role": "tenant"}).to_list(10)
+    for u in tenant_users:
+        uid = str(u["_id"])
+        r_name = u.get("room_name") or "204"
+        
+        await create_activity_and_notification(
+            recipient_id=uid,
+            recipient_role="TENANT",
+            module="BILLING",
+            event_type="INVOICE_GENERATED",
+            reference_id="INV-2026-08",
+            room_unit=r_name,
+            title=f"Invoice Sewa {today.strftime('%B %Y')} Terbit 💳",
+            message=f"Tagihan sewa kamar {r_name} sebesar Rp 2.450.000 telah diterbitkan. Jatuh tempo: 5 {today.strftime('%B %Y')}.",
+            action_url="/portal/bills",
+            urgency="info",
+            actor="Admin Lewi House",
+        )
+        await create_activity_and_notification(
+            recipient_id=uid,
+            recipient_role="TENANT",
+            module="MAINTENANCE",
+            event_type="TICKET_RESOLVED",
+            reference_id="TICK-001",
+            room_unit=r_name,
+            title="Tiket #102: Selesai Diperbaiki 🛠️",
+            message="Laporan keluhan perbaikan instalasi pipa air telah diselesaikan oleh teknisi.",
+            action_url="/portal/tickets",
+            urgency="info",
+            actor="Pak Joko (Teknisi)",
+        )
+        await create_activity_and_notification(
+            recipient_id=uid,
+            recipient_role="TENANT",
+            module="ELECTRICITY",
+            event_type="ELECTRICITY_RECORDED",
+            reference_id="ELEC-001",
+            room_unit=r_name,
+            title=f"⚡ Pencatatan Meteran Listrik (Kamar {r_name})",
+            message=f"Pencatatan meteran listrik bulan ini telah selesai (132.5 kWh).",
+            action_url="/portal/bills",
+            urgency="info",
+            actor="Admin Lewi House",
+        )
+        await create_activity_and_notification(
+            recipient_id=uid,
+            recipient_role="TENANT",
+            module="ANNOUNCEMENT",
+            event_type="ANNOUNCEMENT_BROADCAST",
+            reference_id="ANN-001",
+            room_unit=r_name,
+            title="📢 Maintenance Pompa Air Besok Pukul 09:00",
+            message="Pembersihan tangki dan pemeliharaan pompa air utama pada hari Sabtu.",
+            action_url="/portal",
+            urgency="warning",
+            actor="Pengelola Lewi House",
+        )
+
+    # Activity feed for Admin
+    await create_activity_and_notification(
+        recipient_id="ROLE_ALL_ADMIN",
+        recipient_role="ADMIN",
+        module="BILLING",
+        event_type="PAYMENT_SUBMITTED",
+        reference_id="INV-2026-08-01",
+        room_unit="204",
+        title="Pembayaran Masuk Rp 2.450.000",
+        message="Penghuni Unit 204 telah mengunggah bukti bayar transfer BCA. Menunggu verifikasi admin.",
+        action_url="/bills",
+        urgency="warning",
+        actor="Ali (Penghuni Unit 204)",
+    )
+    await create_activity_and_notification(
+        recipient_id="ROLE_ALL_ADMIN",
+        recipient_role="ADMIN",
+        module="MAINTENANCE",
+        event_type="TICKET_CREATED",
+        reference_id="TICK-108",
+        room_unit="108",
+        title="Laporan Baru: AC Tidak Dingin",
+        message="Penghuni Unit 108 melaporkan AC tidak dingin dan perlu cuci freon.",
+        action_url="/complaints",
+        urgency="urgent",
+        actor="Arya Wibowo",
+    )
+    await create_activity_and_notification(
+        recipient_id="ROLE_ALL_ADMIN",
+        recipient_role="ADMIN",
+        module="AUTH",
+        event_type="PASSWORD_CHANGED",
+        reference_id="USR-301",
+        room_unit="301",
+        title="Force Reset Password Selesai",
+        message="Penghuni Unit 301 berhasil memperbarui kata sandi mandiri.",
+        action_url="/tenants",
+        urgency="info",
+        actor="System Security",
+    )
+
     await log_audit(user["email"], "SEED", "system", "seed", {"rooms": len(rooms_seed), "tenants": len(tenants_seed)})
     return {"ok": True, "rooms": len(rooms_seed), "tenants": len(tenants_seed), "bills": len(bills), "tickets": len(tickets), "tokens": len(tokens)}
 
@@ -3236,6 +3981,9 @@ async def startup():
     await db.rooms.create_index("name")
     await db.messages.create_index([("tenant_id", 1), ("created_at", 1)])
     await db.notifications.create_index([("user_id", 1), ("created_at", -1)])
+    await db.activity_logs.create_index([("created_at", -1)])
+    await db.activity_logs.create_index("module")
+    await db.activity_logs.create_index("room_unit")
     await db.reminder_log.create_index([("bill_id", 1), ("stage", 1)])
     asyncio.create_task(reminder_loop())
     admin_email = os.environ["ADMIN_EMAIL"].lower()

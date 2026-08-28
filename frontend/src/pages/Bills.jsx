@@ -82,6 +82,14 @@ export default function Bills() {
   const [showPaidSection, setShowPaidSection] = useState(false);
   const [params, setParams] = useSearchParams();
 
+  // Highlight, Confirmation & Cancellation States per PRD
+  const [highlightedBillId, setHighlightedBillId] = useState(null);
+  const [initialEditForm, setInitialEditForm] = useState(null);
+  const [showConfirmSaveModal, setShowConfirmSaveModal] = useState(false);
+  const [cancelModalBill, setCancelModalBill] = useState(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelSubmitting, setCancelSubmitting] = useState(false);
+
   // Verification & Receipt States
   const [verifyModalBill, setVerifyModalBill] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -237,8 +245,10 @@ export default function Bills() {
   // ─── ACTIONS ──────────────────────────────────────────────────
   const openNew = () => {
     setEditing(null);
+    setInitialEditForm(null);
     setForm({
       ...emptyForm,
+      period: currentPeriod(),
       due_date: `${currentPeriod()}-05`,
       items: [{ name: "Sewa Kamar Pokok", amount: 0, category: "rent" }],
     });
@@ -246,6 +256,14 @@ export default function Bills() {
   };
 
   const openEdit = (b) => {
+    const statusUpper = (b.status || "").toUpperCase();
+    const isVerifying = statusUpper === "VERIFYING";
+    const isPaid = statusUpper === "PAID" || b.status === "paid" || statusUpper === "PARTIAL_PAID";
+    if (isVerifying || isPaid) {
+      toast.error("Tagihan yang sudah dibayar atau dalam proses verifikasi tidak dapat diubah");
+      return;
+    }
+
     setEditing(b);
     let items = b.items && b.items.length > 0 ? b.items : [];
     if (items.length === 0) {
@@ -257,21 +275,23 @@ export default function Bills() {
     }
     if (items.length === 0) items = [{ name: "Sewa Kamar Pokok", amount: b.total || 0, category: "rent" }];
 
-    setForm({
+    const editFormData = {
       tenant_id: b.tenant_id,
       room_id: b.room_id || "",
       period: b.period,
       due_date: b.due_date || "",
       status: b.status || "UNPAID",
       notes: b.notes || "",
-      items: items,
+      items: items.map((it) => ({ ...it })),
       rent: b.rent || 0,
       electricity: b.electricity || 0,
       water: b.water || 0,
       other: b.other || 0,
       other_label: b.other_label || "",
       late_fee: b.late_fee || 0,
-    });
+    };
+    setForm(editFormData);
+    setInitialEditForm(JSON.parse(JSON.stringify(editFormData)));
     setOpenSheet(true);
   };
 
@@ -316,16 +336,58 @@ export default function Bills() {
     return form.items.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
   }, [form.items]);
 
-  const submit = async (e) => {
+  // Dirty State Tracker & Difference Calculation per PRD
+  const isDirty = useMemo(() => {
+    if (!editing || !initialEditForm) return true;
+    return JSON.stringify(form) !== JSON.stringify(initialEditForm);
+  }, [editing, form, initialEditForm]);
+
+  const initialTotal = useMemo(() => {
+    if (!initialEditForm?.items) return 0;
+    return initialEditForm.items.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  }, [initialEditForm]);
+
+  const amountDifference = totalCalculatedForm - initialTotal;
+
+  const isFormValid = Boolean(
+    form.tenant_id &&
+    form.due_date &&
+    form.items.length > 0 &&
+    totalCalculatedForm > 0
+  );
+
+  const handleResetForm = () => {
+    if (editing && initialEditForm) {
+      setForm(JSON.parse(JSON.stringify(initialEditForm)));
+      toast.info("Form dikembalikan ke data awal");
+    } else {
+      const defaultRent = Number(tenants.find((t) => t.id === form.tenant_id)?.monthly_rent || 0);
+      setForm({
+        ...emptyForm,
+        period: currentPeriod(),
+        due_date: `${currentPeriod()}-05`,
+        tenant_id: form.tenant_id,
+        room_id: form.room_id,
+        items: [{ name: "Sewa Kamar Pokok", amount: defaultRent, category: "rent" }],
+      });
+      toast.info("Input form berhasil dibersihkan");
+    }
+  };
+
+  const handlePreSubmit = (e) => {
     e.preventDefault();
-    if (!form.tenant_id) {
-      toast.error("Pilih penghuni terlebih dahulu");
+    if (!isFormValid) {
+      toast.error("Lengkapi data tagihan dan pastikan nominal > 0");
       return;
     }
-    if (form.items.length === 0 || totalCalculatedForm <= 0) {
-      toast.error("Rincian tagihan tidak boleh kosong / 0");
-      return;
+    if (editing) {
+      setShowConfirmSaveModal(true);
+    } else {
+      executeSubmit();
     }
+  };
+
+  const executeSubmit = async () => {
     setSubmitting(true);
     const payload = {
       ...form,
@@ -336,10 +398,15 @@ export default function Bills() {
     try {
       if (editing) {
         await api.put(`/bills/${editing.id}`, payload);
-        toast.success("Tagihan diperbarui ✓");
+        toast.success(`Invoice ${editing.invoice_number} berhasil diperbarui ✓`);
+        setHighlightedBillId(editing.id);
+        setTimeout(() => setHighlightedBillId(null), 2500);
+        setShowConfirmSaveModal(false);
       } else {
         const { data } = await api.post("/bills", payload);
-        toast.success(`Invoice ${data.invoice_number} berhasil diterbitkan ✓`);
+        toast.success(`Invoice ${data.invoice_number || "baru"} berhasil diterbitkan ✓`);
+        setHighlightedBillId(data.id);
+        setTimeout(() => setHighlightedBillId(null), 2500);
       }
       setOpenSheet(false);
       load();
@@ -347,6 +414,35 @@ export default function Bills() {
       toast.error("Gagal menyimpan invoice");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // ─── DESTRUCTIVE CANCELLATION HANDLER ──────────────────────────
+  const openCancelModal = (bill) => {
+    setCancelModalBill(bill);
+    setCancelReason("");
+  };
+
+  const handleConfirmCancel = async (e) => {
+    if (e) e.preventDefault();
+    if (!cancelModalBill) return;
+    if (!cancelReason.trim()) {
+      toast.error("Wajib mengisi alasan pembatalan");
+      return;
+    }
+    setCancelSubmitting(true);
+    try {
+      await api.post(`/bills/${cancelModalBill.id}/cancel`, {
+        reason: cancelReason.trim(),
+      });
+      toast.success(`Tagihan ${cancelModalBill.invoice_number} telah dibatalkan.`);
+      setCancelModalBill(null);
+      setCancelReason("");
+      load();
+    } catch {
+      toast.error("Gagal membatalkan invoice");
+    } finally {
+      setCancelSubmitting(false);
     }
   };
 
@@ -587,7 +683,7 @@ export default function Bills() {
             >
               <ArrowLeftRight size={14} className="mr-1 text-primary" /> Prorata Pindah
             </Button>
-            <AddButton onClick={openNew} testid="add-bill-btn" label="Buat Tagihan" />
+            <AddButton onClick={openNew} testid="add-bill-btn" label="+ Tambah Tagihan" />
           </div>
         </div>
 
@@ -764,16 +860,20 @@ export default function Bills() {
           const isPartial = statusUpper === "PARTIAL_PAID" || b.status === "partially_paid";
           const isCancelled = statusUpper === "CANCELLED";
           const overdueDays = getOverdueDays(b.due_date);
+          const isHighlighted = highlightedBillId === b.id;
+          const canEdit = !isVerifying && (statusUpper === "UNPAID" || isOverdue) && !isCancelled && !isPartial;
 
           let cardStyle = "bg-surface border-line hover:border-primary/40 border-l-4 border-l-primary/70";
-          if (isVerifying) {
+          if (isHighlighted) {
+            cardStyle = "bg-amber-50 border-amber-400 ring-4 ring-amber-400/40 shadow-xl border-l-4 border-l-amber-500 scale-[1.01]";
+          } else if (isVerifying) {
             cardStyle = "bg-amber-50/50 border-amber-300 hover:border-amber-500 border-l-4 border-l-amber-500 shadow-sm";
           } else if (isOverdue) {
             cardStyle = "bg-rose-50/40 border-rose-200 hover:border-rose-400 border-l-4 border-l-rose-600 shadow-sm";
           } else if (isPartial) {
             cardStyle = "bg-blue-50/30 border-blue-200 hover:border-blue-400 border-l-4 border-l-blue-500 shadow-sm";
           } else if (isCancelled) {
-            cardStyle = "bg-gray-50 border-gray-200 opacity-60 border-l-4 border-l-gray-400";
+            cardStyle = "bg-gray-50/80 border-gray-200 opacity-60 border-l-4 border-l-gray-400";
           }
 
           return (
@@ -782,14 +882,14 @@ export default function Bills() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.02 }}
-              className={`rounded-2xl border p-4 shadow-soft transition-all ${cardStyle}`}
+              className={`rounded-2xl border p-4 shadow-soft transition-all duration-300 ${cardStyle}`}
               data-testid={`bill-card-${b.invoice_number}`}
             >
               {/* Top Row: Invoice code & Risk Badge */}
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold font-mono uppercase tracking-wider text-secondary">
+                    <span className={`text-xs font-bold font-mono uppercase tracking-wider ${isCancelled ? "line-through text-gray-400" : "text-secondary"}`}>
                       {b.invoice_number}
                     </span>
                     {isVerifying && (
@@ -797,12 +897,12 @@ export default function Bills() {
                         <Eye size={12} /> Menunggu Verifikasi Bukti
                       </span>
                     )}
-                    {isOverdue && !isVerifying && (
+                    {isOverdue && !isVerifying && !isCancelled && (
                       <span className="px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs">
                         <AlertCircle size={12} /> Terlambat {overdueDays > 0 ? `${overdueDays} Hari` : ""}
                       </span>
                     )}
-                    {isPartial && !isVerifying && (
+                    {isPartial && !isVerifying && !isCancelled && (
                       <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[11px] font-bold shadow-xs">
                         Sebagian (Masuk: {fmtIDR(b.amount_paid)})
                       </span>
@@ -813,24 +913,36 @@ export default function Bills() {
                       </span>
                     )}
                     {isCancelled && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-gray-200 text-gray-700 text-[11px] font-bold">
+                      <span className="px-2.5 py-0.5 rounded-full bg-gray-200 text-gray-600 text-[11px] font-bold line-through">
                         Dibatalkan
                       </span>
                     )}
+                    {isHighlighted && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-bold animate-bounce shadow-xs">
+                        ✨ Baru
+                      </span>
+                    )}
                   </div>
-                  <p className="font-serif text-xl font-bold text-primary mt-1 truncate">
+                  <p className={`font-serif text-xl font-bold mt-1 truncate ${isCancelled ? "line-through text-gray-400" : "text-primary"}`}>
                     {b.resident_name || tenantName(b.tenant_id)}
                   </p>
                   <p className="text-xs text-gray-600 mt-0.5 font-medium">
                     Kamar <strong>{b.room_unit || roomName(b.room_id)}</strong> · Periode {monthLabel(b.period)}
                   </p>
+                  {isCancelled && b.cancellation_reason && (
+                    <p className="text-[11px] text-rose-700/90 bg-rose-50 border border-rose-200/60 rounded-lg px-2.5 py-1 mt-1.5 font-medium inline-block">
+                      Alasan Pembatalan: {b.cancellation_reason}
+                    </p>
+                  )}
                 </div>
 
                 {/* Remaining Balance */}
                 <div className="text-right shrink-0">
-                  <p className="text-[10px] uppercase font-bold tracking-wider text-subtle">Sisa Tagihan</p>
+                  <p className="text-[10px] uppercase font-bold tracking-wider text-subtle">
+                    {isCancelled ? "Status Batal" : "Sisa Tagihan"}
+                  </p>
                   <p className={`font-mono text-xl sm:text-2xl font-bold tnum ${
-                    isVerifying ? "text-amber-700" : isOverdue ? "text-rose-700" : isPartial ? "text-blue-700" : "text-primary"
+                    isCancelled ? "line-through text-gray-400" : isVerifying ? "text-amber-700" : isOverdue ? "text-rose-700" : isPartial ? "text-blue-700" : "text-primary"
                   }`}>
                     {fmtIDR(remaining)}
                   </p>
@@ -847,8 +959,8 @@ export default function Bills() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-0.5">
                     {b.items.map((it, idx) => (
                       <div key={idx} className="flex justify-between items-center text-gray-700">
-                        <span className="truncate">• {it.name}</span>
-                        <span className="font-mono font-medium ml-2">{fmtIDR(it.amount)}</span>
+                        <span className={`truncate ${isCancelled ? "line-through text-gray-400" : ""}`}>• {it.name}</span>
+                        <span className={`font-mono font-medium ml-2 ${isCancelled ? "line-through text-gray-400" : ""}`}>{fmtIDR(it.amount)}</span>
                       </div>
                     ))}
                   </div>
@@ -882,7 +994,7 @@ export default function Bills() {
                     >
                       <Eye size={14} /> Review Bukti Transfer
                     </button>
-                  ) : (
+                  ) : !isCancelled ? (
                     <>
                       <button
                         type="button"
@@ -901,17 +1013,19 @@ export default function Bills() {
                         <Send size={14} />
                       </button>
                     </>
-                  )}
+                  ) : null}
 
                   {/* Simulation & Action Controls */}
-                  <button
-                    type="button"
-                    onClick={() => simulateDirectPay(b.id)}
-                    className="p-2.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 border border-amber-500/30 grid place-items-center active:scale-95 transition-all min-h-[40px] min-w-[40px]"
-                    title="Simulasi Lunas Cepat"
-                  >
-                    <Sparkles size={14} className="text-amber-700" />
-                  </button>
+                  {!isCancelled && (
+                    <button
+                      type="button"
+                      onClick={() => simulateDirectPay(b.id)}
+                      className="p-2.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 border border-amber-500/30 grid place-items-center active:scale-95 transition-all min-h-[40px] min-w-[40px]"
+                      title="Simulasi Lunas Cepat"
+                    >
+                      <Sparkles size={14} className="text-amber-700" />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => openReceipt(b.id)}
@@ -920,19 +1034,32 @@ export default function Bills() {
                   >
                     <FileText size={14} />
                   </button>
+
+                  {/* Edit with Role & Status Guard per PRD */}
                   <button
                     type="button"
-                    onClick={() => openEdit(b)}
-                    className="p-2.5 rounded-full text-subtle hover:text-primary hover:bg-primary/5 grid place-items-center active:scale-95 transition-all min-h-[40px] min-w-[40px]"
-                    title="Edit Data Tagihan"
+                    disabled={!canEdit}
+                    onClick={() => canEdit && openEdit(b)}
+                    className={`p-2.5 rounded-full grid place-items-center active:scale-95 transition-all min-h-[40px] min-w-[40px] ${
+                      canEdit
+                        ? "text-subtle hover:text-primary hover:bg-primary/5 cursor-pointer"
+                        : "text-gray-300 bg-gray-100/50 cursor-not-allowed opacity-50"
+                    }`}
+                    title={
+                      canEdit
+                        ? "Edit Data Tagihan"
+                        : "Tagihan yang sudah dibayar atau dalam proses verifikasi tidak dapat diubah"
+                    }
                   >
                     <Edit2 size={14} />
                   </button>
+
+                  {/* Cancel with Destructive Confirmation Modal per PRD */}
                   {!isCancelled && (
                     <button
                       type="button"
-                      onClick={() => cancelBillAction(b.id)}
-                      className="p-2.5 rounded-full text-subtle hover:text-amber-700 hover:bg-amber-50 grid place-items-center active:scale-95 transition-all min-h-[40px] min-w-[40px]"
+                      onClick={() => openCancelModal(b)}
+                      className="p-2.5 rounded-full text-subtle hover:text-rose-700 hover:bg-rose-50 grid place-items-center active:scale-95 transition-all min-h-[40px] min-w-[40px]"
                       title="Batalkan Tagihan"
                     >
                       <XCircle size={14} />
@@ -942,7 +1069,7 @@ export default function Bills() {
                     type="button"
                     onClick={() => remove(b.id)}
                     className="p-2.5 rounded-full text-subtle hover:text-danger hover:bg-danger/5 grid place-items-center active:scale-95 transition-all min-h-[40px] min-w-[40px]"
-                    title="Hapus Tagihan"
+                    title="Hapus Permanen Tagihan"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -1521,44 +1648,72 @@ export default function Bills() {
       <Sheet
         open={openSheet}
         onClose={() => setOpenSheet(false)}
-        title={editing ? `Edit ${editing.invoice_number}` : "Terbitkan Tagihan / Custom Bill"}
-        subtitle={editing ? "Perbarui komponen biaya invoice resmi" : "Pilih penyewa dan tambahkan rincian komponen tagihan sewa & utilitas"}
+        title={editing ? `Edit ${editing.invoice_number}` : "Terbitkan Tagihan Baru"}
+        subtitle={editing ? "Perbarui rincian komponen biaya invoice resmi" : "Pilih unit penyewa dan tambahkan rincian komponen tagihan sewa & utilitas"}
         maxWidth="sm:max-w-2xl"
         footer={
-          <>
-            <Button
+          <div className="w-full flex items-center justify-between gap-2">
+            <button
               type="button"
-              variant="outline"
-              onClick={() => setOpenSheet(false)}
-              className="flex-1"
+              onClick={handleResetForm}
+              className="px-3.5 py-2.5 rounded-xl bg-surface border border-line text-subtle hover:text-ink hover:bg-muted text-xs font-bold active:scale-95 transition-all shadow-xs"
+              title="Reset input form ke status awal"
             >
-              Batal
-            </Button>
-            <Button
-              type="submit"
-              form="bill-form"
-              testid="submit-bill"
-              loading={submitting}
-              className="flex-1"
-            >
-              {editing ? "Simpan Perubahan" : "Terbitkan Invoice Resmi"}
-            </Button>
-          </>
+              Reset Form
+            </button>
+            <div className="flex items-center gap-2 flex-1 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpenSheet(false)}
+                className="px-4"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                form="bill-form"
+                testid="submit-bill"
+                loading={submitting}
+                disabled={!isFormValid || (editing && !isDirty)}
+                className="flex-1 sm:flex-initial px-5"
+              >
+                {editing
+                  ? isDirty && amountDifference !== 0
+                    ? `Simpan Perubahan (${amountDifference > 0 ? "+" : ""}${fmtIDR(amountDifference)})`
+                    : "Simpan Perubahan"
+                  : "Terbitkan Invoice"}
+              </Button>
+            </div>
+          </div>
         }
       >
-        <form id="bill-form" onSubmit={submit} className="space-y-3">
+        <form id="bill-form" onSubmit={handlePreSubmit} className="space-y-3.5">
+          {/* Warning Banner on Edit */}
+          {editing && (
+            <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-2.5 text-amber-900 text-xs">
+              <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">⚠️ Perhatian Pembaruan Tagihan</p>
+                <p className="text-[11px] text-amber-800 mt-0.5 leading-snug">
+                  Mengubah nominal invoice yang sudah terbit akan memperbarui total tagihan di aplikasi penyewa secara otomatis.
+                </p>
+              </div>
+            </div>
+          )}
+
           <FormSection title="Penyewa & Jadwal Jatuh Tempo">
             <Select
-              label="Pilih Penghuni *"
+              label="Pilih Unit & Penghuni *"
               testid="input-bill-tenant"
               value={form.tenant_id}
               onChange={(e) => onTenantChange(e.target.value)}
               required
             >
-              <option value="">-- Pilih Penghuni --</option>
+              <option value="">-- Pilih Penghuni Aktif --</option>
               {tenants.filter((t) => t.status !== "former").map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.name} (Kamar {roomName(t.room_id)})
+                  {t.name} (Unit {roomName(t.room_id)}) — {fmtIDR(t.monthly_rent || 0)}/bln
                 </option>
               ))}
             </Select>
@@ -1583,90 +1738,102 @@ export default function Bills() {
             </div>
           </FormSection>
 
-          {/* Dynamic Bill Components */}
-          <FormSection title="Komponen Rincian Biaya (Line Items)">
+          {/* Dynamic Line-Item Builder */}
+          <FormSection title="Dynamic Line-Item Builder">
             <div className="space-y-2.5">
               {form.items.map((item, idx) => (
-                <div key={idx} className="p-3 bg-muted/40 rounded-2xl border border-line/70 flex items-center gap-2">
-                  <div className="flex-1">
+                <div key={idx} className="p-3 bg-muted/40 rounded-2xl border border-line/70 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="w-full sm:w-44">
+                    <select
+                      className="w-full text-xs font-semibold p-2.5 bg-white border border-line rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-secondary"
+                      value={item.category || "other"}
+                      onChange={(e) => handleItemChange(idx, "category", e.target.value)}
+                    >
+                      <option value="rent">🏠 Sewa</option>
+                      <option value="electricity">⚡ Listrik kWh</option>
+                      <option value="water">💧 Air PDAM</option>
+                      <option value="add_on">🚗 Layanan/Parkir</option>
+                      <option value="penalty">⚠️ Denda</option>
+                      <option value="other">📋 Lainnya</option>
+                    </select>
+                  </div>
+                  <div className="flex-1 min-w-0">
                     <input
                       type="text"
-                      className="w-full text-xs font-bold p-2 bg-white border border-line rounded-xl"
-                      placeholder="Nama Biaya (contoh: Sewa Pokok, Listrik kWh)"
+                      className="w-full text-xs font-bold p-2.5 bg-white border border-line rounded-xl focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:border-secondary"
+                      placeholder="Deskripsi Biaya (contoh: Sewa Pokok, Listrik 120 kWh)"
                       value={item.name}
                       onChange={(e) => handleItemChange(idx, "name", e.target.value)}
                       required
                     />
                   </div>
-                  <div className="w-36 sm:w-44">
-                    <MoneyInput
-                      value={item.amount}
-                      onChange={(val) => handleItemChange(idx, "amount", val)}
-                      placeholder="Nominal (Rp)"
-                    />
+                  <div className="flex items-center gap-2">
+                    <div className="w-36 sm:w-40">
+                      <MoneyInput
+                        value={item.amount}
+                        onChange={(val) => handleItemChange(idx, "amount", val)}
+                        placeholder="Nominal (Rp)"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveItem(idx)}
+                      className="p-2.5 rounded-xl text-subtle hover:text-danger hover:bg-danger/10 active:scale-95 transition-colors shrink-0"
+                      title="Hapus baris biaya"
+                    >
+                      <Minus size={16} />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveItem(idx)}
-                    className="p-2 rounded-xl text-subtle hover:text-danger hover:bg-danger/10 active:scale-95"
-                    title="Hapus baris"
-                  >
-                    <Minus size={15} />
-                  </button>
                 </div>
               ))}
             </div>
 
-            {/* Preset Quick Add Buttons */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-2">
-              <span className="text-[10px] uppercase font-bold text-subtle mr-1">+ Tambah Preset:</span>
+            {/* Quick Add and Preset Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-line/60 mt-3">
               <button
                 type="button"
-                onClick={() => handleAddItem("Listrik (Selisih kWh)", "electricity", 150000)}
-                className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-gray-700 flex items-center gap-1"
+                onClick={() => handleAddItem("Biaya Tambahan", "other", 0)}
+                className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold flex items-center gap-1.5 active:scale-95 transition-all"
               >
-                <Plus size={11} /> Listrik kWh
+                <Plus size={13} /> Tambah Baris Biaya
               </button>
-              <button
-                type="button"
-                onClick={() => handleAddItem("Air / PDAM", "water", 50000)}
-                className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-gray-700 flex items-center gap-1"
-              >
-                <Plus size={11} /> Air PDAM
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAddItem("Layanan Kebersihan", "add_on", 100000)}
-                className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-gray-700 flex items-center gap-1"
-              >
-                <Plus size={11} /> Kebersihan
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAddItem("Parkir Kendaraan", "add_on", 150000)}
-                className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-gray-700 flex items-center gap-1"
-              >
-                <Plus size={11} /> Parkir
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAddItem("Denda Keterlambatan", "penalty", 50000)}
-                className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-rose-700 flex items-center gap-1"
-              >
-                <Plus size={11} /> Denda
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAddItem("Biaya Lainnya", "other", 0)}
-                className="px-2.5 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-[11px] font-bold flex items-center gap-1"
-              >
-                <Plus size={11} /> Kustom
-              </button>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] uppercase font-bold text-subtle mr-0.5">Preset:</span>
+                <button
+                  type="button"
+                  onClick={() => handleAddItem("Listrik (Selisih kWh)", "electricity", 150000)}
+                  className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-gray-700 flex items-center gap-1"
+                >
+                  <Plus size={11} /> Listrik kWh
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddItem("Layanan Parkir", "add_on", 100000)}
+                  className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-gray-700 flex items-center gap-1"
+                >
+                  <Plus size={11} /> Parkir
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAddItem("Denda Keterlambatan", "penalty", 50000)}
+                  className="px-2.5 py-1 bg-white hover:bg-muted border border-line rounded-lg text-[11px] font-medium text-rose-700 flex items-center gap-1"
+                >
+                  <Plus size={11} /> Denda
+                </button>
+              </div>
             </div>
 
-            {/* Total Display */}
+            {/* Real-Time Total Calculation Display */}
             <div className="p-4 bg-primary/5 rounded-2xl border border-primary/20 flex items-center justify-between mt-3">
-              <span className="text-xs uppercase font-bold text-subtle tracking-wider">Total Tagihan:</span>
+              <div>
+                <span className="text-xs uppercase font-bold text-subtle tracking-wider block">Total Tagihan (Real-Time):</span>
+                {editing && amountDifference !== 0 && (
+                  <span className={`text-[11px] font-bold ${amountDifference > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                    Selisih: {amountDifference > 0 ? "+" : ""}{fmtIDR(amountDifference)}
+                  </span>
+                )}
+              </div>
               <span className="font-serif text-2xl font-bold text-primary tnum">
                 {fmtIDR(totalCalculatedForm)}
               </span>
@@ -1679,7 +1846,7 @@ export default function Bills() {
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
               rows={2}
-              placeholder="Catatan khusus invoice untuk dicetak di invoice..."
+              placeholder="Catatan khusus invoice untuk dicetak di kwitansi..."
             />
           </FormSection>
         </form>
@@ -1763,6 +1930,139 @@ export default function Bills() {
           </FormSection>
         </form>
       </Sheet>
+
+      {/* ─── 12. CONFIRMATION MODAL FOR EDIT SAVE ────────────────────── */}
+      {showConfirmSaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-line space-y-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-secondary/10 rounded-2xl text-secondary">
+                <Edit2 size={24} />
+              </div>
+              <div>
+                <h3 className="font-serif font-bold text-primary text-lg">Konfirmasi Pembaruan Tagihan</h3>
+                <p className="text-xs text-subtle">
+                  Perbarui data tagihan Unit {roomName(form.room_id) || "Kamar"}?
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted/60 rounded-2xl border border-line text-xs space-y-2">
+              <div className="flex justify-between items-center text-gray-700">
+                <span>Total Sebelumnya:</span>
+                <span className="font-mono font-medium">{fmtIDR(initialTotal)}</span>
+              </div>
+              <div className="flex justify-between items-center text-primary font-bold">
+                <span>Total Baru:</span>
+                <span className="font-mono text-sm">{fmtIDR(totalCalculatedForm)}</span>
+              </div>
+              {amountDifference !== 0 && (
+                <div className="flex justify-between items-center text-xs pt-1 border-t border-line/60">
+                  <span>Selisih Tagihan:</span>
+                  <span className={`font-bold font-mono ${amountDifference > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                    {amountDifference > 0 ? "+" : ""}{fmtIDR(amountDifference)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <p className="text-[11px] text-gray-500">
+              Notifikasi pembaruan tagihan akan disinkronkan secara otomatis ke aplikasi penyewa terkait.
+            </p>
+
+            <div className="flex items-center gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowConfirmSaveModal(false)}
+                className="flex-1"
+              >
+                Kembali
+              </Button>
+              <Button
+                type="button"
+                onClick={executeSubmit}
+                loading={submitting}
+                className="flex-1 bg-primary text-white"
+              >
+                Ya, Simpan Perubahan
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ─── 13. DESTRUCTIVE ACTION MODAL: BATALKAN INVOICE ─────────── */}
+      {cancelModalBill && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-rose-200 space-y-4"
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-3 bg-rose-100 rounded-2xl text-rose-600 shrink-0 mt-0.5">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h3 className="font-serif font-bold text-rose-900 text-lg">
+                  ⚠️ Batalkan Invoice {cancelModalBill.invoice_number}?
+                </h3>
+                <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                  Tindakan ini akan membatalkan tagihan sebesar{" "}
+                  <strong className="text-rose-700 font-mono">{fmtIDR(cancelModalBill.total)}</strong> untuk{" "}
+                  <strong>Unit {cancelModalBill.room_unit || roomName(cancelModalBill.room_id)}</strong>.
+                  Status invoice akan diubah menjadi <span className="font-bold text-gray-700">'CANCELLED'</span>.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmCancel} className="space-y-3.5 pt-1">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Alasan Pembatalan (Wajib) <span className="text-danger">*</span>
+                </label>
+                <textarea
+                  className="w-full text-xs p-3 bg-rose-50/30 border border-rose-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-rose-400 font-medium placeholder:text-gray-400"
+                  rows={3}
+                  required
+                  placeholder="Contoh: Salah input meteran / ganti unit / pembatalan sewa..."
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                />
+              </div>
+
+              <div className="p-3 bg-gray-50 rounded-xl border border-line text-[11px] text-subtle">
+                ℹ️ Total tagihan aktif di sisi penyewa otomatis berkurang sesuai nominal yang dibatalkan.
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCancelModalBill(null)}
+                  className="flex-1"
+                >
+                  Kembalikan
+                </Button>
+                <button
+                  type="submit"
+                  disabled={!cancelReason.trim() || cancelSubmitting}
+                  className="flex-1 px-4 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition-all shadow-xs active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  {cancelSubmitting ? "Membatalkan..." : "Ya, Batalkan Tagihan"}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

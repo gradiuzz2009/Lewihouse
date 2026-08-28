@@ -44,11 +44,13 @@ const STANDARD_FACILITIES = [
   "Kamar Mandi Dalam",
   "Water Heater",
   "Smart Lock",
-  "Lemari Pakaian",
-  "WiFi Cepat",
-  "Kasur Springbed",
-  "Meja Kerja",
+  "Lemari",
+  "Kasur Springbed Queen",
+  "Kasur Springbed Single",
+  "Meja Kerja & Kursi",
   "Smart TV",
+  "WiFi Cepat",
+  "Layanan Laundry",
 ];
 
 const emptyRoom = {
@@ -57,11 +59,11 @@ const emptyRoom = {
   wing: "",
   room_type: "standard",
   capacity: 1,
-  price: 1800000,
-  deposit: 1800000,
+  price: 2000000,
+  deposit: 1000000,
   meter_id: "",
   status: "available",
-  facilities: ["AC", "Kasur Springbed", "WiFi Cepat"],
+  facilities: ["AC", "Kamar Mandi Dalam", "Kasur Springbed Single", "WiFi Cepat"],
   photo_url: "",
   notes: "",
 };
@@ -75,11 +77,13 @@ export const roomStatusMap = {
 };
 
 const typeLabels = {
-  standard: "Standard",
-  deluxe: "Deluxe",
-  vip: "VIP",
-  suite: "Suite",
-  studio: "Studio",
+  standard: "Standard (~16 m²)",
+  deluxe: "Deluxe (~18 m²)",
+  suite: "Suite (~22 m²)",
+  tipe_a: "Tipe A (VIP / Exclusive)",
+  tipe_b: "Tipe B (Superior)",
+  tipe_c: "Tipe C (Single Standard)",
+  studio: "Studio / Loft",
 };
 
 function cleanPhoneWa(phone) {
@@ -88,6 +92,12 @@ function cleanPhoneWa(phone) {
   if (digits.startsWith("08")) return "628" + digits.slice(2);
   if (digits.startsWith("8")) return "62" + digits;
   return digits;
+}
+
+function sanitizeRoomInput(val) {
+  if (!val) return "";
+  // Strip duplicate whitespace, symbols, hyphens: e.g. "A - 101" -> "A101"
+  return val.replace(/[\s\-_]+/g, "").toUpperCase();
 }
 
 function isAvailableStatus(status) {
@@ -108,9 +118,20 @@ export default function Rooms() {
   const [editingRoom, setEditingRoom] = useState(null);
   const [roomForm, setRoomForm] = useState(emptyRoom);
   const [customFacility, setCustomFacility] = useState("");
+  const [isSavingRoom, setIsSavingRoom] = useState(false);
+  const [highlightedRoomId, setHighlightedRoomId] = useState(null);
   
   // Detail Drawer state
   const [selectedRoom, setSelectedRoom] = useState(null);
+
+  // Destructive Delete Modal state
+  const [deletingRoom, setDeletingRoom] = useState(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Clear Resident / Check-out Modal state
+  const [clearingRoom, setClearingRoom] = useState(null);
+  const [isClearing, setIsClearing] = useState(false);
   
   // Room Transfer Modal state
   const [openTransferModal, setOpenTransferModal] = useState(false);
@@ -183,6 +204,17 @@ export default function Rooms() {
     return { total, available, occupied, cleaning, maintenance, reserved, occupancyRate };
   }, [rooms]);
 
+  // Real-time Duplicate Check for Room Number
+  const isDuplicateName = useMemo(() => {
+    if (!roomForm.name) return false;
+    const cleanCurrent = sanitizeRoomInput(roomForm.name);
+    if (!cleanCurrent) return false;
+    return rooms.some((r) => {
+      if (editingRoom && r.id === editingRoom.id) return false;
+      return sanitizeRoomInput(r.name) === cleanCurrent;
+    });
+  }, [roomForm.name, rooms, editingRoom]);
+
   // Filtered rooms
   const filteredRooms = useMemo(() => {
     return rooms.filter((r) => {
@@ -220,7 +252,8 @@ export default function Rooms() {
     setEditingRoom(null);
     setRoomForm({
       ...emptyRoom,
-      facilities: ["AC", "Kasur Springbed", "WiFi Cepat"],
+      status: "available", // Default status: AVAILABLE (Kamar Kosong Siap Huni)
+      facilities: ["AC", "Kamar Mandi Dalam", "Kasur Springbed Single", "WiFi Cepat"],
     });
     setCustomFacility("");
     setOpenAddEditSheet(true);
@@ -244,6 +277,12 @@ export default function Rooms() {
     });
     setCustomFacility("");
     setOpenAddEditSheet(true);
+  };
+
+  const handleRoomNameChange = (rawVal) => {
+    // Auto sanitization: clean duplicate spaces, hyphens and format neatly
+    const cleaned = sanitizeRoomInput(rawVal);
+    setRoomForm((prev) => ({ ...prev, name: cleaned }));
   };
 
   const toggleFacility = (fac) => {
@@ -270,8 +309,15 @@ export default function Rooms() {
 
   const handleSaveRoom = async (e) => {
     e.preventDefault();
+    if (isDuplicateName) {
+      toast.error("Nomor unit sudah terdaftar di database");
+      return;
+    }
+    setIsSavingRoom(true);
+    const sanitizedName = sanitizeRoomInput(roomForm.name);
     const payload = {
       ...roomForm,
+      name: sanitizedName,
       price: Number(roomForm.price) || 0,
       deposit: Number(roomForm.deposit) || 0,
       capacity: Number(roomForm.capacity) || 1,
@@ -280,15 +326,21 @@ export default function Rooms() {
     try {
       if (editingRoom) {
         await api.put(`/rooms/${editingRoom.id}`, payload);
-        toast.success(`Kamar ${payload.name} berhasil diperbarui`);
+        toast.success(`Data Unit ${payload.name} berhasil diperbarui`);
+        setHighlightedRoomId(editingRoom.id);
       } else {
-        await api.post("/rooms", payload);
-        toast.success(`Kamar ${payload.name} berhasil ditambahkan`);
+        const res = await api.post("/rooms", payload);
+        const newId = res.data?.id || ("r_" + Date.now());
+        toast.success(`Unit ${payload.name} berhasil ditambahkan`);
+        setHighlightedRoomId(newId);
       }
+      setTimeout(() => setHighlightedRoomId(null), 4000);
       setOpenAddEditSheet(false);
       loadData();
     } catch (err) {
       toast.error(typeof err.response?.data?.detail === "string" ? err.response.data.detail : "Gagal menyimpan kamar");
+    } finally {
+      setIsSavingRoom(false);
     }
   };
 
@@ -296,25 +348,82 @@ export default function Rooms() {
     try {
       await api.post(`/rooms/${roomId}/status`, { status: targetStatus });
       toast.success(message || `Status kamar diubah ke ${targetStatus}`);
+      setHighlightedRoomId(roomId);
+      setTimeout(() => setHighlightedRoomId(null), 3000);
       loadData();
     } catch (err) {
       toast.error(typeof err.response?.data?.detail === "string" ? err.response.data.detail : "Gagal mengubah status kamar");
     }
   };
 
-  const handleDeleteRoom = async (room) => {
+  const handleOpenDelete = (room) => {
     if (room.status === "occupied") {
       toast.error("Kamar sedang dihuni oleh penyewa. Lakukan checkout atau pindah kamar terlebih dahulu.");
       return;
     }
-    if (!window.confirm(`Hapus kamar ${room.name}? Tindakan ini tidak dapat dibatalkan.`)) return;
+    setDeletingRoom(room);
+    setDeleteConfirmInput("");
+  };
+
+  const handleConfirmDelete = async (e) => {
+    if (e) e.preventDefault();
+    if (!deletingRoom) return;
+    const isMatched = sanitizeRoomInput(deleteConfirmInput) === sanitizeRoomInput(deletingRoom.name);
+    if (!isMatched) {
+      toast.error("Nomor unit konfirmasi tidak sesuai");
+      return;
+    }
+
+    // Check unpaid bills
+    const occupant = tenantMap[deletingRoom.id];
+    const unpaidBills = bills.filter(
+      (b) => (b.room_id === deletingRoom.id || b.room_unit === deletingRoom.name || (occupant && b.tenant_id === occupant.id)) &&
+             (b.status === "UNPAID" || b.status === "unpaid" || b.status === "OVERDUE" || b.status === "overdue" || b.status === "VERIFYING")
+    );
+
+    if (unpaidBills.length > 0) {
+      toast.error(`Kamar masih memiliki ${unpaidBills.length} tagihan belum lunas. Selesaikan tagihan sebelum menghapus kamar.`);
+      return;
+    }
+
+    setIsDeleting(true);
     try {
-      await api.delete(`/rooms/${room.id}`);
-      toast.success(`Kamar ${room.name} telah dihapus`);
+      await api.delete(`/rooms/${deletingRoom.id}`);
+      toast.success(`Unit ${deletingRoom.name} telah dihapus dari sistem.`);
+      setDeletingRoom(null);
       setSelectedRoom(null);
       loadData();
     } catch (err) {
       toast.error(typeof err.response?.data?.detail === "string" ? err.response.data.detail : "Gagal menghapus kamar");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleConfirmDeleteRoom = (e) => {
+    if (e) e.preventDefault();
+    handleConfirmDelete(e);
+  };
+
+  const handleOpenClearResident = (room) => {
+    setClearingRoom(room);
+  };
+
+  const handleConfirmClearResident = async () => {
+    if (!clearingRoom) return;
+    setIsClearing(true);
+    try {
+      await api.post(`/rooms/${clearingRoom.id}/clear-resident`);
+      toast.success(`Unit ${clearingRoom.name} berhasil dikosongkan dan status diubah menjadi CLEANING`);
+      setClearingRoom(null);
+      setSelectedRoom(null);
+      setHighlightedRoomId(clearingRoom.id);
+      setTimeout(() => setHighlightedRoomId(null), 3000);
+      loadData();
+    } catch (err) {
+      toast.error(typeof err.response?.data?.detail === "string" ? err.response.data.detail : "Gagal mengosongkan kamar");
+    } finally {
+      setIsClearing(false);
     }
   };
 
@@ -431,125 +540,125 @@ export default function Rooms() {
   }, [selectedRoom, tenantMap, tenants, bills, complaints]);
 
   return (
-    <div className="fade-up pb-12" data-testid="rooms-page">
+    <div className="fade-up pb-28" data-testid="rooms-page">
       {/* Header */}
       <PageHeader
         title="Manajemen Kamar & Unit"
         subtitle={`${stats.total} total unit · ${stats.occupied} terisi (${stats.occupancyRate}%), ${stats.available} tersedia`}
         onBack={false}
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               onClick={() => openTransfer(null)}
               testid="btn-open-transfer"
-              className="!px-3.5 !py-2 text-xs flex items-center gap-1.5 border-line bg-surface hover:bg-muted text-ink shadow-none"
+              className="!px-3.5 !h-10 text-xs flex-1 sm:flex-initial flex items-center justify-center gap-1.5 border-line bg-surface hover:bg-muted text-ink shadow-2xs rounded-full font-bold"
             >
               <ArrowLeftRight size={14} className="text-primary" />
               <span>Pindah Kamar</span>
             </Button>
-            <AddButton onClick={openNew} testid="add-room-btn" />
+            <AddButton onClick={openNew} testid="add-room-btn" label="Tambah Kamar" />
           </div>
         }
       />
 
       {/* Metric Cards / Status Badges */}
-      <div className="px-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4" data-testid="room-metric-cards">
+      <div className="px-5 sm:px-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3 mb-4" data-testid="room-metric-cards">
         <button
           type="button"
           onClick={() => setFilter("all")}
           className={`p-3.5 rounded-2xl border text-left transition-all ${
-            filter === "all" ? "bg-primary text-white border-primary shadow-soft" : "bg-surface border-line hover:border-primary/40 text-ink"
+            filter === "all" ? "bg-primary text-white border-primary shadow-soft scale-[1.01]" : "bg-surface border-line hover:border-primary/40 text-ink"
           }`}
         >
           <div className="flex items-center justify-between">
             <span className={`text-[10px] uppercase font-bold tracking-wider ${filter === "all" ? "text-white/80" : "text-subtle"}`}>Total Unit</span>
             <DoorOpen size={16} className={filter === "all" ? "text-white" : "text-primary"} />
           </div>
-          <p className="text-2xl font-serif font-bold mt-1 leading-none">{stats.total}</p>
-          <p className={`text-[11px] mt-1.5 ${filter === "all" ? "text-white/90" : "text-subtle"}`}>Kapasitas Properti</p>
+          <p className="text-2xl sm:text-3xl font-sans font-black mt-1.5 leading-none tnum tracking-tight">{stats.total}</p>
+          <p className={`text-[11px] mt-1.5 font-medium ${filter === "all" ? "text-white/90" : "text-subtle"}`}>Kapasitas Properti</p>
         </button>
 
         <button
           type="button"
           onClick={() => setFilter("available")}
           className={`p-3.5 rounded-2xl border text-left transition-all ${
-            filter === "available" ? "bg-emerald-600 text-white border-emerald-600 shadow-soft" : "bg-surface border-line hover:border-emerald-500/40 text-ink"
+            filter === "available" ? "bg-emerald-600 text-white border-emerald-600 shadow-soft scale-[1.01]" : "bg-surface border-line hover:border-emerald-500/40 text-ink"
           }`}
         >
           <div className="flex items-center justify-between">
             <span className={`text-[10px] uppercase font-bold tracking-wider ${filter === "available" ? "text-white/80" : "text-emerald-700"}`}>Tersedia</span>
             <CheckCircle2 size={16} className={filter === "available" ? "text-white" : "text-emerald-600"} />
           </div>
-          <p className="text-2xl font-serif font-bold mt-1 leading-none">{stats.available}</p>
-          <p className={`text-[11px] mt-1.5 ${filter === "available" ? "text-white/90" : "text-subtle"}`}>Siap Disewa</p>
+          <p className="text-2xl sm:text-3xl font-sans font-black mt-1.5 leading-none tnum tracking-tight">{stats.available}</p>
+          <p className={`text-[11px] mt-1.5 font-medium ${filter === "available" ? "text-white/90" : "text-subtle"}`}>Siap Disewa</p>
         </button>
 
         <button
           type="button"
           onClick={() => setFilter("occupied")}
           className={`p-3.5 rounded-2xl border text-left transition-all ${
-            filter === "occupied" ? "bg-blue-600 text-white border-blue-600 shadow-soft" : "bg-surface border-line hover:border-blue-500/40 text-ink"
+            filter === "occupied" ? "bg-blue-600 text-white border-blue-600 shadow-soft scale-[1.01]" : "bg-surface border-line hover:border-blue-500/40 text-ink"
           }`}
         >
           <div className="flex items-center justify-between">
             <span className={`text-[10px] uppercase font-bold tracking-wider ${filter === "occupied" ? "text-white/80" : "text-blue-700"}`}>Terisi</span>
             <UserCheck size={16} className={filter === "occupied" ? "text-white" : "text-blue-600"} />
           </div>
-          <p className="text-2xl font-serif font-bold mt-1 leading-none">{stats.occupied}</p>
-          <p className={`text-[11px] mt-1.5 ${filter === "occupied" ? "text-white/90" : "text-subtle"}`}>{stats.occupancyRate}% Terisi</p>
+          <p className="text-2xl sm:text-3xl font-sans font-black mt-1.5 leading-none tnum tracking-tight">{stats.occupied}</p>
+          <p className={`text-[11px] mt-1.5 font-medium ${filter === "occupied" ? "text-white/90" : "text-subtle"}`}>{stats.occupancyRate}% Terisi</p>
         </button>
 
         <button
           type="button"
           onClick={() => setFilter("cleaning")}
           className={`p-3.5 rounded-2xl border text-left transition-all ${
-            filter === "cleaning" ? "bg-teal-600 text-white border-teal-600 shadow-soft" : "bg-surface border-line hover:border-teal-500/40 text-ink"
+            filter === "cleaning" ? "bg-teal-600 text-white border-teal-600 shadow-soft scale-[1.01]" : "bg-surface border-line hover:border-teal-500/40 text-ink"
           }`}
         >
           <div className="flex items-center justify-between">
             <span className={`text-[10px] uppercase font-bold tracking-wider ${filter === "cleaning" ? "text-white/80" : "text-teal-700"}`}>Cleaning</span>
             <Sparkles size={16} className={filter === "cleaning" ? "text-white" : "text-teal-600"} />
           </div>
-          <p className="text-2xl font-serif font-bold mt-1 leading-none">{stats.cleaning}</p>
-          <p className={`text-[11px] mt-1.5 ${filter === "cleaning" ? "text-white/90" : "text-subtle"}`}>Menunggu Bersih</p>
+          <p className="text-2xl sm:text-3xl font-sans font-black mt-1.5 leading-none tnum tracking-tight">{stats.cleaning}</p>
+          <p className={`text-[11px] mt-1.5 font-medium ${filter === "cleaning" ? "text-white/90" : "text-subtle"}`}>Menunggu Bersih</p>
         </button>
 
         <button
           type="button"
           onClick={() => setFilter("maintenance")}
           className={`p-3.5 rounded-2xl border text-left transition-all ${
-            filter === "maintenance" ? "bg-rose-600 text-white border-rose-600 shadow-soft" : "bg-surface border-line hover:border-rose-500/40 text-ink"
+            filter === "maintenance" ? "bg-rose-600 text-white border-rose-600 shadow-soft scale-[1.01]" : "bg-surface border-line hover:border-rose-500/40 text-ink"
           }`}
         >
           <div className="flex items-center justify-between">
             <span className={`text-[10px] uppercase font-bold tracking-wider ${filter === "maintenance" ? "text-white/80" : "text-rose-700"}`}>Perbaikan</span>
             <Wrench size={16} className={filter === "maintenance" ? "text-white" : "text-rose-600"} />
           </div>
-          <p className="text-2xl font-serif font-bold mt-1 leading-none">{stats.maintenance}</p>
-          <p className={`text-[11px] mt-1.5 ${filter === "maintenance" ? "text-white/90" : "text-subtle"}`}>Sedang Renovasi</p>
+          <p className="text-2xl sm:text-3xl font-sans font-black mt-1.5 leading-none tnum tracking-tight">{stats.maintenance}</p>
+          <p className={`text-[11px] mt-1.5 font-medium ${filter === "maintenance" ? "text-white/90" : "text-subtle"}`}>Sedang Renovasi</p>
         </button>
 
         <button
           type="button"
           onClick={() => setFilter("reserved")}
           className={`p-3.5 rounded-2xl border text-left transition-all ${
-            filter === "reserved" ? "bg-amber-600 text-white border-amber-600 shadow-soft" : "bg-surface border-line hover:border-amber-500/40 text-ink"
+            filter === "reserved" ? "bg-amber-600 text-white border-amber-600 shadow-soft scale-[1.01]" : "bg-surface border-line hover:border-amber-500/40 text-ink"
           }`}
         >
           <div className="flex items-center justify-between">
             <span className={`text-[10px] uppercase font-bold tracking-wider ${filter === "reserved" ? "text-white/80" : "text-amber-700"}`}>Dipesan</span>
             <ShieldAlert size={16} className={filter === "reserved" ? "text-white" : "text-amber-600"} />
           </div>
-          <p className="text-2xl font-serif font-bold mt-1 leading-none">{stats.reserved}</p>
-          <p className={`text-[11px] mt-1.5 ${filter === "reserved" ? "text-white/90" : "text-subtle"}`}>Deposit Masuk</p>
+          <p className="text-2xl sm:text-3xl font-sans font-black mt-1.5 leading-none tnum tracking-tight">{stats.reserved}</p>
+          <p className={`text-[11px] mt-1.5 font-medium ${filter === "reserved" ? "text-white/90" : "text-subtle"}`}>Deposit Masuk</p>
         </button>
       </div>
 
       {/* Filter & View Controls */}
-      <div className="px-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
+      <div className="px-5 sm:px-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
         {/* Status Filter Chips */}
-        <div className="chip-scroll-container pb-1 flex-1" data-testid="room-filters">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth py-1" data-testid="room-filters">
           {[
             { k: "all", l: "Semua Unit" },
             { k: "available", l: "Tersedia" },
@@ -562,8 +671,8 @@ export default function Rooms() {
               key={f.k}
               onClick={() => setFilter(f.k)}
               data-testid={`filter-${f.k}`}
-              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-wide transition-all active:scale-95 ${
-                filter === f.k ? "bg-primary text-white shadow-soft" : "bg-surface border border-line text-subtle hover:text-ink hover:bg-muted"
+              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-wide transition-all active:scale-95 whitespace-nowrap ${
+                filter === f.k ? "bg-primary text-white shadow-soft font-bold" : "bg-surface border border-line text-subtle hover:text-ink hover:bg-muted"
               }`}
             >
               {f.l}
@@ -646,17 +755,19 @@ export default function Rooms() {
                       const isCleaning = r.status === "cleaning";
                       const isMaintenance = r.status === "maintenance";
                       const isReserved = r.status === "reserved";
+                      const isHighlighted = highlightedRoomId === r.id;
                       
-                      const borderAccent =
-                        r.status === "available"
-                          ? "border-emerald-500/30 hover:border-emerald-500 hover:shadow-emerald-500/10"
-                          : r.status === "occupied"
-                          ? "border-blue-500/30 hover:border-blue-500 hover:shadow-blue-500/10"
-                          : r.status === "cleaning"
-                          ? "border-teal-500/30 hover:border-teal-500 hover:shadow-teal-500/10"
-                          : r.status === "maintenance"
-                          ? "border-rose-500/30 hover:border-rose-500 hover:shadow-rose-500/10"
-                          : "border-amber-500/30 hover:border-amber-500 hover:shadow-amber-500/10";
+                      const borderAccent = isHighlighted
+                        ? "border-emerald-500 ring-4 ring-emerald-400/40 bg-emerald-50/80 scale-[1.02] shadow-xl animate-pulse"
+                        : r.status === "available"
+                        ? "border-emerald-500/30 hover:border-emerald-500 hover:shadow-emerald-500/10"
+                        : r.status === "occupied"
+                        ? "border-blue-500/30 hover:border-blue-500 hover:shadow-blue-500/10"
+                        : r.status === "cleaning"
+                        ? "border-teal-500/30 hover:border-teal-500 hover:shadow-teal-500/10"
+                        : r.status === "maintenance"
+                        ? "border-rose-500/30 hover:border-rose-500 hover:shadow-rose-500/10"
+                        : "border-amber-500/30 hover:border-amber-500 hover:shadow-amber-500/10";
 
                       return (
                         <motion.div
@@ -665,7 +776,7 @@ export default function Rooms() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.03 }}
                           onClick={() => setSelectedRoom(r)}
-                          className={`group cursor-pointer rounded-2xl bg-surface border shadow-soft transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lifted overflow-hidden flex flex-col justify-between ${borderAccent}`}
+                          className={`group cursor-pointer rounded-2xl bg-surface border shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lifted overflow-hidden flex flex-col justify-between ${borderAccent}`}
                           data-testid={`room-tile-${r.name}`}
                         >
                           {/* Card Header & Badges */}
@@ -856,13 +967,13 @@ export default function Rooms() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => handleDeleteRoom(selectedRoom)}
+                onClick={() => handleOpenDelete(selectedRoom)}
                 className="!text-danger border-danger/30 hover:bg-danger/5 !px-3"
-                title="Hapus Unit Kamar"
+                title="Hapus / Nonaktifkan Unit Kamar"
               >
                 <Trash2 size={16} />
               </Button>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 <Button
                   type="button"
                   variant="outline"
@@ -875,16 +986,26 @@ export default function Rooms() {
                   <Edit2 size={14} /> Edit Spesifikasi
                 </Button>
                 {selectedRoom.status === "occupied" && (
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      openTransfer(selectedRoom);
-                      setSelectedRoom(null);
-                    }}
-                    className="flex items-center gap-1.5 text-xs bg-primary text-white"
-                  >
-                    <ArrowLeftRight size={14} /> Pindah Kamar
-                  </Button>
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleOpenClearResident(selectedRoom)}
+                      className="flex items-center gap-1.5 text-xs bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100"
+                    >
+                      <Sparkles size={14} className="text-amber-600" /> Check-Out / Kosongkan
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        openTransfer(selectedRoom);
+                        setSelectedRoom(null);
+                      }}
+                      className="flex items-center gap-1.5 text-xs bg-primary text-white"
+                    >
+                      <ArrowLeftRight size={14} /> Pindah Kamar
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -1339,8 +1460,8 @@ export default function Rooms() {
       <Sheet
         open={openAddEditSheet}
         onClose={() => setOpenAddEditSheet(false)}
-        title={editingRoom ? "Edit Kamar & Unit" : "Tambah Unit Kamar Baru"}
-        subtitle="Konfigurasi spesifikasi kamar, tarif, fasilitas & meteran listrik"
+        title={editingRoom ? `Edit Data Kamar ${editingRoom.name}` : "Tambah Unit Kamar Baru"}
+        subtitle={editingRoom ? "Perbarui spesifikasi, tarif sewa, fasilitas dan status unit" : "Konfigurasi spesifikasi kamar, tarif, fasilitas & meteran listrik"}
         maxWidth="sm:max-w-lg"
         footer={
           <>
@@ -1356,33 +1477,68 @@ export default function Rooms() {
               type="submit"
               form="room-form"
               testid="submit-room"
+              loading={isSavingRoom}
+              disabled={!roomForm.name || isDuplicateName || !roomForm.price}
               className="flex-1"
             >
-              {editingRoom ? "Simpan Perubahan" : "Simpan Data Kamar"}
+              {isSavingRoom
+                ? "Menyimpan Unit..."
+                : editingRoom
+                ? "Simpan Perubahan"
+                : "Simpan Data Kamar"}
             </Button>
           </>
         }
       >
         <form id="room-form" onSubmit={handleSaveRoom} className="space-y-4">
+          {/* Status Guard Info Banner when Occupied */}
+          {editingRoom && editingRoom.status === "occupied" && (
+            <div className="p-3.5 bg-blue-50 border border-blue-200 rounded-2xl flex items-start gap-2.5 text-blue-900 text-xs">
+              <AlertTriangle size={16} className="text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">⚠️ Unit Sedang Dihuni</p>
+                <p className="text-[11px] text-blue-800 mt-0.5 leading-snug">
+                  Nomor unit & status operasional dikunci (hanya dapat diubah melalui alur Pindah Kamar atau Check-Out). Perubahan tarif sewa dasar hanya berlaku untuk kontrak berikutnya.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Section 1: Room Identity */}
           <FormSection title="Informasi Unit Kamar">
-            <Input
-              label="Nomor / Nama Unit Kamar"
-              testid="input-room-name"
-              value={roomForm.name}
-              onChange={(e) => setRoomForm({ ...roomForm, name: e.target.value })}
-              required
-              placeholder="Contoh: 101, 204, atau A-12"
-            />
-            <div className="grid grid-cols-3 gap-3">
+            <div>
               <Input
-                label="Lantai"
+                label="Nomor / Nama Unit Kamar *"
+                testid="input-room-name"
+                value={roomForm.name}
+                onChange={(e) => handleRoomNameChange(e.target.value)}
+                disabled={Boolean(editingRoom && editingRoom.status === "occupied")}
+                required
+                placeholder="Contoh: 101, 204, atau A101 (Otomatis tersanitasi)"
+                helper="Spasi dan simbol ganda otomatis dibersihkan secara real-time"
+              />
+              {isDuplicateName && (
+                <p className="text-danger text-xs font-bold mt-1 flex items-center gap-1">
+                  <AlertTriangle size={12} /> Nomor unit sudah terdaftar di database
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <Select
+                label="Lantai *"
                 testid="input-room-floor"
                 value={roomForm.floor}
                 onChange={(e) => setRoomForm({ ...roomForm, floor: e.target.value })}
                 required
-                placeholder="1"
-              />
+              >
+                <option value="1">Lantai 1</option>
+                <option value="2">Lantai 2</option>
+                <option value="3">Lantai 3</option>
+                <option value="4">Lantai 4</option>
+                <option value="5">Lantai 5</option>
+              </Select>
+
               <Input
                 label="Sayap / Blok"
                 testid="input-room-wing"
@@ -1390,8 +1546,9 @@ export default function Rooms() {
                 onChange={(e) => setRoomForm({ ...roomForm, wing: e.target.value })}
                 placeholder="A / Utara"
               />
+
               <Input
-                label="Kapasitas"
+                label="Kapasitas *"
                 testid="input-room-capacity"
                 type="number"
                 min="1"
@@ -1401,56 +1558,106 @@ export default function Rooms() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Select
-                label="Tipe Kamar"
+                label="Tipe Kamar *"
                 testid="input-room-type"
                 value={roomForm.room_type}
                 onChange={(e) => setRoomForm({ ...roomForm, room_type: e.target.value })}
+                required
               >
-                <option value="standard">Standard</option>
-                <option value="deluxe">Deluxe</option>
-                <option value="vip">VIP</option>
-                <option value="suite">Suite</option>
-                <option value="studio">Studio</option>
+                <option value="standard">Standard (~16 m²)</option>
+                <option value="deluxe">Deluxe (~18 m²)</option>
+                <option value="suite">Suite / VIP (~22 m²)</option>
               </Select>
+
               <Select
-                label="Status Kamar"
+                label="Status Kamar *"
                 testid="input-room-status"
                 value={roomForm.status}
+                disabled={Boolean(editingRoom && editingRoom.status === "occupied")}
                 onChange={(e) => setRoomForm({ ...roomForm, status: e.target.value })}
+                required
               >
-                {Object.entries(roomStatusMap).map(([k, v]) => (
-                  <option key={k} value={k}>{v.label}</option>
-                ))}
+                <option value="available">Tersedia (AVAILABLE)</option>
+                <option value="cleaning">Dibersihkan (CLEANING)</option>
+                <option value="maintenance">Perbaikan (MAINTENANCE)</option>
+                <option value="reserved">Dipesan (RESERVED)</option>
+                {editingRoom && editingRoom.status === "occupied" && (
+                  <option value="occupied">Terisi (OCCUPIED)</option>
+                )}
               </Select>
             </div>
+
+            {/* Quick Status Switcher Pills on Edit */}
+            {editingRoom && editingRoom.status !== "occupied" && (
+              <div className="pt-2 border-t border-line/60">
+                <span className="text-[10px] uppercase font-bold text-subtle block mb-1.5">
+                  Transisi Status Cepat:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRoomForm({ ...roomForm, status: "available" })}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                      roomForm.status === "available"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                        : "bg-emerald-50 text-emerald-800 border-emerald-200 hover:border-emerald-400"
+                    }`}
+                  >
+                    ✓ AVAILABLE (Siap Huni)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoomForm({ ...roomForm, status: "cleaning" })}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                      roomForm.status === "cleaning"
+                        ? "bg-teal-600 text-white border-teal-600 shadow-xs"
+                        : "bg-teal-50 text-teal-800 border-teal-200 hover:border-teal-400"
+                    }`}
+                  >
+                    ✨ CLEANING (Pembersihan)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoomForm({ ...roomForm, status: "maintenance" })}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                      roomForm.status === "maintenance"
+                        ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                        : "bg-rose-50 text-rose-800 border-rose-200 hover:border-rose-400"
+                    }`}
+                  >
+                    🛠️ MAINTENANCE (Perbaikan)
+                  </button>
+                </div>
+              </div>
+            )}
           </FormSection>
 
           {/* Section 2: Pricing & Metering */}
           <FormSection title="Biaya Sewa & Meteran Listrik">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <MoneyInput
-                label="Harga Sewa Bulanan"
+                label="Tarif Sewa Dasar Bulanan *"
                 testid="input-room-price"
                 value={roomForm.price}
                 onChange={(v) => setRoomForm({ ...roomForm, price: v })}
                 required
               />
               <MoneyInput
-                label="Deposit Wajib"
+                label="Deposit Wajib (Opsional)"
                 testid="input-room-deposit"
                 value={roomForm.deposit}
                 onChange={(v) => setRoomForm({ ...roomForm, deposit: v })}
               />
             </div>
             <Input
-              label="ID / Nomor Meteran Listrik Terhubung"
+              label="ID / Serial Meteran Listrik Terhubung"
               testid="input-room-meter"
               value={roomForm.meter_id}
               onChange={(e) => setRoomForm({ ...roomForm, meter_id: e.target.value })}
-              placeholder="Contoh: PLN-204-A"
-              helper="Digunakan untuk perhitungan pencatatan utilitas bulanan"
+              placeholder="Contoh: PLN-204-A atau Scan Barcode"
+              helper="Digunakan untuk integrasi pencatatan utilitas bulanan"
             />
           </FormSection>
 
@@ -1482,8 +1689,8 @@ export default function Rooms() {
             {/* Custom Additional Facility */}
             <div className="flex items-center gap-2">
               <Input
-                label="Tambah Fasilitas Lain"
-                placeholder="Misal: Kulkas Mini, Balkon"
+                label="Tambah Fasilitas Kustom"
+                placeholder="Misal: Kulkas Mini, Balkon Pribadi"
                 value={customFacility}
                 onChange={(e) => setCustomFacility(e.target.value)}
                 onKeyDown={(e) => {
@@ -1562,6 +1769,139 @@ export default function Rooms() {
           </FormSection>
         </form>
       </Sheet>
+
+      {/* ========================================================================= */}
+      {/* 4. DESTRUCTIVE MODAL: HAPUS / NONAKTIFKAN KAMAR                          */}
+      {/* ========================================================================= */}
+      {deletingRoom && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-rose-200 space-y-4"
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-3 bg-rose-100 rounded-2xl text-rose-600 shrink-0 mt-0.5">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h3 className="font-serif font-bold text-rose-900 text-lg">
+                  ⚠️ Hapus / Nonaktifkan Unit {deletingRoom.name}?
+                </h3>
+                <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                  Kamar ini akan dihapus dari grid denah operasional. Riwayat sewa dan tagihan terdahulu tetap diarsipkan.
+                </p>
+              </div>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleConfirmDelete();
+              }}
+              className="space-y-3.5 pt-1"
+            >
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">
+                  Ketik nomor unit untuk konfirmasi: <span className="text-rose-600 font-mono font-bold">"{deletingRoom.name}"</span>
+                </label>
+                <input
+                  type="text"
+                  className="w-full text-xs p-3 bg-rose-50/40 border border-rose-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono font-bold uppercase placeholder:text-gray-400 text-rose-900"
+                  required
+                  placeholder={`Ketik ${deletingRoom.name}`}
+                  value={deleteConfirmInput}
+                  onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setDeletingRoom(null);
+                    setDeleteConfirmInput("");
+                  }}
+                  className="flex-1"
+                >
+                  Batal
+                </Button>
+                <button
+                  type="submit"
+                  disabled={
+                    deleteConfirmInput.trim().toUpperCase() !== deletingRoom.name.trim().toUpperCase() ||
+                    isDeleting
+                  }
+                  className="flex-1 px-4 py-2.5 rounded-full bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition-all shadow-xs active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  {isDeleting ? "Menghapus..." : "Hapus Unit"}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. MODAL KOSONGKAN KAMAR / CHECK-OUT (CLEAR RESIDENT)                    */}
+      {/* ========================================================================= */}
+      {clearingRoom && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-amber-200 space-y-4"
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-3 bg-amber-100 rounded-2xl text-amber-700 shrink-0 mt-0.5">
+                <Sparkles size={24} />
+              </div>
+              <div>
+                <h3 className="font-serif font-bold text-amber-950 text-lg">
+                  Kosongkan Unit {clearingRoom.name} (Check-Out)?
+                </h3>
+                <p className="text-xs text-gray-600 mt-1 leading-relaxed">
+                  Tindakan ini akan mengakhiri masa sewa penghuni dan otomatis mengubah status kamar menjadi <strong className="text-teal-700">'CLEANING'</strong> untuk disiapkan bagi penyewa berikutnya.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-muted/60 rounded-2xl border border-line text-xs space-y-1.5">
+              <div className="flex justify-between items-center text-gray-700">
+                <span>Penghuni Saat Ini:</span>
+                <span className="font-bold text-primary">{tenantMap[clearingRoom.id]?.name || "Penghuni"}</span>
+              </div>
+              <div className="flex justify-between items-center text-gray-700">
+                <span>Status Baru Kamar:</span>
+                <span className="font-bold text-teal-700">Dibersihkan (CLEANING)</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setClearingRoom(null)}
+                className="flex-1"
+              >
+                Batal
+              </Button>
+              <button
+                type="button"
+                onClick={handleConfirmClearResident}
+                disabled={isClearing}
+                className="flex-1 px-4 py-2.5 rounded-full bg-amber-600 hover:bg-amber-700 disabled:opacity-40 text-white text-xs font-bold transition-all shadow-xs active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                {isClearing ? "Memproses..." : "Ya, Kosongkan Kamar"}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

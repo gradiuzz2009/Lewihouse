@@ -14,64 +14,254 @@ const KEYS = {
   TOKENS: "lh_live_tokens",
   MESSAGES: "lh_live_messages",
   CHAT_THREADS: "lh_live_chat_threads",
+  LEADS: "lh_live_leads",
 };
 
 const INITIAL_ROOMS = [
+  // Lantai 1 (4 Kamar)
   {
     id: "r_101",
     name: "K-101",
     floor: "1",
     wing: "Utara",
-    room_type: "standard",
-    capacity: 1,
-    price: 1800000,
-    deposit: 1800000,
+    room_type: "tipe_a",
+    capacity: 2,
+    price: 2500000,
+    deposit: 1000000,
     status: "occupied",
-    facilities: ["AC", "Kasur Springbed", "Meja Kerja", "Kamar Mandi Dalam", "WiFi"],
-    photo_url: "/gallery/agoda/agoda-11-standard-single.webp",
-    notes: "Dekat lobi utama",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur Springbed Queen", "Meja Kerja & Kursi", "Lemari Pakaian Cermin", "Smart TV", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-10-deluxe-bed.webp",
+    notes: "Tipe A (Exclusive / VIP) Lantai 1",
   },
   {
     id: "r_102",
     name: "K-102",
     floor: "1",
     wing: "Utara",
-    room_type: "standard",
+    room_type: "tipe_b",
     capacity: 1,
-    price: 1800000,
-    deposit: 1800000,
+    price: 2000000,
+    deposit: 1000000,
     status: "available",
-    facilities: ["AC", "Kasur Springbed", "Meja Kerja", "Kamar Mandi Dalam", "WiFi"],
-    photo_url: "/gallery/agoda/agoda-13-standard-single.webp",
-    notes: "",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur Springbed Single", "Meja & Kursi", "Lemari Pakaian", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-15-superior-double.webp",
+    notes: "Tipe B (Superior) Lantai 1",
   },
+  {
+    id: "r_103",
+    name: "K-103",
+    floor: "1",
+    wing: "Selatan",
+    room_type: "tipe_c",
+    capacity: 1,
+    price: 1600000,
+    deposit: 500000,
+    status: "occupied",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur 1.2x2m", "Meja Kerja Kompak", "Lemari Pakaian", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-11-standard-single.webp",
+    notes: "Tipe C (Single Standard) Lantai 1",
+  },
+  {
+    id: "r_104",
+    name: "K-104",
+    floor: "1",
+    wing: "Selatan",
+    room_type: "tipe_c",
+    capacity: 1,
+    price: 1600000,
+    deposit: 500000,
+    status: "available",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur 1.2x2m", "Meja Kerja Kompak", "Lemari Pakaian", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-13-standard-single.webp",
+    notes: "Tipe C (Single Standard) Lantai 1",
+  },
+
+  // Lantai 2 (5 Kamar)
   {
     id: "r_201",
     name: "K-201",
     floor: "2",
-    wing: "Selatan",
-    room_type: "deluxe",
-    capacity: 1,
+    wing: "Utara",
+    room_type: "tipe_a",
+    capacity: 2,
     price: 2500000,
-    deposit: 2500000,
+    deposit: 1000000,
     status: "occupied",
-    facilities: ["AC", "Kasur King", "Smart TV", "Water Heater", "Balkon Pribadi", "WiFi"],
-    photo_url: "/gallery/agoda/agoda-10-deluxe-bed.webp",
-    notes: "Pemandangan taman",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur Springbed Queen", "Meja Kerja & Kursi", "Lemari Pakaian Cermin", "Smart TV", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-02-suite-bedroom.webp",
+    notes: "Tipe A (Exclusive / VIP) Lantai 2",
+  },
+  {
+    id: "r_202",
+    name: "K-202",
+    floor: "2",
+    wing: "Utara",
+    room_type: "tipe_a",
+    capacity: 2,
+    price: 2500000,
+    deposit: 1000000,
+    status: "available",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur Springbed Queen", "Meja Kerja & Kursi", "Lemari Pakaian Cermin", "Smart TV", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-09-suite-bedroom.webp",
+    notes: "Tipe A (Exclusive / VIP) Lantai 2",
+  },
+  {
+    id: "r_203",
+    name: "K-203",
+    floor: "2",
+    wing: "Selatan",
+    room_type: "tipe_b",
+    capacity: 1,
+    price: 2000000,
+    deposit: 1000000,
+    status: "available",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur Springbed Single", "Meja & Kursi", "Lemari Pakaian", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-12-superior-single.webp",
+    notes: "Tipe B (Superior) Lantai 2",
   },
   {
     id: "r_204",
     name: "K-204",
     floor: "2",
     wing: "Selatan",
-    room_type: "vip",
-    capacity: 2,
-    price: 3200000,
-    deposit: 3200000,
+    room_type: "tipe_b",
+    capacity: 1,
+    price: 2000000,
+    deposit: 1000000,
     status: "occupied",
-    facilities: ["AC", "Kasur King", "Smart TV", "Water Heater", "Kulkas Mini", "Balkon Pribadi", "WiFi"],
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur Springbed Double", "Meja & Kursi", "Lemari Pakaian", "TV", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-15-superior-double.webp",
+    notes: "Tipe B (Superior) Lantai 2",
+  },
+  {
+    id: "r_205",
+    name: "K-205",
+    floor: "2",
+    wing: "Selatan",
+    room_type: "tipe_c",
+    capacity: 1,
+    price: 1600000,
+    deposit: 500000,
+    status: "cleaning",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur 1.2x2m", "Meja Kerja Kompak", "Lemari Pakaian", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-11-standard-single.webp",
+    notes: "Tipe C (Single Standard) Lantai 2",
+  },
+
+  // Lantai 3 (4 Kamar)
+  {
+    id: "r_301",
+    name: "K-301",
+    floor: "3",
+    wing: "Utara",
+    room_type: "tipe_a",
+    capacity: 2,
+    price: 2500000,
+    deposit: 1000000,
+    status: "available",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur Springbed Queen", "Meja Kerja & Kursi", "Lemari Pakaian Cermin", "Smart TV", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-10-deluxe-bed.webp",
+    notes: "Tipe A (Exclusive / VIP) Lantai 3",
+  },
+  {
+    id: "r_302",
+    name: "K-302",
+    floor: "3",
+    wing: "Utara",
+    room_type: "tipe_b",
+    capacity: 1,
+    price: 2000000,
+    deposit: 1000000,
+    status: "available",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur Springbed Single", "Meja & Kursi", "Lemari Pakaian", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-14-deluxe-bedroom.webp",
+    notes: "Tipe B (Superior) Lantai 3",
+  },
+  {
+    id: "r_303",
+    name: "K-303",
+    floor: "3",
+    wing: "Selatan",
+    room_type: "tipe_b",
+    capacity: 1,
+    price: 2000000,
+    deposit: 1000000,
+    status: "occupied",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur Springbed Double", "Meja & Kursi", "Lemari Pakaian", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-15-superior-double.webp",
+    notes: "Tipe B (Superior) Lantai 3",
+  },
+  {
+    id: "r_304",
+    name: "K-304",
+    floor: "3",
+    wing: "Selatan",
+    room_type: "tipe_c",
+    capacity: 1,
+    price: 1600000,
+    deposit: 500000,
+    status: "available",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur 1.2x2m", "Meja Kerja Kompak", "Lemari Pakaian", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-13-standard-single.webp",
+    notes: "Tipe C (Single Standard) Lantai 3",
+  },
+
+  // Lantai 4 (4 Kamar)
+  {
+    id: "r_401",
+    name: "K-401",
+    floor: "4",
+    wing: "Utara",
+    room_type: "tipe_a",
+    capacity: 2,
+    price: 2600000,
+    deposit: 1000000,
+    status: "available",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur Springbed Queen", "Meja Kerja & Kursi", "Lemari Pakaian Cermin", "Smart TV", "WiFi Cepat", "Akses Rooftop"],
     photo_url: "/gallery/agoda/agoda-02-suite-bedroom.webp",
-    notes: "Kamar pojok lantai 2",
+    notes: "Tipe A (Exclusive / VIP) Lantai 4 — View Rooftop Terrace",
+  },
+  {
+    id: "r_402",
+    name: "K-402",
+    floor: "4",
+    wing: "Utara",
+    room_type: "tipe_b",
+    capacity: 1,
+    price: 2100000,
+    deposit: 1000000,
+    status: "available",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur Springbed Single", "Meja & Kursi", "Lemari Pakaian", "WiFi Cepat", "Akses Rooftop"],
+    photo_url: "/gallery/agoda/agoda-12-superior-single.webp",
+    notes: "Tipe B (Superior) Lantai 4 — Dekat Rooftop Workout Area",
+  },
+  {
+    id: "r_403",
+    name: "K-403",
+    floor: "4",
+    wing: "Selatan",
+    room_type: "tipe_b",
+    capacity: 1,
+    price: 2100000,
+    deposit: 1000000,
+    status: "maintenance",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur Springbed Single", "Meja & Kursi", "Lemari Pakaian", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-14-deluxe-bedroom.webp",
+    notes: "Tipe B (Superior) Lantai 4 — Pemeliharaan Rutin",
+  },
+  {
+    id: "r_404",
+    name: "K-404",
+    floor: "4",
+    wing: "Selatan",
+    room_type: "tipe_c",
+    capacity: 1,
+    price: 1700000,
+    deposit: 500000,
+    status: "available",
+    facilities: ["AC", "Kamar Mandi Dalam (Shower & Kloset Duduk)", "Kasur 1.2x2m", "Meja Kerja Kompak", "Lemari Pakaian", "WiFi Cepat"],
+    photo_url: "/gallery/agoda/agoda-11-standard-single.webp",
+    notes: "Tipe C (Single Standard) Lantai 4",
   },
 ];
 
@@ -84,15 +274,15 @@ const INITIAL_TENANTS = [
     room_id: "r_204",
     room_name: "K-204",
     status: "active",
-    nik: "3171012345670789",
+    nik: "1271012345670789",
     occupation: "Software Engineer",
     emergency_name: "Siti Rahma",
     emergency_relation: "Istri",
     emergency_phone: "081298765432",
     lease_start: "2026-01-01",
     lease_end: "2026-12-31",
-    deposit_amount: 3200000,
-    monthly_rent: 3200000,
+    deposit_amount: 1000000,
+    monthly_rent: 2000000,
     portal_password: "K204789",
     password_hash: simpleHash("K204789"),
     is_temporary_password: true,
@@ -112,15 +302,15 @@ const INITIAL_TENANTS = [
     room_id: "r_101",
     room_name: "K-101",
     status: "active",
-    nik: "3171023456780002",
-    occupation: "Akuntan",
+    nik: "1271023456780002",
+    occupation: "Dokter Muda",
     emergency_name: "Hendra Wijaya",
     emergency_relation: "Ayah",
     emergency_phone: "081199887766",
     lease_start: "2026-02-01",
     lease_end: "2027-01-31",
-    deposit_amount: 1800000,
-    monthly_rent: 1800000,
+    deposit_amount: 1000000,
+    monthly_rent: 2500000,
     portal_password: "K101002",
     password_hash: simpleHash("Andi123456"),
     is_temporary_password: false,
@@ -132,6 +322,129 @@ const INITIAL_TENANTS = [
       { hash: simpleHash("K101002"), created_at: "2026-02-01T00:00:00Z" },
       { hash: simpleHash("Andi123456"), created_at: "2026-02-01T01:00:00Z" }
     ],
+  },
+  {
+    id: "t_103",
+    name: "Citra Dewi",
+    phone: "081299887711",
+    email: "citra@lewihouse.com",
+    room_id: "r_103",
+    room_name: "K-103",
+    status: "active",
+    nik: "1271034567890003",
+    occupation: "Mahasiswi LP3I",
+    emergency_name: "Dewi Sartika",
+    emergency_relation: "Ibu",
+    emergency_phone: "081299887700",
+    lease_start: "2026-03-01",
+    lease_end: "2027-02-28",
+    deposit_amount: 500000,
+    monthly_rent: 1600000,
+    portal_password: "K103003",
+    password_hash: simpleHash("Citra123456"),
+    is_temporary_password: false,
+    creation_source: "ADMIN_MANUAL",
+    account_status: "ACTIVE",
+    temporary_password_generated_at: "2026-03-01T00:00:00Z",
+    password_updated_at: "2026-03-01T01:00:00Z",
+    password_history: [],
+  },
+  {
+    id: "t_303",
+    name: "Farhan Pratama",
+    phone: "081377889922",
+    email: "farhan@lewihouse.com",
+    room_id: "r_303",
+    room_name: "K-303",
+    status: "active",
+    nik: "1271045678900004",
+    occupation: "Banker",
+    emergency_name: "Pratama Senior",
+    emergency_relation: "Ayah",
+    emergency_phone: "081377889900",
+    lease_start: "2026-04-01",
+    lease_end: "2027-03-31",
+    deposit_amount: 1000000,
+    monthly_rent: 2000000,
+    portal_password: "K303004",
+    password_hash: simpleHash("Farhan123456"),
+    is_temporary_password: false,
+    creation_source: "ADMIN_MANUAL",
+    account_status: "ACTIVE",
+    temporary_password_generated_at: "2026-04-01T00:00:00Z",
+    password_updated_at: "2026-04-01T01:00:00Z",
+    password_history: [],
+  },
+];
+
+const INITIAL_LEADS = [
+  {
+    id: "lead_1",
+    name: "Rian Pratama",
+    phone: "081234567890",
+    source: "Mamikos",
+    room_id: "r_102",
+    room_name: "K-102",
+    room_type: "tipe_b",
+    room_price: 2000000,
+    expected_move_in: "2026-09-01",
+    duration_months: 3,
+    status: "INQUIRY_BARU", // INQUIRY_BARU, JADWAL_SURVEI, BOOKING_DP, KONVERSI_PENYEWA, BATAL
+    notes: "Tanya ketersediaan parkir mobil & bawa hewan",
+    created_at: "2026-08-28T07:30:00.000Z",
+    survey_date: null,
+    dp_amount: 0,
+  },
+  {
+    id: "lead_2",
+    name: "Siti Nurhaliza",
+    phone: "081398765432",
+    source: "Rukita",
+    room_id: "r_104",
+    room_name: "K-104",
+    room_type: "tipe_c",
+    room_price: 1600000,
+    expected_move_in: "2026-09-05",
+    duration_months: 6,
+    status: "JADWAL_SURVEI",
+    notes: "Survei unit lantai 1 pada hari Sabtu pukul 14:00 WIB",
+    created_at: "2026-08-27T10:15:00.000Z",
+    survey_date: "2026-08-30T14:00:00.000Z",
+    dp_amount: 0,
+  },
+  {
+    id: "lead_3",
+    name: "Dimas Aditya",
+    phone: "082155667788",
+    source: "WhatsApp Langsung",
+    room_id: "r_402",
+    room_name: "K-402",
+    room_type: "tipe_b",
+    room_price: 2100000,
+    expected_move_in: "2026-09-10",
+    duration_months: 12,
+    status: "BOOKING_DP",
+    notes: "Sudah transfer tanda jadi DP Rp 500.000 via BCA",
+    created_at: "2026-08-26T15:20:00.000Z",
+    survey_date: "2026-08-27T11:00:00.000Z",
+    dp_amount: 500000,
+  },
+  {
+    id: "lead_4",
+    name: "Nadia Putri",
+    phone: "085211223344",
+    source: "Instagram",
+    room_id: "r_401",
+    room_name: "K-401",
+    room_type: "tipe_a",
+    room_price: 2600000,
+    expected_move_in: "2026-09-01",
+    duration_months: 1,
+    status: "INQUIRY_BARU",
+    notes: "Tanya akses rooftop dan fasilitas Smart TV",
+    created_at: "2026-08-28T06:00:00.000Z",
+    survey_date: null,
+    dp_amount: 0,
   },
 ];
 
@@ -154,6 +467,24 @@ const INITIAL_BILLS = [
 ];
 
 const INITIAL_STAFF = [
+  {
+    id: "s_owner",
+    name: "Ibu Amirta",
+    email: "amirta@lewihouse.com",
+    phone: "081262960211",
+    role: "owner",
+    position: "Pemilik Properti (Owner)",
+    status: "active",
+  },
+  {
+    id: "s_admin",
+    name: "Mbak Rosmah",
+    email: "admin@lewihouse.com",
+    phone: "082168819722",
+    role: "admin",
+    position: "Admin Operasional & Front Desk",
+    status: "active",
+  },
   {
     id: "s_1",
     name: "Bambang Pamungkas",
@@ -201,6 +532,16 @@ function setStore(key, data) {
 export function executeLiveQuery(method, path, body) {
   const clean = path.replace(/^\/api\//, "").replace(/^\//, "");
 
+  // 0. RESET / SEED
+  if (clean === "seed" || clean.startsWith("seed")) {
+    localStorage.setItem(KEYS.ROOMS, JSON.stringify(INITIAL_ROOMS));
+    localStorage.setItem(KEYS.TENANTS, JSON.stringify(INITIAL_TENANTS));
+    localStorage.setItem(KEYS.BILLS, JSON.stringify(INITIAL_BILLS));
+    localStorage.setItem(KEYS.STAFF, JSON.stringify(INITIAL_STAFF));
+    localStorage.setItem(KEYS.TOKENS, JSON.stringify(INITIAL_TOKENS));
+    return { ok: true, message: "Berhasil memuat data contoh Lewi House Medan (17 kamar)" };
+  }
+
   // 1. AUTH LOGIN
   if (clean.startsWith("auth/login")) {
     const ident = (body?.identifier || body?.email || "").trim().toLowerCase();
@@ -228,6 +569,8 @@ export function executeLiveQuery(method, path, body) {
         account_status: isTemp ? "ACTIVE_FORCE_RESET" : "ACTIVE",
         creation_source: t?.creation_source || "LEASE_AUTOMATION",
         temporary_password: t?.portal_password || "204789",
+        has_completed_onboarding: Boolean(t?.has_completed_onboarding),
+        last_tour_opened_at: t?.last_tour_opened_at || null,
       };
       const token = "live_jwt_tenant_" + Date.now();
       localStorage.setItem("lh_token", token);
@@ -243,6 +586,7 @@ export function executeLiveQuery(method, path, body) {
         name: "Bambang Pamungkas",
         role: "staff",
         tenant_id: null,
+        has_completed_onboarding: true,
       };
       const token = "live_jwt_staff_" + Date.now();
       localStorage.setItem("lh_token", token);
@@ -250,14 +594,18 @@ export function executeLiveQuery(method, path, body) {
       return { user, access_token: token };
     }
 
-    // Default Owner / Admin
+    // Default Owner / Admin (Ibu Amirta / Mbak Rosmah)
+    const isAdminRosmah = ident.includes("rosmah") || ident.includes("082168819722");
+    const adminOnboardingDone = localStorage.getItem("lh_tour_admin_completed") === "true";
     const user = {
-      id: "usr_owner_1",
-      email: ident || "admin@lewihouse.com",
-      phone: "081200001111",
-      name: "Admin Lewi House",
-      role: "owner",
+      id: isAdminRosmah ? "usr_admin_rosmah" : "usr_owner_amirta",
+      email: ident || (isAdminRosmah ? "admin@lewihouse.com" : "amirta@lewihouse.com"),
+      phone: isAdminRosmah ? "082168819722" : "081262960211",
+      name: isAdminRosmah ? "Mbak Rosmah" : "Ibu Amirta",
+      role: isAdminRosmah ? "admin" : "owner",
       tenant_id: null,
+      has_completed_onboarding: adminOnboardingDone,
+      last_tour_opened_at: null,
     };
     const token = "live_jwt_owner_" + Date.now();
     localStorage.setItem("lh_token", token);
@@ -270,7 +618,11 @@ export function executeLiveQuery(method, path, body) {
     const raw = localStorage.getItem("lh_user");
     if (raw) {
       try {
-        return JSON.parse(raw);
+        const u = JSON.parse(raw);
+        if (u.role === "admin" || u.role === "owner") {
+          u.has_completed_onboarding = localStorage.getItem("lh_tour_admin_completed") === "true" || Boolean(u.has_completed_onboarding);
+        }
+        return u;
       } catch {}
     }
     const token = localStorage.getItem("lh_token");
@@ -280,9 +632,31 @@ export function executeLiveQuery(method, path, body) {
         email: "admin@lewihouse.com",
         name: "Admin Lewi House",
         role: "owner",
+        has_completed_onboarding: localStorage.getItem("lh_tour_admin_completed") === "true",
       };
     }
     throw { response: { status: 401, data: { detail: "Unauthenticated" } } };
+  }
+
+  // 2.1 COMPLETE ONBOARDING
+  if (clean.startsWith("auth/complete-onboarding") || clean.startsWith("users/onboarding-status")) {
+    const now = new Date().toISOString();
+    const raw = localStorage.getItem("lh_user");
+    let u = {};
+    if (raw) {
+      try {
+        u = JSON.parse(raw);
+      } catch {}
+    }
+    u.has_completed_onboarding = true;
+    u.last_tour_opened_at = now;
+    localStorage.setItem("lh_user", JSON.stringify(u));
+    if (u.role === "tenant") {
+      localStorage.setItem("lh_tour_tenant_completed", "true");
+    } else {
+      localStorage.setItem("lh_tour_admin_completed", "true");
+    }
+    return { ok: true, has_completed_onboarding: true, last_tour_opened_at: now };
   }
 
   // 3. AUTH LOGOUT
@@ -423,6 +797,15 @@ export function executeLiveQuery(method, path, body) {
       }
       return { ok: true, message: "Berhasil memproses pindah kamar", tenant_id, from_room_id, to_room_id, invoice_number };
     }
+    if (method === "post" && clean.includes("/clear-resident")) {
+      const id = clean.split("/")[1];
+      rooms = rooms.map((r) => (r.id === id ? { ...r, status: "cleaning", tenant_id: null, updated_at: new Date().toISOString() } : r));
+      setStore(KEYS.ROOMS, rooms);
+      let tenants = getStore(KEYS.TENANTS, INITIAL_TENANTS);
+      tenants = tenants.map((t) => (t.room_id === id ? { ...t, room_id: null, room_name: null, status: "former", updated_at: new Date().toISOString() } : t));
+      setStore(KEYS.TENANTS, tenants);
+      return { ok: true, message: "Kamar berhasil dikosongkan dan dialihkan ke tahap pembersihan (CLEANING)" };
+    }
     if (method === "post" && clean.includes("/status")) {
       const id = clean.split("/")[1];
       rooms = rooms.map((r) => (r.id === id ? { ...r, status: body?.status, updated_at: new Date().toISOString() } : r));
@@ -550,50 +933,476 @@ export function executeLiveQuery(method, path, body) {
     }
   }
 
-  // 7. BILLS
-  if (clean.startsWith("bills")) {
-    let bills = getStore(KEYS.BILLS, INITIAL_BILLS);
-    if (method === "get") return bills;
+  // 6.1 LEADS & POTENTIAL TENANTS (MANUAL & EXTERNAL 3RD-PARTY INTAKE)
+  if (clean.startsWith("leads")) {
+    let leads = getStore(KEYS.LEADS, INITIAL_LEADS);
+    if (!Array.isArray(leads)) leads = INITIAL_LEADS;
+    let rooms = getStore(KEYS.ROOMS, INITIAL_ROOMS);
+    if (!Array.isArray(rooms)) rooms = INITIAL_ROOMS;
+    let tenants = getStore(KEYS.TENANTS, INITIAL_TENANTS);
+    if (!Array.isArray(tenants)) tenants = INITIAL_TENANTS;
+
+    // Convert Lead to Active Tenant (One-Click Conversion)
+    if (clean.includes("/convert") && method === "post") {
+      const leadId = clean.split("/")[1];
+      const lead = leads.find((l) => l.id === leadId);
+      if (!lead) {
+        throw { response: { status: 404, data: { detail: "Calon penyewa tidak ditemukan" } } };
+      }
+
+      const targetRoomId = body.room_id || lead.room_id;
+      const targetRoom = rooms.find((r) => r.id === targetRoomId);
+      const roomNameVal = targetRoom ? targetRoom.name : lead.room_name || "K-102";
+
+      // Generate Auto-Credentials
+      const existingUsernames = tenants.map((t) => t.username).filter(Boolean);
+      const autoUsername = body.username || generateTenantUsername(roomNameVal, lead.name, existingUsernames);
+      const autoTempPw = body.temporary_password || generateTemporaryPassword(roomNameVal, body.nik || "123");
+      const tempHash = simpleHash(autoTempPw);
+
+      const newTenant = {
+        id: "t_" + Date.now(),
+        name: lead.name,
+        phone: lead.phone,
+        nik: body.nik || "",
+        email: body.email || "",
+        username: autoUsername,
+        room_id: targetRoomId || null,
+        room_name: roomNameVal,
+        status: "active",
+        occupation: body.occupation || "Penyewa",
+        emergency_name: body.emergency_name || "",
+        emergency_relation: body.emergency_relation || "",
+        emergency_phone: body.emergency_phone || "",
+        lease_start: body.lease_start || lead.expected_move_in || new Date().toISOString().slice(0, 10),
+        lease_end: body.lease_end || "",
+        monthly_rent: targetRoom ? targetRoom.price : (lead.room_price || 2000000),
+        deposit: targetRoom ? targetRoom.deposit : 1000000,
+        deposit_amount: targetRoom ? targetRoom.deposit : 1000000,
+        portal_password: autoTempPw,
+        password_hash: tempHash,
+        is_temporary_password: true,
+        creation_source: `LEAD_CONVERSION_${(lead.source || "MANUAL").toUpperCase().replace(/\s+/g, "_")}`,
+        account_status: "ACTIVE_FORCE_RESET",
+        temporary_password_generated_at: new Date().toISOString(),
+        password_updated_at: null,
+        password_history: [{ hash: tempHash, created_at: new Date().toISOString() }],
+        notes: `Dikonversi dari prospek ${lead.source || "Manual"}. Catatan awal: ${lead.notes || "-"}`,
+      };
+
+      tenants.push(newTenant);
+      setStore(KEYS.TENANTS, tenants);
+
+      // Update room to OCCUPIED
+      if (targetRoomId) {
+        rooms = rooms.map((r) => (r.id === targetRoomId ? { ...r, status: "occupied" } : r));
+        setStore(KEYS.ROOMS, rooms);
+      }
+
+      // Update lead status to KONVERSI_PENYEWA
+      leads = leads.map((l) =>
+        l.id === leadId
+          ? {
+              ...l,
+              status: "KONVERSI_PENYEWA",
+              converted_to_tenant_id: newTenant.id,
+              converted_at: new Date().toISOString(),
+            }
+          : l
+      );
+      setStore(KEYS.LEADS, leads);
+
+      return {
+        ok: true,
+        message: `Calon penyewa ${lead.name} berhasil dikonversi menjadi penyewa resmi kamar ${roomNameVal}`,
+        tenant: newTenant,
+        lead: leads.find((l) => l.id === leadId),
+      };
+    }
+
+    // Sync external listing simulation (Mamikos/Rukita)
+    if (clean.includes("/sync-external") && method === "post") {
+      const sampleNames = ["Aris Setiawan", "Clara Veronica", "Rizky Ramadhan", "Mega Lestari"];
+      const sampleSources = ["Mamikos", "Rukita", "OLX"];
+      const randomName = sampleNames[Math.floor(Math.random() * sampleNames.length)];
+      const randomSource = sampleSources[Math.floor(Math.random() * sampleSources.length)];
+      const randomRoom = rooms.find((r) => r.status === "available") || rooms[0];
+
+      const newSimulatedLead = {
+        id: "lead_" + Date.now(),
+        name: randomName,
+        phone: `0812${Math.floor(10000000 + Math.random() * 90000000)}`,
+        source: randomSource,
+        room_id: randomRoom ? randomRoom.id : "r_102",
+        room_name: randomRoom ? randomRoom.name : "K-102",
+        room_type: randomRoom ? randomRoom.room_type : "tipe_b",
+        room_price: randomRoom ? randomRoom.price : 2000000,
+        expected_move_in: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString().slice(0, 10),
+        duration_months: 3,
+        status: "INQUIRY_BARU",
+        notes: `Inquiry otomatis masuk dari listing terintegrasi ${randomSource}.`,
+        created_at: new Date().toISOString(),
+        survey_date: null,
+        dp_amount: 0,
+      };
+
+      leads.unshift(newSimulatedLead);
+      setStore(KEYS.LEADS, leads);
+      return { ok: true, message: `Sinkronisasi selesai! 1 inquiry baru dari ${randomSource} ditambahkan.`, lead: newSimulatedLead };
+    }
+
+    if (method === "get") {
+      const id = clean.split("/")[1];
+      if (id && id !== "leads") {
+        const found = leads.find((l) => l.id === id);
+        if (!found) throw { response: { status: 404, data: { detail: "Lead tidak ditemukan" } } };
+        return found;
+      }
+      return leads;
+    }
+
     if (method === "post") {
-      const newB = {
-        id: "b_" + Date.now(),
-        invoice_number: "INV-" + Date.now().toString().slice(-4),
-        status: "unpaid",
-        paid_amount: 0,
+      if (!body.name || !body.phone) {
+        throw { response: { status: 400, data: { detail: "Nama lengkap dan nomor WhatsApp wajib diisi" } } };
+      }
+      const targetRoom = rooms.find((r) => r.id === body.room_id);
+      const newLead = {
+        id: "lead_" + Date.now(),
+        name: body.name,
+        phone: body.phone,
+        source: body.source || "Mamikos",
+        room_id: body.room_id || null,
+        room_name: targetRoom ? targetRoom.name : body.room_name || "-",
+        room_type: targetRoom ? targetRoom.room_type : body.room_type || "tipe_b",
+        room_price: targetRoom ? targetRoom.price : body.room_price || 2000000,
+        expected_move_in: body.expected_move_in || "",
+        duration_months: Number(body.duration_months) || 1,
+        status: body.status || "INQUIRY_BARU",
+        notes: body.notes || "",
+        created_at: new Date().toISOString(),
+        survey_date: body.survey_date || null,
+        dp_amount: Number(body.dp_amount) || 0,
         ...body,
       };
-      bills.push(newB);
+      leads.unshift(newLead);
+      setStore(KEYS.LEADS, leads);
+      return newLead;
+    }
+
+    if (method === "put") {
+      const id = clean.split("/")[1];
+      let targetRoom = null;
+      if (body.room_id) {
+        targetRoom = rooms.find((r) => r.id === body.room_id);
+      }
+      leads = leads.map((l) => {
+        if (l.id === id) {
+          return {
+            ...l,
+            ...body,
+            room_name: targetRoom ? targetRoom.name : body.room_name || l.room_name,
+            room_price: targetRoom ? targetRoom.price : body.room_price || l.room_price,
+            updated_at: new Date().toISOString(),
+          };
+        }
+        return l;
+      });
+      setStore(KEYS.LEADS, leads);
+      return leads.find((l) => l.id === id) || body;
+    }
+
+    if (method === "delete") {
+      const id = clean.split("/")[1];
+      leads = leads.filter((l) => l.id !== id);
+      setStore(KEYS.LEADS, leads);
+      return { ok: true };
+    }
+  }
+
+  // 7. BILLS & REMINDERS
+  if (clean.startsWith("bills") || clean.startsWith("portal/bills") || clean.startsWith("reminders")) {
+    let bills = getStore(KEYS.BILLS, INITIAL_BILLS);
+    if (!Array.isArray(bills)) bills = INITIAL_BILLS;
+
+    if (clean.includes("/receipt")) {
+      const bid = clean.split("/")[1] || clean.split("/")[2];
+      const b = bills.find((x) => x.id === bid) || bills[0] || INITIAL_BILLS[0];
+      return {
+        id: b.id,
+        invoice_number: b.invoice_number || "INV-202608-K204-001",
+        period: b.period || "2026-08",
+        due_date: b.due_date || "2026-08-31",
+        status: b.status || "unpaid",
+        room_unit: b.room_unit || "K-204",
+        resident_name: b.resident_name || "Budi Santoso",
+        total: b.total || b.total_amount || 2000000,
+        amount_paid: b.amount_paid || b.paid_amount || 0,
+        paid_amount: b.paid_amount || b.amount_paid || 0,
+        items: b.items || [
+          { name: `Sewa Kamar (${b.room_unit || "K-204"})`, amount: b.total || b.total_amount || 2000000, category: "rent" },
+        ],
+        payments: b.payments || [],
+        created_at: b.created_at || new Date().toISOString(),
+      };
+    }
+
+    if (clean.includes("/whatsapp-link")) {
+      const bid = clean.split("/")[1];
+      const b = bills.find((x) => x.id === bid) || bills[0];
+      const amountFmt = (b?.total || 2000000).toLocaleString("id-ID");
+      const url = `https://wa.me/6281262960211?text=Halo%20${encodeURIComponent(b?.resident_name || "Penghuni")},%20tagihan%20sewa%20kamar%20${encodeURIComponent(b?.room_unit || "Lewi House")}%20sebesar%20Rp%20${encodeURIComponent(amountFmt)}%20sudah%20diterbitkan.`;
+      return { whatsapp_url: url };
+    }
+
+    if (clean.includes("/payments") && method === "post") {
+      const bid = clean.split("/")[1];
+      const amt = Number(body.amount) || 0;
+      let updatedBill = null;
+      bills = bills.map((b) => {
+        if (b.id === bid) {
+          const newPaid = (b.amount_paid || b.paid_amount || 0) + amt;
+          const tot = b.total || b.total_amount || 0;
+          const newStatus = newPaid >= tot ? "PAID" : "PARTIALLY_PAID";
+          const pymts = Array.isArray(b.payments) ? [...b.payments] : [];
+          pymts.push({
+            id: "pay_" + Date.now(),
+            amount: amt,
+            method: body.method || "BANK_TRANSFER",
+            reference: body.reference || null,
+            created_at: new Date().toISOString(),
+          });
+          updatedBill = {
+            ...b,
+            amount_paid: newPaid,
+            paid_amount: newPaid,
+            status: newStatus,
+            payments: pymts,
+            updated_at: new Date().toISOString(),
+          };
+          return updatedBill;
+        }
+        return b;
+      });
+      setStore(KEYS.BILLS, bills);
+      return updatedBill || { ok: true };
+    }
+
+    if (clean.includes("/simulate-payment") || (clean.startsWith("portal/bills") && clean.includes("/pay"))) {
+      const bid = clean.split("/")[1] || clean.split("/")[2];
+      let updatedBill = null;
+      bills = bills.map((b) => {
+        if (b.id === bid || !bid) {
+          const tot = b.total || b.total_amount || 2000000;
+          updatedBill = {
+            ...b,
+            amount_paid: tot,
+            paid_amount: tot,
+            status: "PAID",
+            updated_at: new Date().toISOString(),
+          };
+          return updatedBill;
+        }
+        return b;
+      });
+      setStore(KEYS.BILLS, bills);
+      return updatedBill || bills[0];
+    }
+
+    if (clean.startsWith("bills/prorata-transfer")) {
+      const invNum = `INV-PRORATA-${Date.now().toString().slice(-4)}`;
+      return { ok: true, invoice_number: invNum };
+    }
+
+    if (clean.startsWith("bills/generate")) {
+      return { ok: true, count: 4, generated: [] };
+    }
+
+    if (clean.startsWith("reminders/dunning-list")) {
+      return [];
+    }
+
+    if (clean.startsWith("reminders/send-whatsapp-batch")) {
+      return { ok: true, count: 0 };
+    }
+
+    if (clean.startsWith("bills/export")) {
+      return "Invoice,Periode,Kamar,Penghuni,Total,Status\nINV-01,2026-08,K-204,Budi Santoso,2000000,UNPAID\n";
+    }
+
+    if (clean.includes("/cancel") && method === "post") {
+      const bid = clean.split("/")[1];
+      let updatedBill = null;
+      bills = bills.map((b) => {
+        if (b.id === bid) {
+          updatedBill = {
+            ...b,
+            status: "CANCELLED",
+            cancellation_reason: body?.reason || body?.cancellation_reason || "Dibatalkan oleh Admin",
+            cancelled_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          return updatedBill;
+        }
+        return b;
+      });
+      setStore(KEYS.BILLS, bills);
+      return updatedBill || { ok: true, status: "CANCELLED" };
+    }
+
+    if (method === "put") {
+      const bid = clean.split("/")[1];
+      let updatedBill = null;
+      bills = bills.map((b) => {
+        if (b.id === bid) {
+          const tot = Array.isArray(body.items)
+            ? body.items.reduce((sum, it) => sum + Number(it.amount || 0), 0)
+            : Number(body.total || b.total || 0);
+          updatedBill = {
+            ...b,
+            ...body,
+            total: tot,
+            total_amount: tot,
+            updated_at: new Date().toISOString(),
+          };
+          return updatedBill;
+        }
+        return b;
+      });
+      setStore(KEYS.BILLS, bills);
+      return updatedBill || body;
+    }
+
+    if (method === "delete") {
+      const bid = clean.split("/")[1];
+      bills = bills.filter((b) => b.id !== bid);
+      setStore(KEYS.BILLS, bills);
+      return { ok: true };
+    }
+
+    if (method === "get") return bills;
+
+    if (method === "post") {
+      const rooms = getStore(KEYS.ROOMS, INITIAL_ROOMS);
+      const tenants = getStore(KEYS.TENANTS, INITIAL_TENANTS);
+      const tenantObj = tenants.find((t) => t.id === body.tenant_id);
+      const roomObj = rooms.find((r) => r.id === (body.room_id || tenantObj?.room_id));
+      const roomNameVal = roomObj?.name || tenantObj?.room_name || "GEN";
+      const p = body.period || new Date().toISOString().slice(0, 7);
+      const [year, month] = p.split("-");
+      const invSeq = String(bills.length + 1).padStart(4, "0");
+      const invoiceNumber = `INV/${year}${month}/${roomNameVal.replace(/\s+/g, "")}/${invSeq}`;
+      const tot = Array.isArray(body.items)
+        ? body.items.reduce((sum, it) => sum + Number(it.amount || 0), 0)
+        : Number(body.total || 0);
+
+      const newB = {
+        id: "b_" + Date.now(),
+        invoice_number: invoiceNumber,
+        room_unit: roomNameVal,
+        resident_name: tenantObj?.name || "Penghuni",
+        status: body.status || "UNPAID",
+        total: tot,
+        total_amount: tot,
+        paid_amount: 0,
+        amount_paid: 0,
+        created_at: new Date().toISOString(),
+        ...body,
+      };
+      bills.unshift(newB);
       setStore(KEYS.BILLS, bills);
       return newB;
     }
   }
 
   // 8. ACCESS TOKENS
-  if (clean.startsWith("access")) {
+  if (clean.startsWith("access-tokens") || clean.startsWith("access")) {
     let tokens = getStore(KEYS.TOKENS, INITIAL_TOKENS);
+    if (!Array.isArray(tokens)) tokens = INITIAL_TOKENS;
+
     if (method === "get") return tokens;
+
+    if (method === "post" && clean.includes("/revoke")) {
+      const id = clean.split("/")[1];
+      tokens = tokens.map((t) => (t.id === id ? { ...t, status: "revoked" } : t));
+      setStore(KEYS.TOKENS, tokens);
+      return { ok: true, status: "revoked" };
+    }
+
     if (method === "post") {
       const newTok = {
         id: "tok_" + Date.now(),
         code: Math.floor(100000 + Math.random() * 900000).toString(),
         status: "active",
+        created_at: new Date().toISOString(),
         ...body,
       };
-      tokens.push(newTok);
+      tokens.unshift(newTok);
       setStore(KEYS.TOKENS, tokens);
       return newTok;
     }
+
+    if (method === "delete") {
+      const id = clean.split("/")[1];
+      tokens = tokens.filter((t) => t.id !== id);
+      setStore(KEYS.TOKENS, tokens);
+      return { ok: true };
+    }
   }
 
-  // 9. STAFF
+  // 9. STAFF & SYNC
+  if (clean.startsWith("sync/status")) {
+    return {
+      status: "connected",
+      last_sync_at: new Date().toISOString(),
+      stats: { total_rooms: 17, tenants: 4, bills: 4 },
+    };
+  }
+
+  if (clean.startsWith("sync/firestore-full")) {
+    return {
+      ok: true,
+      last_sync_at: new Date().toISOString(),
+      stats: { rooms: 17, tenants: 4, bills: 4, staff: 3 },
+    };
+  }
+
+  if (clean.startsWith("push/vapid-key")) {
+    return { vapid_public_key: "BK_LEWI_HOUSE_MOCK_VAPID_KEY_2026_MEDAN_PETISAH" };
+  }
+
+  if (clean.startsWith("push/subscribe")) {
+    return { ok: true };
+  }
+
   if (clean.startsWith("staff")) {
     let staff = getStore(KEYS.STAFF, INITIAL_STAFF);
+    if (!Array.isArray(staff)) staff = INITIAL_STAFF;
+
+    if (clean.includes("/reset-password") && method === "post") {
+      return { ok: true, password: "LewiPass2026!#" };
+    }
+
     if (method === "get") return staff;
+
     if (method === "post") {
-      const newS = { id: "s_" + Date.now(), status: "active", ...body };
+      const newS = { id: "s_" + Date.now(), status: "active", created_at: new Date().toISOString(), ...body };
       staff.push(newS);
       setStore(KEYS.STAFF, staff);
       return newS;
+    }
+
+    if (method === "put") {
+      const id = clean.split("/")[1];
+      staff = staff.map((s) => (s.id === id ? { ...s, ...body } : s));
+      setStore(KEYS.STAFF, staff);
+      return staff.find((s) => s.id === id) || body;
+    }
+
+    if (method === "delete") {
+      const id = clean.split("/")[1];
+      staff = staff.filter((s) => s.id !== id);
+      setStore(KEYS.STAFF, staff);
+      return { ok: true };
     }
   }
 
@@ -837,39 +1646,280 @@ export function executeLiveQuery(method, path, body) {
     }
   }
 
-  if (clean.startsWith("audit") || clean.startsWith("activity")) {
+  // Auth Onboarding
+  if (clean.startsWith("auth/complete-onboarding")) {
+    const currUser = JSON.parse(localStorage.getItem("lh_user") || "{}");
+    currUser.has_completed_onboarding = true;
+    localStorage.setItem("lh_user", JSON.stringify(currUser));
+    return { ok: true, has_completed_onboarding: true };
+  }
+
+  // Notifications
+  if (clean.startsWith("notifications/unread-count")) {
+    let notifs = getStore("lh_live_notifications", null);
+    if (!notifs) notifs = [];
+    const count = notifs.filter((n) => !n.read && !n.is_read).length;
+    return { notifications: count, chat: 0, total: count };
+  }
+
+  if (clean.startsWith("notifications/read-all")) {
+    let notifs = getStore("lh_live_notifications", []);
+    notifs = notifs.map((n) => ({ ...n, read: true, is_read: true }));
+    setStore("lh_live_notifications", notifs);
+    return { ok: true };
+  }
+
+  if (clean.includes("notifications/") && clean.endsWith("/read")) {
+    const id = clean.split("/")[1];
+    let notifs = getStore("lh_live_notifications", []);
+    notifs = notifs.map((n) => (n.id === id ? { ...n, read: true, is_read: true } : n));
+    setStore("lh_live_notifications", notifs);
+    return { ok: true };
+  }
+
+  if (clean.startsWith("notifications")) {
+    let notifs = getStore("lh_live_notifications", [
+      {
+        id: "notif_1",
+        module: "BILLING",
+        event_type: "INVOICE_GENERATED",
+        title: "Invoice Sewa Agustus 2026 Terbit 💳",
+        message: "Tagihan sewa kamar K-204 sebesar Rp 2.450.000 telah diterbitkan. Jatuh tempo: 5 September 2026.",
+        body: "Tagihan sewa kamar K-204 sebesar Rp 2.450.000 telah diterbitkan.",
+        action_url: "/portal/bills",
+        room_unit: "K-204",
+        urgency: "info",
+        read: false,
+        is_read: false,
+        created_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+      },
+      {
+        id: "notif_2",
+        module: "MAINTENANCE",
+        event_type: "TICKET_RESOLVED",
+        title: "Tiket #102: Selesai Diperbaiki 🛠️",
+        message: "Laporan keluhan wastafel bocor telah diselesaikan oleh teknisi.",
+        body: "Laporan keluhan wastafel bocor telah diselesaikan.",
+        action_url: "/portal/tickets",
+        room_unit: "K-204",
+        urgency: "info",
+        read: false,
+        is_read: false,
+        created_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+      },
+      {
+        id: "notif_3",
+        module: "ELECTRICITY",
+        event_type: "ELECTRICITY_RECORDED",
+        title: "⚡ Pencatatan Meteran Listrik",
+        message: "Pencatatan meteran listrik bulan ini telah selesai (132.5 kWh).",
+        body: "Pencatatan meteran listrik bulan ini telah selesai (132.5 kWh).",
+        action_url: "/portal/bills",
+        room_unit: "K-204",
+        urgency: "info",
+        read: true,
+        is_read: true,
+        created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+      },
+      {
+        id: "notif_4",
+        module: "ANNOUNCEMENT",
+        event_type: "ANNOUNCEMENT_BROADCAST",
+        title: "📢 Maintenance Pompa Air Besok Pukul 09:00",
+        message: "Pembersihan tangki dan pemeliharaan pompa air utama pada hari Sabtu pukul 09:00 - 11:00 WIB.",
+        body: "Pembersihan tangki dan pemeliharaan pompa air utama pada hari Sabtu.",
+        action_url: "/portal",
+        room_unit: "Semua",
+        urgency: "warning",
+        read: true,
+        is_read: true,
+        created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
+      },
+    ]);
+    if (!Array.isArray(notifs)) notifs = [];
+    setStore("lh_live_notifications", notifs);
+    return notifs;
+  }
+
+  // Activity Feed for Dashboard
+  if (clean.startsWith("activity/feed")) {
     return [
       {
-        id: "aud_1",
-        action: "PAYMENT",
-        entity: "bill",
-        actor: "Admin",
-        detail: { invoice: "INV-8821", amount: 1500000, name: "Budi Santoso" },
-        at: new Date(Date.now() - 3600000).toISOString(),
+        id: "feed_1",
+        module: "BILLING",
+        event_type: "PAYMENT_SUBMITTED",
+        room_unit: "Unit 204",
+        title: "Pembayaran Masuk Rp 2.450.000",
+        message: "Penghuni Unit 204 mengunggah bukti bayar transfer BCA.",
+        action_url: "/bills",
+        urgency: "warning",
+        actor: "Ali (Penghuni)",
+        created_at: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
       },
       {
-        id: "aud_2",
-        action: "MOVE_IN",
-        entity: "tenant",
-        actor: "Admin",
-        detail: { name: "Budi Santoso", from: "Kamar K-204" },
-        at: new Date(Date.now() - 86400000).toISOString(),
+        id: "feed_2",
+        module: "MAINTENANCE",
+        event_type: "TICKET_CREATED",
+        room_unit: "Unit 108",
+        title: "Laporan Baru: AC Tidak Dingin",
+        message: "Penghuni Unit 108 melaporkan AC tidak dingin dan perlu cuci freon.",
+        action_url: "/complaints",
+        urgency: "urgent",
+        actor: "Arya Wibowo",
+        created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
       },
       {
-        id: "aud_3",
-        action: "TOKEN_ISSUE",
-        entity: "access_token",
-        actor: "Admin",
-        detail: { label: "PIN Pintu Utama Kamar 204" },
-        at: new Date(Date.now() - 172800000).toISOString(),
+        id: "feed_3",
+        module: "AUTH",
+        event_type: "PASSWORD_CHANGED",
+        room_unit: "Unit 301",
+        title: "Force Reset Password Selesai",
+        message: "Penghuni Unit 301 memperbarui password mandiri.",
+        action_url: "/tenants",
+        urgency: "info",
+        actor: "System Security",
+        created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
       },
       {
-        id: "aud_4",
-        action: "LOGIN",
-        entity: "user",
-        actor: "Admin",
-        detail: { name: "Admin Lewi House" },
-        at: new Date(Date.now() - 250000000).toISOString(),
+        id: "feed_4",
+        module: "ROOM",
+        event_type: "ROOM_STATUS",
+        room_unit: "Unit 102",
+        title: "Status Kamar Diperbarui",
+        message: "Status Kamar K-102 diubah menjadi CLEANING.",
+        action_url: "/rooms",
+        urgency: "info",
+        actor: "Admin Lewi House",
+        created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+      },
+    ];
+  }
+
+  // Activity Logs & Audit Hub
+  if (clean.startsWith("activity/logs") || clean.startsWith("activity") || clean.startsWith("audit")) {
+    const rawLogs = [
+      {
+        id: "log_1",
+        module: "BILLING",
+        event_type: "PAYMENT_SUBMITTED",
+        room_unit: "204",
+        actor: "Ali (Penghuni)",
+        title: "Unggah Bukti Bayar",
+        message: "Pembayaran invoice INV-8821 sebesar Rp 2.450.000 via Transfer Bank BCA.",
+        urgency: "warning",
+        action_url: "/bills",
+        created_at: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+        at: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+      },
+      {
+        id: "log_2",
+        module: "MAINTENANCE",
+        event_type: "TICKET_CREATED",
+        room_unit: "108",
+        actor: "Arya Wibowo",
+        title: "Tiket Baru Diajukan",
+        message: "Keluhan AC tidak dingin dan mengeluarkan bunyi bising.",
+        urgency: "urgent",
+        action_url: "/complaints",
+        created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+        at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+      },
+      {
+        id: "log_3",
+        module: "AUTH",
+        event_type: "IN_APP_CHANGE_PASSWORD",
+        room_unit: "301",
+        actor: "Sinta Dewi",
+        title: "Ganti Password Mandiri",
+        message: "Password akun berhasil dirotasi sesuai standar keamanan.",
+        urgency: "info",
+        action_url: "/tenants",
+        created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+        at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
+      },
+      {
+        id: "log_4",
+        module: "ROOM",
+        event_type: "ROOM_TRANSFER",
+        room_unit: "204",
+        actor: "Admin Lewi House",
+        title: "Pindah Unit Kamar",
+        message: "Transfer penghuni dari K-101 ke K-204 berhasil diproses.",
+        urgency: "info",
+        action_url: "/rooms",
+        created_at: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+        at: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+      },
+      {
+        id: "log_5",
+        module: "ELECTRICITY",
+        event_type: "METER_RECORDED",
+        room_unit: "204",
+        actor: "Admin Lewi House",
+        title: "Pencatatan Meteran",
+        message: "Meteran listrik K-204 dicatat 2890.0 kWh (Pemakaian 250 kWh).",
+        urgency: "warning",
+        action_url: "/bills",
+        created_at: new Date(Date.now() - 1000 * 60 * 360).toISOString(),
+        at: new Date(Date.now() - 1000 * 60 * 360).toISOString(),
+      },
+      {
+        id: "log_6",
+        module: "ANNOUNCEMENT",
+        event_type: "ANNOUNCEMENT_BROADCAST",
+        room_unit: "Semua",
+        actor: "Admin Lewi House",
+        title: "Broadcast Pengumuman",
+        message: "Maintenance pompa air utama disiarkan ke seluruh tenant.",
+        urgency: "info",
+        action_url: "/activity",
+        created_at: new Date(Date.now() - 1000 * 60 * 720).toISOString(),
+        at: new Date(Date.now() - 1000 * 60 * 720).toISOString(),
+      },
+    ];
+
+    if (clean.startsWith("activity/logs")) {
+      return { total: rawLogs.length, logs: rawLogs };
+    }
+    return rawLogs;
+  }
+
+  if (clean.startsWith("announcements/broadcast") && method === "post") {
+    const notifs = getStore("lh_live_notifications", []);
+    const newNotif = {
+      id: "ann_" + Date.now(),
+      module: "ANNOUNCEMENT",
+      event_type: "ANNOUNCEMENT_BROADCAST",
+      title: `📢 ${body.title || "Pengumuman Baru"}`,
+      message: body.message || "",
+      body: body.message || "",
+      action_url: "/portal",
+      room_unit: "Semua",
+      urgency: body.urgency || "info",
+      read: false,
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+    notifs.unshift(newNotif);
+    setStore("lh_live_notifications", notifs);
+    return { ok: true, id: newNotif.id, message: "Pengumuman berhasil disiarkan" };
+  }
+
+  if (clean.startsWith("electricity/readings")) {
+    if (method === "post") {
+      return { ok: true, id: "elec_" + Date.now(), usage_kwh: 120.0 };
+    }
+    return [
+      {
+        id: "el_1",
+        room_id: "r_204",
+        room_name: "K-204",
+        meter_reading: 2890.0,
+        previous_reading: 2640.0,
+        usage_kwh: 250.0,
+        period: "2026-08",
+        recorded_by: "Admin",
+        created_at: new Date().toISOString(),
       },
     ];
   }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ZoomIn, ZoomOut, Download, RotateCw } from "lucide-react";
 
@@ -15,6 +16,7 @@ export default function ImageLightbox({ src, alt, onClose }) {
   }, [onClose]);
 
   if (!src) return null;
+  if (typeof document === "undefined") return null;
 
   const handleDownload = () => {
     const link = document.createElement("a");
@@ -25,7 +27,7 @@ export default function ImageLightbox({ src, alt, onClose }) {
     document.body.removeChild(link);
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 select-none">
         {/* Top Control Bar */}
@@ -88,6 +90,7 @@ export default function ImageLightbox({ src, alt, onClose }) {
           />
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }

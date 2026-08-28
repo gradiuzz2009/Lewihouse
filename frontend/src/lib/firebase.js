@@ -2,8 +2,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { 
   getFirestore, 
-  connectFirestoreEmulator, 
-  enableIndexedDbPersistence 
+  connectFirestoreEmulator 
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -22,17 +21,6 @@ export const db = getFirestore(app);
 
 export const PROPERTY_ID = "lewi_house_main";
 export const PROPERTY_PATH = `properties/${PROPERTY_ID}`;
-
-// Optional Offline Cache Persistence
-if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
-  enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === "failed-precondition") {
-      console.warn("[Firestore] Multiple tabs open; persistence enabled in first tab only.");
-    } else if (err.code === "unimplemented") {
-      console.warn("[Firestore] Browser does not support offline persistence.");
-    }
-  });
-}
 
 // Connect to Local Emulators if configured
 if (process.env.REACT_APP_USE_FIREBASE_EMULATOR === "true") {

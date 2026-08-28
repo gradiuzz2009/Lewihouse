@@ -1,8 +1,11 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import BottomNav from "./components/BottomNav";
 import SpeedDial from "./components/SpeedDial";
+import FloatingOnboardingWidget from "./components/FloatingOnboardingWidget";
+import OnboardingTourModal from "./components/OnboardingTourModal";
+import { getScreenKeyFromPath } from "./lib/onboardingTips";
 import Dashboard from "./pages/Dashboard";
 import Rooms from "./pages/Rooms";
 import Tenants from "./pages/Tenants";
@@ -18,6 +21,18 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { LangProvider } from "./i18n";
 import { RouteErrorBoundary } from "./components/ErrorBoundary";
 import "./App.css";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    const shell = document.getElementById("app-shell");
+    if (shell) shell.scrollTop = 0;
+  }, [pathname]);
+
+  return null;
+}
 
 function AdminProtected({ children, title }) {
   const { user } = useAuth();
@@ -61,15 +76,19 @@ function PostLoginRedirect() {
 function Shell() {
   const loc = useLocation();
   const { user } = useAuth();
+  const [tourOpen, setTourOpen] = useState(false);
   const isLogin = loc.pathname === "/login";
   const isPortal = loc.pathname.startsWith("/portal");
   const showAdminNav = !isLogin && !isPortal && user && user.role !== "tenant";
+  const screenKey = user && !isLogin ? getScreenKeyFromPath(loc.pathname, user.role) : null;
 
   return (
     <div
+      id="app-shell"
       className="w-full max-w-md sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto min-h-screen bg-bg relative main-content-scroll shadow-lifted overflow-x-hidden"
       data-testid="app-shell"
     >
+      <ScrollToTop />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<PostLoginRedirect />} />
@@ -86,6 +105,29 @@ function Shell() {
       </Routes>
       {showAdminNav && <BottomNav />}
       {showAdminNav && <SpeedDial />}
+      
+      {/* Floating Onboarding Widget (Lite Web Edition) */}
+      {screenKey && (
+        <FloatingOnboardingWidget
+          key={screenKey}
+          screenKey={screenKey}
+          role={user?.role || "admin"}
+          onStartTour={() => setTourOpen(true)}
+        />
+      )}
+
+      {/* Global Onboarding Tour Modal */}
+      {user && (
+        <OnboardingTourModal
+          mode={user.role === "tenant" ? "tenant" : "admin"}
+          open={tourOpen}
+          onClose={() => setTourOpen(false)}
+          onComplete={() => {
+            localStorage.setItem("lh_tour_completed", "true");
+          }}
+        />
+      )}
+
       <Toaster
         position="bottom-center"
         offset={90}

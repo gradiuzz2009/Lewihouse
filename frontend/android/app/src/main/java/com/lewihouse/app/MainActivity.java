@@ -1,4 +1,4 @@
-package com.lewihouse.management;
+package com.lewihouse.app;
 
 import com.getcapacitor.BridgeActivity;
 

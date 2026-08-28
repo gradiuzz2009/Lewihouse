@@ -21,9 +21,12 @@ import ImageLightbox from "../components/ImageLightbox";
 const CANNED_RESPONSES = [
   { id: "tech_ontheway", label: "🔧 Teknisi Sedang Menuju Kamar", text: "Halo! Petugas teknisi kami sedang menuju ke kamar Anda untuk melakukan pengecekan. Mohon ditunggu ya." },
   { id: "pay_verified", label: "✅ Pembayaran Terverifikasi", text: "Terima kasih! Pembayaran Anda telah kami verifikasi. Bukti transaksi dan kuitansi digital dapat diakses pada menu Tagihan." },
-  { id: "need_photo", label: "📸 Mohon Kirim Foto Kendala", text: "Mohon bantuannya untuk mengirimkan foto atau video singkat terkait kendala tersebut agar dapat kami tindak lanjuti dengan cepat." },
-  { id: "office_hours", label: "⏰ Informasi Jam Operasional", text: "Pesan Anda telah kami terima. Kantor operasional Lewi House buka setiap hari pukul 08:00 – 20:00 WIB." },
+  { id: "syariah_policy", label: "📜 Kebijakan Syariah (Buku Nikah)", text: "Sesuai kebijakan Syariah Lewi House Medan, pasangan suami istri yang menginap dalam satu kamar wajib menunjukkan Buku Nikah atau identitas resmi pernikahan yang sah saat check-in." },
+  { id: "location_info", label: "📍 Alamat & Lokasi Properti", text: "Lokasi Lewi House Medan: Jl. Sei Bahkapuran No. 16A, Sei Sikambing D, Kec. Medan Petisah, Kota Medan 20119 (dekat Taman Gajah Mada & Politeknik LP3I)." },
+  { id: "laundry_service", label: "🧺 Layanan LEWI Laundry", text: "Layanan cuci & setrika LEWI Laundry tersedia langsung di lokasi (on-site). Silakan hubungi resepsionis atau serahkan pakaian ke area laundry." },
+  { id: "checkin_hours", label: "🕒 Info Check-In & Check-Out", text: "Check-in dimulai pukul 14:00 WIB dan Check-out hingga pukul 12:00 WIB. Resepsionis 24 jam: +62 821-6881-9722 (Mbak Rosmah) / +62 812-6296-0211 (Ibu Amirta)." },
   { id: "clean_schedule", label: "🧹 Konfirmasi Jadwal Bersih", text: "Baik, permintaan pembersihan kamar/area kosan telah kami jadwalkan dengan tim kebersihan." },
+  { id: "need_photo", label: "📸 Mohon Kirim Foto Kendala", text: "Mohon bantuannya untuk mengirimkan foto atau video singkat terkait kendala tersebut agar dapat kami tindak lanjuti dengan cepat." },
   { id: "resolved_ack", label: "🎉 Konfirmasi Penyelesaian Masalah", text: "Apakah kendala Anda sudah tertangani dengan baik? Jika sudah tidak ada masalah lain, percakapan ini akan kami tandai selesai." },
 ];
 

@@ -10,12 +10,16 @@ import UserIndicator from "../components/UserIndicator";
 import { validateNewPassword, evaluatePasswordStrength } from "../lib/autoCredentials";
 import { useAutoRefresh } from "../hooks/useAutoRefresh";
 import TenantChatWidget from "../components/TenantChatWidget";
+import InAppNotificationToast from "../components/InAppNotificationToast";
+import OnboardingTourModal from "../components/OnboardingTourModal";
+import TourOfferModal from "../components/TourOfferModal";
+import PropertyInfoModal from "../components/PropertyInfoModal";
 import {
   Home, CreditCard, Wrench, MessageCircle, FileText,
   User, LogOut, Bell, Send, ArrowLeft, ChevronRight,
   Clock, CheckCircle, AlertCircle, Plus, X, KeyRound, Sparkles,
   QrCode, Building2, Copy, Check, ExternalLink, ShieldCheck, Download, Eye, EyeOff, Lock, Shield, ShieldAlert,
-  UploadCloud, Image, Printer, CheckCircle2, AlertTriangle, Receipt
+  UploadCloud, Image, Printer, CheckCircle2, AlertTriangle, Receipt, Zap, Megaphone, CheckCheck, Compass, Info
 } from "lucide-react";
 
 const WS_BASE = (process.env.REACT_APP_BACKEND_URL || "").replace(/^http/, "ws");
@@ -82,8 +86,7 @@ const STATUS_LABEL = {
   rejected: "Ditolak",
 };
 
-// ─── HOME TAB ─────────────────────────────────
-function HomeTab({ tenant, room, onNavigate, onOpenSecurity }) {
+function HomeTab({ tenant, room, onNavigate, onOpenSecurity, onOpenTour, onOpenPropInfo, onLogout }) {
   const [pushEnabled, setPushEnabled] = useState(false);
 
   useEffect(() => {
@@ -183,6 +186,30 @@ function HomeTab({ tenant, room, onNavigate, onOpenSecurity }) {
         </button>
       </div>
 
+      {/* 🏢 Panduan Properti & Tata Tertib Lewi House Medan */}
+      <div className="bg-surface rounded-2xl p-4 border border-line flex items-center justify-between shadow-soft">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary grid place-items-center shrink-0">
+            <Building2 size={20} className="text-primary" />
+          </div>
+          <div className="min-w-0 pr-2">
+            <p className="font-bold text-xs text-ink truncate">Info Properti & Tata Tertib</p>
+            <p className="text-[10px] text-subtle line-clamp-1 mt-0.5">
+              Jl. Sei Bahkapuran 16A • LEWI Laundry • Kebijakan Syariah & Sekitar
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenPropInfo}
+          data-testid="btn-tenant-prop-info"
+          className="px-3 py-1.5 rounded-xl bg-primary text-white hover:bg-[#122820] text-[11px] font-bold active:scale-95 transition-all shrink-0 shadow-xs flex items-center gap-1"
+        >
+          <span>Lihat Info</span>
+          <ChevronRight size={13} />
+        </button>
+      </div>
+
       {/* Account Security & Password Quick Card (Specification #3) */}
       <div className="bg-surface rounded-2xl p-4 border border-line flex items-center justify-between shadow-soft">
         <div className="flex items-center gap-3 min-w-0">
@@ -203,6 +230,30 @@ function HomeTab({ tenant, room, onNavigate, onOpenSecurity }) {
           className="px-3.5 py-1.5 rounded-xl bg-primary text-white text-[11px] font-bold hover:bg-[#122820] active:scale-95 transition-all shrink-0 shadow-xs"
         >
           Ubah Sandi
+        </button>
+      </div>
+
+      {/* 🧭 Feature Tour / Panduan Aplikasi Manual Trigger (PRD Feature Guide) */}
+      <div className="bg-surface rounded-2xl p-4 border border-line flex items-center justify-between shadow-soft">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-teal-500/15 text-teal-700 border border-teal-500/30 grid place-items-center shrink-0">
+            <Compass size={20} className="text-teal-700" />
+          </div>
+          <div className="min-w-0 pr-2">
+            <p className="font-bold text-xs text-ink truncate">Panduan & Tur Fitur Aplikasi</p>
+            <p className="text-[10px] text-subtle line-clamp-1 mt-0.5">
+              Pelajari kembali cara menggunakan fitur tagihan, komplain, dan listrik.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenTour}
+          data-testid="btn-tenant-start-tour"
+          className="px-3 py-1.5 rounded-xl bg-surface border border-line hover:bg-primary hover:text-white text-[11px] font-bold text-primary active:scale-95 transition-all shrink-0 shadow-xs flex items-center gap-1"
+        >
+          <span>Mulai Tur</span>
+          <ChevronRight size={13} />
         </button>
       </div>
 
@@ -258,6 +309,19 @@ function HomeTab({ tenant, room, onNavigate, onOpenSecurity }) {
           <ChevronRight size={18} className="text-subtle shrink-0" />
         </button>
       )}
+
+      {/* Mobile Logout Action Card in Home Tab */}
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={onLogout}
+          className="w-full py-3.5 px-4 rounded-2xl bg-danger/10 hover:bg-danger text-danger hover:text-white border border-danger/25 text-xs font-bold flex items-center justify-center gap-2 active:scale-98 transition-all shadow-soft"
+          data-testid="tenant-home-logout-btn"
+        >
+          <LogOut size={16} />
+          <span>Keluar dari Akun Penghuni (Logout)</span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -1286,7 +1350,54 @@ export default function TenantPortal() {
   const [inAppError, setInAppError] = useState("");
   const [inAppSubmitting, setInAppSubmitting] = useState(false);
 
+  // Notification Center State (PRD & UI/UX Specification)
+  const [notifModalOpen, setNotifModalOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [selectedNotifFilter, setSelectedNotifFilter] = useState("ALL");
+  const [activeToast, setActiveToast] = useState(null);
+
+  // Onboarding Tour State (Manual & Auto-Run)
+  const [onboardingTourOpen, setOnboardingTourOpen] = useState(false);
+  const [showTourOffer, setShowTourOffer] = useState(false);
+  const [propInfoOpen, setPropInfoOpen] = useState(false);
+
   const inAppStrength = evaluatePasswordStrength(inAppNewPw);
+
+  // Auto trigger Onboarding Tour on tenant login if not completed
+  useEffect(() => {
+    const hasCompletedTour = localStorage.getItem("lh_tour_tenant_completed") === "true" || user?.has_completed_onboarding;
+    const isTemp = user?.is_temporary_password || user?.account_status === "ACTIVE_FORCE_RESET";
+    const hasShownSession = sessionStorage.getItem("lh_tour_shown_tenant");
+    if (user && !isTemp && !hasCompletedTour && !hasShownSession) {
+      setOnboardingTourOpen(true);
+      sessionStorage.setItem("lh_tour_shown_tenant", "true");
+    }
+  }, [user]);
+
+  const handleStartTour = () => {
+    setShowTourOffer(false);
+    setOnboardingTourOpen(true);
+  };
+
+  const fetchUnreadCount = async () => {
+    try {
+      const { data } = await api.get("/notifications/unread-count");
+      setUnreadNotifs(Number(data?.total || data?.unread || data?.notifications || 0));
+    } catch {
+      setUnreadNotifs(0);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const url = selectedNotifFilter === "ALL" ? "/notifications" : `/notifications?module=${selectedNotifFilter}`;
+      const { data } = await api.get(url);
+      setNotifications(Array.isArray(data) ? data : []);
+    } catch {
+      setNotifications([]);
+    }
+  };
 
   const loadProfile = () => {
     api.get("/portal/me")
@@ -1296,11 +1407,58 @@ export default function TenantPortal() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+    fetchUnreadCount();
+  };
+
+  useEffect(() => {
+    if (notifModalOpen) {
+      fetchNotifications();
+    }
+  }, [notifModalOpen, selectedNotifFilter]);
+
+  const handleMarkAllNotifsRead = async () => {
+    try {
+      await api.post("/notifications/read-all");
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true, is_read: true })));
+      setUnreadNotifs(0);
+      toast.success("Semua notifikasi ditandai sudah dibaca ✓");
+    } catch {}
+  };
+
+  const handleNotifClick = async (n) => {
+    if (!n.read && !n.is_read) {
+      try {
+        await api.post(`/notifications/${n.id}/read`);
+        setNotifications((prev) =>
+          prev.map((item) => (item.id === n.id ? { ...item, read: true, is_read: true } : item))
+        );
+        setUnreadNotifs((prev) => Math.max(0, prev - 1));
+      } catch {}
+    }
+
+    setNotifModalOpen(false);
+
+    // Tap-to-navigate / Deep Link Mapping
+    const mod = (n.module || "").toUpperCase();
+    if (mod === "BILLING" || mod === "ELECTRICITY") {
+      setTab("bills");
+    } else if (mod === "MAINTENANCE") {
+      setTab("tickets");
+    } else if (mod === "CHAT") {
+      setTab("chat");
+    } else if (mod === "AUTH") {
+      setSecurityModalOpen(true);
+    } else {
+      setTab("home");
+    }
   };
 
   useAutoRefresh(loadProfile);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    const shell = document.getElementById("app-shell");
+    if (shell) shell.scrollTop = 0;
     loadProfile();
   }, [tab]);
 
@@ -1351,6 +1509,11 @@ export default function TenantPortal() {
       setConfirmPassword("");
       toast.success("Password baru berhasil disimpan! Selamat datang di Dashboard Lewi House 🎉");
       loadProfile();
+
+      // Launch Onboarding Carousel immediately on first login per PRD
+      if (!user?.has_completed_onboarding && localStorage.getItem("lh_tour_tenant_completed") !== "true") {
+        setOnboardingTourOpen(true);
+      }
     } catch (err) {
       setResetError(err.response?.data?.detail || err.message || "Gagal mengubah password");
     } finally {
@@ -1442,6 +1605,20 @@ export default function TenantPortal() {
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
+            onClick={() => setNotifModalOpen(true)}
+            className="relative w-9 h-9 rounded-full bg-surface border border-line hover:bg-muted grid place-items-center text-primary active:scale-95 transition-colors shadow-xs"
+            title="Aktivitas & Notifikasi"
+            data-testid="btn-topbar-bell"
+          >
+            <Bell size={16} />
+            {unreadNotifs > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[17px] h-[17px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold grid place-items-center shadow-xs">
+                {unreadNotifs > 99 ? "99+" : unreadNotifs}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
             onClick={() => setSecurityModalOpen(true)}
             className="w-9 h-9 rounded-full bg-surface border border-line hover:bg-muted grid place-items-center text-secondary active:scale-95 transition-colors shadow-xs"
             title="Pengaturan Keamanan & Password"
@@ -1449,14 +1626,15 @@ export default function TenantPortal() {
           >
             <KeyRound size={16} />
           </button>
-          <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-700 border border-teal-500/25">
+          <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-teal-500/10 text-teal-700 border border-teal-500/25">
             Penghuni
           </span>
           <button
             type="button"
             onClick={doLogout}
-            className="w-9 h-9 rounded-full bg-surface border border-line hover:bg-danger/10 grid place-items-center text-subtle hover:text-danger active:scale-95 transition-colors shadow-xs"
+            className="w-9 h-9 rounded-full bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 grid place-items-center text-rose-600 hover:text-white active:scale-95 transition-all shadow-xs shrink-0"
             title="Keluar dari Akun"
+            data-testid="tenant-logout-btn"
           >
             <LogOut size={15} />
           </button>
@@ -1472,7 +1650,17 @@ export default function TenantPortal() {
           exit={{ opacity: 0, x: -10 }}
           transition={{ duration: 0.15 }}
         >
-          {tab === "home" && <HomeTab tenant={tenant} room={room} onNavigate={setTab} onOpenSecurity={() => setSecurityModalOpen(true)} />}
+          {tab === "home" && (
+            <HomeTab
+              tenant={tenant}
+              room={room}
+              onNavigate={setTab}
+              onOpenSecurity={() => setSecurityModalOpen(true)}
+              onOpenTour={() => setOnboardingTourOpen(true)}
+              onOpenPropInfo={() => setPropInfoOpen(true)}
+              onLogout={doLogout}
+            />
+          )}
           {tab === "bills" && <BillsTab />}
           {tab === "tickets" && <TicketsTab />}
           {tab === "chat" && <ChatTab tenant={tenant} room={room} onBack={() => setTab("home")} />}
@@ -1782,6 +1970,183 @@ export default function TenantPortal() {
           </form>
         </div>
       </Sheet>
+
+      {/* In-App Floating Toast Banner (Specification #1.B) */}
+      <InAppNotificationToast
+        notification={activeToast}
+        onOpen={handleNotifClick}
+        onClose={() => setActiveToast(null)}
+      />
+
+      {/* 4. TENANT ACTIVITY & NOTIFICATION CENTER (Specification #1.A) */}
+      <Sheet
+        open={notifModalOpen}
+        onClose={() => setNotifModalOpen(false)}
+        title="Aktivitas & Notifikasi"
+      >
+        <div className="space-y-3.5 pt-1" data-testid="tenant-notification-center">
+          {/* Header Bar Actions */}
+          <div className="flex items-center justify-between pb-1 border-b border-line/60">
+            <p className="text-xs text-subtle font-medium">
+              {unreadNotifs > 0 ? (
+                <span className="text-rose-600 font-bold">{unreadNotifs} notifikasi belum dibaca</span>
+              ) : (
+                "Semua aktivitas sudah dibaca"
+              )}
+            </p>
+            {unreadNotifs > 0 && (
+              <button
+                type="button"
+                onClick={handleMarkAllNotifsRead}
+                className="text-[11px] text-primary font-bold flex items-center gap-1 hover:underline active:scale-95 transition-all bg-primary/10 px-2.5 py-1 rounded-lg"
+                data-testid="btn-mark-all-read"
+              >
+                <CheckCheck size={13} />
+                <span>Tandai Dibaca</span>
+              </button>
+            )}
+          </div>
+
+          {/* Filter Chips Horizontal Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            {[
+              { key: "ALL", label: "Semua" },
+              { key: "BILLING", label: "Tagihan & Sewa" },
+              { key: "MAINTENANCE", label: "Komplain/Isu" },
+              { key: "ELECTRICITY", label: "Listrik" },
+              { key: "ANNOUNCEMENT", label: "Pengumuman" },
+            ].map((f) => {
+              const active = selectedNotifFilter === f.key;
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => setSelectedNotifFilter(f.key)}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide shrink-0 transition-all ${
+                    active
+                      ? "bg-primary text-white shadow-xs"
+                      : "bg-muted/50 text-subtle hover:text-ink border border-line"
+                  }`}
+                  data-testid={`notif-filter-${f.key}`}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Notification Items List */}
+          <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-0.5">
+            {notifications.length === 0 ? (
+              <div className="py-14 text-center text-subtle text-xs">
+                <div className="w-12 h-12 rounded-2xl bg-muted/60 grid place-items-center mx-auto mb-2 text-line">
+                  <Bell size={24} />
+                </div>
+                <p className="font-semibold text-ink/70">Belum ada notifikasi</p>
+                <p className="text-[11px] text-subtle mt-0.5">Pemberitahuan tagihan, keluhan, dan info gedung akan muncul di sini.</p>
+              </div>
+            ) : (
+              notifications.map((n) => {
+                const isUnread = !n.read && !n.is_read;
+                const mod = (n.module || "BILLING").toUpperCase();
+
+                // Visual Category Icons & Colors per PRD
+                let iconEl = <CreditCard size={18} />;
+                let colorClass = "bg-amber-500/15 text-amber-700 border-amber-500/30";
+                let categoryLabel = "Tagihan";
+
+                if (mod === "MAINTENANCE") {
+                  iconEl = <Wrench size={18} />;
+                  colorClass = "bg-emerald-500/15 text-emerald-700 border-emerald-500/30";
+                  categoryLabel = "Komplain";
+                } else if (mod === "ELECTRICITY") {
+                  iconEl = <Zap size={18} />;
+                  colorClass = "bg-blue-500/15 text-blue-700 border-blue-500/30";
+                  categoryLabel = "Listrik";
+                } else if (mod === "ANNOUNCEMENT") {
+                  iconEl = <Megaphone size={18} />;
+                  colorClass = "bg-purple-500/15 text-purple-700 border-purple-500/30";
+                  categoryLabel = "Pengumuman";
+                } else if (mod === "AUTH") {
+                  iconEl = <KeyRound size={18} />;
+                  colorClass = "bg-indigo-500/15 text-indigo-700 border-indigo-500/30";
+                  categoryLabel = "Akun";
+                }
+
+                return (
+                  <motion.div
+                    key={n.id}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleNotifClick(n)}
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative flex items-start gap-3.5 ${
+                      isUnread
+                        ? "bg-teal-500/5 border-teal-500/30 shadow-xs"
+                        : "bg-surface border-line hover:border-primary/30"
+                    }`}
+                    data-testid={`tenant-notif-item-${n.id}`}
+                  >
+                    {/* Visual Category Avatar */}
+                    <div className={`w-10 h-10 rounded-2xl grid place-items-center shrink-0 border ${colorClass}`}>
+                      {iconEl}
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="flex items-center justify-between gap-1 mb-0.5">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-subtle">
+                          {categoryLabel} {n.room_unit ? `• Unit ${n.room_unit}` : ""}
+                        </span>
+                        <span className="text-[10px] text-subtle/70 font-mono">
+                          {fmtDateTime(n.created_at)}
+                        </span>
+                      </div>
+
+                      {/* Title: Bold if unread */}
+                      <p className={`text-xs leading-snug truncate ${isUnread ? "font-bold text-ink" : "font-medium text-ink/80"}`}>
+                        {n.title}
+                      </p>
+
+                      {/* Message 1-2 lines */}
+                      <p className="text-[11px] text-subtle line-clamp-2 mt-0.5 leading-snug">
+                        {n.message || n.body}
+                      </p>
+                    </div>
+
+                    {/* Blue Unread Dot */}
+                    {isUnread && (
+                      <span className="w-2.5 h-2.5 rounded-full bg-teal-600 shrink-0 mt-1 shadow-xs" />
+                    )}
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </Sheet>
+
+      {/* Offer Walkthrough Popup on Login */}
+      <TourOfferModal
+        open={showTourOffer}
+        onClose={() => setShowTourOffer(false)}
+        onStartTour={handleStartTour}
+        role="tenant"
+      />
+
+      {/* Property Info Modal */}
+      <PropertyInfoModal
+        open={propInfoOpen}
+        onClose={() => setPropInfoOpen(false)}
+      />
+
+      {/* Onboarding Feature Tour Modal (PRD Feature Guide) */}
+      <OnboardingTourModal
+        mode="tenant"
+        open={onboardingTourOpen}
+        onClose={() => setOnboardingTourOpen(false)}
+        onComplete={() => {
+          localStorage.setItem("lh_tour_tenant_completed", "true");
+        }}
+      />
     </div>
   );
 }
