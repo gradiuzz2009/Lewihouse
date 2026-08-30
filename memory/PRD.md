@@ -32,3 +32,15 @@ Selalu respon dalam Bahasa Indonesia.
 - **Sistem Keuangan & Billing**: Otomasi invoice bulanan, pencatatan pembayaran multi-channel, denda keterlambatan, kwitansi digital.
 - **Chat & Canned Responses**: Template cepat berisi alamat Medan, LEWI Laundry, kebijakan buku nikah, dan resepsionis 24 jam.
 - **Cloud Firestore & Real-Time Sync**: Terkoneksi dengan project Firestore `lewihouse-7a0d7`.
+
+---
+
+## Clone & Run Setup (2026-06 — E1 session)
+- Cloned from https://github.com/aliakhmadfauzie/Lewihouse.git into /app (React + FastAPI + MongoDB, mobile-first PWA + Capacitor iOS/Android wrapper).
+- Created gitignored env files:
+  - backend/.env: MONGO_URL, DB_NAME=lewi_house_db, JWT_SECRET, VAPID_PUBLIC_KEY (derived from vapid_private.pem), VAPID_PRIVATE_KEY_FILE, VAPID_SUBJECT, ADMIN_EMAIL=admin@lewihouse.com, ADMIN_PASSWORD=lewi2026, CORS_ORIGINS=*
+  - frontend/.env: REACT_APP_BACKEND_URL (preview URL), WDS_SOCKET_PORT=443
+- Installed pywebpush/py-vapid/http_ece (pip skipped full requirements.txt due to emergentintegrations vs litellm pin conflict — not needed to run).
+- Frontend deps installed via `yarn install --ignore-engines` (@capacitor/cli wants node>=22; native-build only, irrelevant to web app).
+- Seeded demo data via POST /api/seed → rooms:7, tenants:4, bills:9, tickets:3, tokens:3.
+- Verified: admin login + dashboard + 5 tabs load with data. Testing agent: backend 30 passed, frontend smoke 100%. Running as-is.

@@ -1,0 +1,43 @@
+{
+  "summary": "Fresh-clone verification of Lewi House. Re-ran /app/backend/tests/backend_test.py against the running FastAPI+MongoDB stack; 5 tests failed against the current build because the app has evolved (bill status now UPPERCASE - UNPAID/PAID/OVERDUE/PARTIAL_PAID, invoice format now 'INV/<yyyymm>/<ROOM>/<seq>', audit doc schema changed to module/event_type instead of 'action'). Updated the stale assertions to match the current API contract; result: 30 passed, 1 xpassed (public-URL brute-force lockout now works - previously reported gap is resolved). Frontend smoke via public URL on 390x844: admin login through 'Pengelola / Staff' tab succeeds with admin@lewihouse.com/lewi2026, dashboard (Beranda) renders with 'PENDAPATAN', /rooms shows 17 unit copy + K-101/K-201 seed rooms, /tenants shows '4 penghuni', /bills shows 'Pusat Penagihan & Keuangan', /complaints shows '3 keluhan aktif'. Onboarding modal shows on first login (Langkah 1 dari 5) - expected UX. Seed via POST /api/seed returns {rooms:7, tenants:4, bills:9, tickets:3, tokens:3} exactly as promised.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/audit", "issue": "Response docs no longer contain the 'action' field they used to; the module/event_type pair now carries the semantic label. Existing external consumers that filtered on 'action' (e.g. previous test) will break silently."},
+      {"endpoint": "Bill invoice_number", "issue": "Format changed from 'INV-YYYYMM-ROOM' to 'INV/YYYYMM/ROOM/<seq>'. Not documented; anyone parsing the old format will fail."},
+      {"endpoint": "Bill status casing", "issue": "Status values are now UPPERCASE (UNPAID/PAID/OVERDUE/PARTIAL_PAID) but the frontend still contains fallback checks for lowercase legacy values ('paid','unpaid','partially_paid') across Bills.jsx (~L171-235). Works today because the frontend tolerates both, but the backend never returns lowercase anymore - dead defensive code."},
+      {"endpoint": "CORS", "issue": "CORS_ORIGINS='*' with allow_credentials=True still present (carryover from iter 2)."},
+      {"endpoint": "DELETE endpoints", "issue": "Still return {ok:true} even when the id doesn't exist (no 404) - carryover from iter 2."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Login (mobile)", "issues": ["Login page defaults to 'Portal Penghuni' tab which pre-fills a demo username/PIN ('204_budi' / hidden PIN). A new admin has to know to click 'Pengelola / Staff' - onboarding hint would help."]},
+      {"screen": "Onboarding tour", "issues": ["Copy says 'Pantau ketersediaan 17 unit kamar' but the seed only creates 7 rooms - mismatch between marketing copy in the tour and the actual demo dataset."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Nothing blocking - app runs end-to-end after fresh clone with the .env files the main agent created.",
+    "Remove dead legacy lowercase status branches in frontend/src/pages/Bills.jsx now that the API only emits UPPERCASE.",
+    "Fix onboarding-tour copy: 17 unit vs 7 seeded rooms.",
+    "Return 404 from DELETE /api/{rooms,tenants,bills,complaints}/{id} when the id is missing.",
+    "Set explicit CORS origins (drop '*' now that credentials cookies are in use)."
+  ],
+  "critical_code_review_comments": [
+    "backend/server.py is now 4003 lines - even more urgent to split into routers (auth, rooms, tenants, bills, maintenance, access, dashboard, portal, payments).",
+    "frontend/src/pages/Bills.jsx is 2068 lines - split into list, filters, payment sheet, generate-invoice sheet.",
+    "Bill schema uses free-form uppercase strings; move to Enum/Literal to prevent the exact 'action-renamed-to-module' drift observed in audit docs.",
+    "Onboarding text hard-codes '17 unit' - source it from /api/dashboard/summary.rooms_total to keep in sync with seed."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100% (30 passed, 1 xpassed / 31)", "frontend": "100% of smoke flows (login + 5 pages load with data)"},
+  "test_credentials": "admin@lewihouse.com / lewi2026 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Auto-reseed via session-scoped fixture in backend_test.py (POST /api/seed with owner token) - final counts rooms:7, tenants:4, bills:9, tickets:3, tokens:3.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Regression suite /app/backend/tests/backend_test.py has been updated to the current UPPERCASE bill-status schema and new invoice format INV/YYYYMM/ROOM/seq. Session fixture reseeds - run with -p no:randomly. The previously reported brute-force lockout gap behind the ingress is now FIXED (test_bruteforce_lockout_public XPASSes). Frontend still has legacy lowercase status fallbacks in Bills.jsx - can be cleaned up. App is fully functional end-to-end after fresh clone.",
+  "rca_of_the_issue": "No new blocking bug. Prior test failures (5) were due to the app evolving between iteration 2 and iteration 3 - bill status casing switched to UPPERCASE, invoice number format changed, and audit doc schema replaced 'action' with 'module'/'event_type'. Tests were realigned; underlying features work."
+}

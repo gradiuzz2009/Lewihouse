@@ -1,15 +1,13 @@
-# Lewi House — Test Credentials
+# Test Credentials — Lewi House
 
-## Admin (Owner)
+## Admin / Owner (Pengelola / Staff tab)
 - Email: admin@lewihouse.com
 - Password: lewi2026
 - Role: owner
 
-## Auth Endpoints
-- POST /api/auth/login {email, password} → returns {user, access_token} + httpOnly cookies
-- GET /api/auth/me (Bearer or cookie)
-- POST /api/auth/logout
-- POST /api/auth/refresh
+## Tenant Portal (Portal Penghuni tab)
+- Demo unit login prefilled on login page (e.g. username 204_budi). Use the "Penghuni (Unit 204)" demo quick-access button.
 
-All other /api/* routes require authentication (Bearer token or cookie).
-Frontend stores access_token in localStorage and sends Authorization: Bearer header.
+## Notes
+- Login page has demo quick-access buttons: "Penghuni (Unit 204)", "Admin / Owner", "Staff Operasional".
+- Seed demo data: authenticate as owner, then POST /api/seed (Bearer token).

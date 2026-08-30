@@ -410,7 +410,7 @@ async def create_activity_and_notification(
     return str(r_act.inserted_id)
 
 
-async def notify_admins(
+async def notify_admins_hub(
     event_type: str,
     reference_dict: dict,
     title: str,
@@ -440,7 +440,7 @@ async def notify_admins(
     )
 
 
-async def notify_tenant(
+async def notify_tenant_hub(
     tenant_id: str,
     event_type: str,
     reference_dict: dict,

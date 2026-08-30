@@ -1,4 +1,5 @@
 /* eslint-disable no-restricted-globals */
+/* global clients */
 const CACHE_NAME = "lewi-house-v5";
 
 // Install: skip waiting immediately
