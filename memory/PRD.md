@@ -44,3 +44,24 @@ Selalu respon dalam Bahasa Indonesia.
 - Frontend deps installed via `yarn install --ignore-engines` (@capacitor/cli wants node>=22; native-build only, irrelevant to web app).
 - Seeded demo data via POST /api/seed → rooms:7, tenants:4, bills:9, tickets:3, tokens:3.
 - Verified: admin login + dashboard + 5 tabs load with data. Testing agent: backend 30 passed, frontend smoke 100%. Running as-is.
+
+---
+
+## Native Build + Push Reminders (2026-06 — E1 session 2)
+### Native Android build
+- Toolchain: JDK 21 (/opt/jdk-21.0.5+11), Node 22 (/opt/node-v22.14.0-linux-arm64) for Capacitor CLI, Android SDK (/opt/android-sdk: platform-34, build-tools 34.0.0, platform-tools).
+- aarch64 workaround: Google ships x86_64 aapt2 only. Used qemu-x86_64-static + Debian amd64 multiarch libs; Gradle run with -Pandroid.aapt2FromMavenOverride=/opt/aapt2wrap/aapt2 (qemu wrapper).
+- `npx cap sync android` copied web build + wired 6 Capacitor plugins (incl. push-notifications).
+- Built: android/app/build/outputs/apk/debug/app-debug.apk (19MB). Copied to /app/artifacts/LewiHouse-debug.apk.
+- iOS: Xcode project present (frontend/ios) but cannot be compiled on Linux (needs macOS/Xcode).
+- Rebuild cmd: cd /app/frontend/android && ANDROID_HOME=/opt/android-sdk JAVA_HOME=/opt/jdk-21.0.5+11 PATH=$JAVA_HOME/bin:$PATH ./gradlew assembleDebug --no-daemon -Pandroid.aapt2FromMavenOverride=/opt/aapt2wrap/aapt2
+
+### Push reminders (FCM)
+- Backend: new endpoints POST /api/push/register-device, /api/push/unregister-device; send_fcm_to_user + _get_fcm_access_token (FCM HTTP v1 with service account); send_push_to_user now sends web-push AND FCM.
+- Fixed reminder bug: bill-status queries were lowercase (never matched UPPERCASE schema) -> reminders never fired. Fixed _bill_stage + all sweep/preview/dunning queries. Verified reminders now fire (46/47 backend tests pass).
+- Reminder timing: due_soon (H-3..H-1), due_today (H-0), overdue_1/2/3; dedup via reminder_log per (bill_id, stage); loop every 6h.
+- FCM config in backend/.env: FCM_PROJECT_ID=lewihouse-7a0d7, FCM_SERVICE_ACCOUNT_FILE=fcm-service-account.json (gitignored). FCM_ENABLED=True, OAuth token acquisition + send path verified against live FCM.
+- Frontend: src/lib/nativePush.js registers FCM token via @capacitor/push-notifications after login (native only; no-op on web). Wired into AuthContext.
+
+### OPEN ITEM (blocks real device delivery)
+- Firebase project MISMATCH: the APK's android/app/google-services.json is project 'lewihouse' (sender 291852041359), but the backend service account is project 'lewihouse-7a0d7'. FCM tokens from one project cannot be targeted by another. Need google-services.json for project lewihouse-7a0d7 (Android app com.lewihouse.app), then rebuild APK. Until then: app runs fine, backend push works, but delivery to THIS APK won't land.

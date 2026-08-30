@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api } from "../lib/api";
+import { registerNativePush, unregisterNativePush } from "../lib/nativePush";
 
 const AuthContext = createContext(null);
 
@@ -43,6 +44,15 @@ export function AuthProvider({ children }) {
       });
   }, []);
 
+  // Register for native mobile push (FCM) once we have an authenticated user (native app only)
+  useEffect(() => {
+    if (user && typeof user === "object") {
+      registerNativePush((url) => {
+        if (url) window.location.assign(url);
+      }).catch(() => {});
+    }
+  }, [user]);
+
   const login = async (identifier, password) => {
     const { data } = await api.post("/auth/login", { identifier, password });
     if (data?.access_token) localStorage.setItem("lh_token", data.access_token);
@@ -54,6 +64,9 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    try {
+      await unregisterNativePush();
+    } catch {}
     try {
       await api.post("/auth/logout");
     } catch {}

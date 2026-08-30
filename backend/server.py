@@ -44,6 +44,13 @@ MIDTRANS_CLIENT_KEY = os.environ.get("MIDTRANS_CLIENT_KEY", "")
 MIDTRANS_IS_PRODUCTION = os.environ.get("MIDTRANS_IS_PRODUCTION", "false").lower() == "true"
 MIDTRANS_SNAP_URL = "https://app.midtrans.com/snap/v1/transactions" if MIDTRANS_IS_PRODUCTION else "https://app.sandbox.midtrans.com/snap/v1/transactions"
 
+# Firebase Cloud Messaging (native mobile push). Optional: activates once a service-account file is provided.
+FCM_PROJECT_ID = os.environ.get("FCM_PROJECT_ID", "")
+FCM_SERVICE_ACCOUNT_FILE = os.environ.get("FCM_SERVICE_ACCOUNT_FILE", "")
+if FCM_SERVICE_ACCOUNT_FILE and not os.path.isabs(FCM_SERVICE_ACCOUNT_FILE):
+    FCM_SERVICE_ACCOUNT_FILE = str(ROOT_DIR / FCM_SERVICE_ACCOUNT_FILE)
+FCM_ENABLED = bool(FCM_PROJECT_ID and FCM_SERVICE_ACCOUNT_FILE and os.path.exists(FCM_SERVICE_ACCOUNT_FILE))
+
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
@@ -2086,6 +2093,65 @@ async def reset_portal_password(tenant_id: str, user: dict = Depends(get_current
 
 
 # ============ PUSH NOTIFICATIONS ============
+_fcm_token_cache = {"token": None, "exp": None}
+
+
+def _get_fcm_access_token() -> Optional[str]:
+    """Return a cached short-lived OAuth token for FCM HTTP v1, refreshing when needed."""
+    if not FCM_ENABLED:
+        return None
+    try:
+        now = datetime.now(timezone.utc)
+        if _fcm_token_cache["token"] and _fcm_token_cache["exp"] and _fcm_token_cache["exp"] > now + timedelta(minutes=2):
+            return _fcm_token_cache["token"]
+        from google.oauth2 import service_account
+        from google.auth.transport.requests import Request as GoogleAuthRequest
+        creds = service_account.Credentials.from_service_account_file(
+            FCM_SERVICE_ACCOUNT_FILE, scopes=["https://www.googleapis.com/auth/firebase.messaging"]
+        )
+        creds.refresh(GoogleAuthRequest())
+        _fcm_token_cache["token"] = creds.token
+        _fcm_token_cache["exp"] = creds.expiry.replace(tzinfo=timezone.utc) if creds.expiry else (now + timedelta(minutes=50))
+        return creds.token
+    except Exception:
+        return None
+
+
+async def send_fcm_to_user(user_id: str, title: str, body: str, url: str = "/", data: Optional[dict] = None):
+    """Send a native FCM push to every registered device of a user. No-op if FCM not configured."""
+    access_token = _get_fcm_access_token()
+    if not access_token:
+        return
+    tokens = await db.device_tokens.find({"user_id": user_id}).to_list(20)
+    if not tokens:
+        return
+    endpoint = f"https://fcm.googleapis.com/v1/projects/{FCM_PROJECT_ID}/messages:send"
+    headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json; charset=UTF-8"}
+    payload_data = {"url": url}
+    for k, v in (data or {}).items():
+        payload_data[k] = str(v)
+    async with httpx.AsyncClient(timeout=15) as http_client:
+        for rec in tokens:
+            fcm_token = rec.get("token")
+            if not fcm_token:
+                continue
+            message = {
+                "message": {
+                    "token": fcm_token,
+                    "notification": {"title": title, "body": body},
+                    "data": payload_data,
+                    "android": {"priority": "high", "notification": {"channel_id": "bill-reminders"}},
+                }
+            }
+            try:
+                resp = await http_client.post(endpoint, headers=headers, json=message)
+                if resp.status_code in (400, 404):
+                    # UNREGISTERED / invalid token -> remove it
+                    await db.device_tokens.delete_one({"_id": rec["_id"]})
+            except Exception:
+                pass
+
+
 async def send_push_to_user(user_id: str, title: str, body: str, url: str = "/"):
     subs = await db.push_subscriptions.find({"user_id": user_id}).to_list(20)
     payload = json.dumps({"title": title, "body": body, "url": url})
@@ -2101,6 +2167,8 @@ async def send_push_to_user(user_id: str, title: str, body: str, url: str = "/")
             await db.push_subscriptions.delete_one({"_id": s["_id"]})
         except Exception:
             pass
+    # Also deliver via native FCM (mobile app), if configured
+    await send_fcm_to_user(user_id, title, body, url)
 
 
 async def notify_tenant(tenant_id: str, ntype: str, data: dict, title: str, body: str, url: str = "/"):
@@ -2129,6 +2197,36 @@ async def notify_admins(ntype: str, data: dict, title: str, body: str, url: str 
 @common.get("/push/vapid-key")
 async def get_vapid_key():
     return {"public_key": VAPID_PUBLIC_KEY}
+
+
+class DeviceTokenPayload(BaseModel):
+    token: str
+    platform: str = "android"
+
+
+@common.post("/push/register-device")
+async def register_device_token(payload: DeviceTokenPayload, user: dict = Depends(get_current_user)):
+    """Store an FCM device token for native mobile push (Android/iOS)."""
+    if not payload.token or len(payload.token) < 20:
+        raise HTTPException(400, "Invalid device token")
+    await db.device_tokens.update_one(
+        {"user_id": user["id"], "token": payload.token},
+        {"$set": {
+            "user_id": user["id"],
+            "tenant_id": user.get("tenant_id"),
+            "token": payload.token,
+            "platform": payload.platform,
+            "updated_at": now_iso(),
+        }},
+        upsert=True,
+    )
+    return {"ok": True, "fcm_enabled": FCM_ENABLED}
+
+
+@common.post("/push/unregister-device")
+async def unregister_device_token(payload: DeviceTokenPayload, user: dict = Depends(get_current_user)):
+    await db.device_tokens.delete_one({"user_id": user["id"], "token": payload.token})
+    return {"ok": True}
 
 
 class SubscribePayload(BaseModel):
@@ -3246,10 +3344,10 @@ async def list_electricity_readings(room_id: Optional[str] = None, period: Optio
 
 # ============ REMINDERS ============
 def _bill_stage(d: dict):
-    if d.get("status") == "paid" or not d.get("due_date"):
+    if str(d.get("status", "")).upper() in ("PAID", "CANCELLED", "VERIFYING") or not d.get("due_date"):
         return None
     try:
-        due = date.fromisoformat(d["due_date"])
+        due = date.fromisoformat(str(d["due_date"])[:10])
     except ValueError:
         return None
     days = (due - datetime.now(timezone.utc).date()).days
@@ -3278,7 +3376,7 @@ STAGE_LABELS = {
 
 @api.get("/reminders/dunning-list")
 async def reminders_dunning_list():
-    bills = await db.bills.find({"status": {"$in": ["unpaid", "partially_paid"]}}).sort("due_date", 1).to_list(2000)
+    bills = await db.bills.find({"status": {"$in": ["UNPAID", "PARTIAL_PAID", "OVERDUE", "unpaid", "partially_paid"]}}).sort("due_date", 1).to_list(2000)
     out = []
     for b in bills:
         stage = _bill_stage(b)
@@ -3314,7 +3412,7 @@ async def reminders_dunning_list():
 
 @api.post("/reminders/send-whatsapp-batch")
 async def send_whatsapp_batch(user: dict = Depends(get_current_user)):
-    bills = await db.bills.find({"status": {"$in": ["unpaid", "partially_paid"]}}).to_list(2000)
+    bills = await db.bills.find({"status": {"$in": ["UNPAID", "PARTIAL_PAID", "OVERDUE", "unpaid", "partially_paid"]}}).to_list(2000)
     sent_count = 0
     for b in bills:
         stage = _bill_stage(b)
@@ -3334,7 +3432,7 @@ async def send_whatsapp_batch(user: dict = Depends(get_current_user)):
 
 
 async def run_reminder_sweep(actor: str) -> int:
-    bills = await db.bills.find({"status": {"$in": ["unpaid", "partially_paid"]}}).to_list(2000)
+    bills = await db.bills.find({"status": {"$in": ["UNPAID", "PARTIAL_PAID", "OVERDUE", "unpaid", "partially_paid"]}}).to_list(2000)
     sent = 0
     for b in bills:
         stage = _bill_stage(b)
@@ -3367,7 +3465,7 @@ async def run_reminder_sweep(actor: str) -> int:
 
 @api.get("/reminders/preview")
 async def reminders_preview():
-    bills = await db.bills.find({"status": {"$in": ["unpaid", "partially_paid"]}}).to_list(2000)
+    bills = await db.bills.find({"status": {"$in": ["UNPAID", "PARTIAL_PAID", "OVERDUE", "unpaid", "partially_paid"]}}).to_list(2000)
     out = []
     for b in bills:
         stage = _bill_stage(b)
@@ -3420,7 +3518,7 @@ async def dashboard_summary():
         counts[s] = await db.rooms.count_documents({"status": s})
     tenants_active = await db.tenants.count_documents({"status": "active"})
 
-    unpaid_docs = await db.bills.find({"status": {"$in": ["unpaid", "partially_paid"]}}).to_list(5000)
+    unpaid_docs = await db.bills.find({"status": {"$in": ["UNPAID", "PARTIAL_PAID", "OVERDUE", "unpaid", "partially_paid"]}}).to_list(5000)
     outstanding = sum(b.get("total", 0) - b.get("amount_paid", 0) for b in unpaid_docs)
 
     period = datetime.now(timezone.utc).strftime("%Y-%m")

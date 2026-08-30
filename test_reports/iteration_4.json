@@ -1,0 +1,37 @@
+{
+  "summary": "Backend-only iteration focused on the two new features added this session: FCM device-token registration (POST /api/push/register-device, /api/push/unregister-device) and the built-in bill-due dunning reminders (GET /api/reminders/preview, /api/reminders/dunning-list; POST /api/reminders/send) after the UPPERCASE bill-status fix. Added /app/backend/tests/test_push_reminders.py (16 focused tests) and re-ran the full suite. Result: 46 passed + 1 xpassed / 47 (100%). All target endpoints behave as specified: register-device returns {ok:true, fcm_enabled:true} for tokens \u226520 chars and 400 for shorter, unregister deletes cleanly, /reminders/preview now returns non-empty stageable bills from seed data (confirming the UPPERCASE fix on _bill_stage + queries), dunning-list returns stage_label without error, /reminders/send returns {ok:true, sent:N>0} and the second call returns sent=0 (dedup via reminder_log works). All auth-protected endpoints (/rooms, /tenants, /bills) still return 401 without a token; /reminders/preview and /reminders/dunning-list also enforce auth at the router level (verified via curl on public URL \u2192 401).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/reminders/preview and /api/reminders/dunning-list", "issue": "No explicit Depends(get_current_user) in the function signatures (relies on router-level global auth). They ARE protected in the running deployment (returns 401 on public URL), but the source reads as if they were open \u2013 anyone reviewing the handler in isolation would miss it. Add explicit Depends for clarity and defense-in-depth."},
+      {"endpoint": "Reminder queries", "issue": "$in filter still includes legacy lowercase ('unpaid','partially_paid') alongside the current UPPERCASE values. Harmless but keeps dead-status support alive; consider dropping once a data migration confirms no lowercase docs remain."},
+      {"endpoint": "run_reminder_sweep", "issue": "Skips silently when no tenant user account exists for a bill (acct=None). Any seeded bill for a tenant without a portal login is invisible to the sweep even though preview lists it \u2013 counts of preview vs sent can diverge. Log a warning at least."},
+      {"endpoint": "reminder_loop", "issue": "asyncio.sleep(21600)=6h fixed interval with bare except:pass swallows every error including CancelledError \u2013 makes shutdown/debugging harder. Log the exception."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_push_reminders.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_iter4.xml",
+    "/app/test_reports/pytest/pytest_iter4_full.xml"
+  ],
+  "action_items": [
+    "(Optional) Add explicit Depends(get_current_user) + owner/admin role check to /api/reminders/preview and /api/reminders/dunning-list for source-level clarity.",
+    "(Optional) Log skipped bills in run_reminder_sweep when tenant user account is missing so operators know why preview count > sent count.",
+    "(Optional) Remove legacy lowercase status entries from the reminders $in filters now that the schema is UPPERCASE."
+  ],
+  "critical_code_review_comments": [
+    "Three near-identical bill queries (dunning-list, send-whatsapp-batch, run_reminder_sweep, preview) each duplicate the status $in filter and the _bill_stage loop; extract a helper `_stageable_bills()` to avoid drift the next time statuses change.",
+    "send_fcm_to_user swallowing INVALID_ARGUMENT is fine, but auto-removing tokens should also emit an audit entry so admins can see churn.",
+    "server.py is now >4100 lines \u2013 unchanged since iter 3, still needs router split."
+  ],
+  "updated_files": ["/app/backend/tests/test_push_reminders.py"],
+  "success_rate": {"backend": "100% (46 passed + 1 xpassed / 47)", "frontend": "N/A (frontend testing skipped per request)"},
+  "test_credentials": "admin@lewihouse.com / lewi2026 (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Session-scoped autouse fixture reseeds via POST /api/seed \u2192 {rooms:7, tenants:4, bills:9, tickets:3, tokens:3}.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "New tests live in /app/backend/tests/test_push_reminders.py; run with `pytest backend/tests/ -p no:randomly`. Both push and reminders features are working end-to-end. The dedup test asserts second /api/reminders/send returns sent=0, so if you add tests that further mutate reminder_log or bills between the send calls, keep them AFTER TestReminders or reset state. FCM_ENABLED=True with real service account for project lewihouse-7a0d7 \u2013 endpoint returns fcm_enabled:true but we intentionally do not send to a real device.",
+  "rca_of_the_issue": "Prior bug (reminders never firing) confirmed fixed: _bill_stage + the three bill queries now match UPPERCASE statuses UNPAID/PARTIAL_PAID/OVERDUE (kept lowercase in $in for legacy safety). preview returns seeded overdue rows and /reminders/send successfully increments the sent counter and populates reminder_log so the next call dedups to 0."
+}

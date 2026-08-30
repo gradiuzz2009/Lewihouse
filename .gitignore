@@ -33,3 +33,4 @@ yarn-error.log*
 # Internal tooling
 .agents/
 .emergent/
+backend/fcm-service-account.json
